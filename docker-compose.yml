@@ -268,12 +268,13 @@ services:
       - "8081:8080"
       - "50000:50000"
     environment:
-      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true
       - CASC_JENKINS_CONFIG=/var/jenkins_home/casc/jenkins.yaml
     volumes:
       - jenkins_data:/var/jenkins_home
       - ./jenkins/casc:/var/jenkins_home/casc:ro
       - /var/run/docker.sock:/var/run/docker.sock
+      - /home/languid/Downloads/HPE/HPE-stuff:/home/languid/Downloads/HPE/HPE-stuff:ro
     depends_on:
       - keycloak
     networks:
