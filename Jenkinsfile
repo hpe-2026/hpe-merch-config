@@ -26,7 +26,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 dir('node-backend') {
-                    sh 'npm ci --legacy-peer-deps'
+                    sh 'npm install --legacy-peer-deps'
                 }
             }
         }
