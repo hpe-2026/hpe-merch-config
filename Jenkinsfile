@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'NodeJS-18'
-    }
-
     environment {
         NEXUS_URL      = 'http://nitte-nexus:8081'
         NEXUS_REPO     = 'nitte-npm-hosted'

@@ -30,17 +30,6 @@ jenkins:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
 
-tool:
-  nodejs:
-    installations:
-      - name: NodeJS-18
-        properties:
-          - installSource:
-              installers:
-                - nodeJSInstaller:
-                    id: "18.20.4"
-                    npmPackagesRefreshHours: 72
-
 credentials:
   system:
     domainCredentials:
