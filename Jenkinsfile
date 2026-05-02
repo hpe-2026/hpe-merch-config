@@ -75,15 +75,16 @@ pipeline {
         stage('Publish to Nexus') {
             steps {
                 dir('node-backend') {
-                    sh """
-                        # Configure npm to use Nexus as the registry for this publish
-                        npm set registry ${NEXUS_URL}/repository/${NEXUS_REPO}/
-                        npm set //${NEXUS_URL.replaceAll('http://','')}/repository/${NEXUS_REPO}/:username ${NEXUS_CREDS_USR}
-                        npm set //${NEXUS_URL.replaceAll('http://','')}/repository/${NEXUS_REPO}/:_password \$(echo -n '${NEXUS_CREDS_PSW}' | base64)
-                        npm set //${NEXUS_URL.replaceAll('http://','')}/repository/${NEXUS_REPO}/:email admin@nitte.edu
-                        npm set //${NEXUS_URL.replaceAll('http://','')}/repository/${NEXUS_REPO}/:always-auth true
-                        npm publish *.tgz --registry ${NEXUS_URL}/repository/${NEXUS_REPO}/ || echo 'Publish skipped (version may already exist)'
-                    """
+                    sh '''
+                        NEXUS_HOST=nitte-nexus:8081
+                        NEXUS_REPO=nitte-npm-hosted
+                        AUTH=$(printf '%s:%s' "$NEXUS_CREDS_USR" "$NEXUS_CREDS_PSW" | base64 | tr -d '\n')
+                        npm set registry http://${NEXUS_HOST}/repository/${NEXUS_REPO}/
+                        npm set //${NEXUS_HOST}/repository/${NEXUS_REPO}/:_auth ${AUTH}
+                        npm set //${NEXUS_HOST}/repository/${NEXUS_REPO}/:email admin@nitte.edu
+                        npm publish *.tgz --registry http://${NEXUS_HOST}/repository/${NEXUS_REPO}/ \
+                          || echo "Publish skipped (version may already exist)"
+                    '''
                 }
             }
         }
