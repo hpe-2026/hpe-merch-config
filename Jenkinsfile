@@ -26,7 +26,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 dir('node-backend') {
-                    sh 'npm install --legacy-peer-deps'
+                    sh 'npm install --legacy-peer-deps --registry https://registry.npmjs.org'
                 }
             }
         }
@@ -79,11 +79,15 @@ pipeline {
                         NEXUS_HOST=nitte-nexus:8081
                         NEXUS_REPO=nitte-npm-hosted
                         AUTH=$(printf '%s:%s' "$NEXUS_CREDS_USR" "$NEXUS_CREDS_PSW" | base64 | tr -d '\n')
-                        npm set registry http://${NEXUS_HOST}/repository/${NEXUS_REPO}/
-                        npm set //${NEXUS_HOST}/repository/${NEXUS_REPO}/:_auth ${AUTH}
-                        npm set //${NEXUS_HOST}/repository/${NEXUS_REPO}/:email admin@nitte.edu
-                        npm publish *.tgz --registry http://${NEXUS_HOST}/repository/${NEXUS_REPO}/ \
+                        # Write a project-level .npmrc so global config is not affected
+                        cat > .npmrc <<EOF
+registry=http://${NEXUS_HOST}/repository/${NEXUS_REPO}/
+//${NEXUS_HOST}/repository/${NEXUS_REPO}/:_auth=${AUTH}
+//${NEXUS_HOST}/repository/${NEXUS_REPO}/:email=admin@nitte.edu
+EOF
+                        npm publish *.tgz \
                           || echo "Publish skipped (version may already exist)"
+                        rm -f .npmrc
                     '''
                 }
             }
