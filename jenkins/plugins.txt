@@ -1,0 +1,12 @@
+oic-auth
+configuration-as-code
+matrix-auth
+workflow-aggregator
+pipeline-stage-view
+git
+nodejs
+credentials-binding
+plain-credentials
+nexus-artifact-uploader
+ws-cleanup
+build-timeout

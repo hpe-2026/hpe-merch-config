@@ -1,0 +1,212 @@
+/orders:
+  get:
+    summary: List Orders
+    description: Get user orders (authenticated only, admins see all)
+    tags:
+      - Orders
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: user_id
+        in: query
+        schema:
+          type: string
+        description: Filter by user ID (admin only)
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [pending, processing, shipped, delivered, cancelled]
+        description: Filter by order status
+      - name: skip
+        in: query
+        schema:
+          type: integer
+          default: 0
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+    responses:
+      '200':
+        description: List of orders
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: '../schemas/schemas.yaml#/Order'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '500':
+        description: Server error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+  post:
+    summary: Create Order
+    description: Create a new order from cart items (authenticated only)
+    tags:
+      - Orders
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/schemas.yaml#/OrderCreateRequest'
+    responses:
+      '201':
+        description: Order created successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+                data:
+                  $ref: '../schemas/schemas.yaml#/Order'
+      '400':
+        description: Validation error (empty cart, invalid items, etc)
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '422':
+        description: Stock unavailable or pricing mismatch
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '500':
+        description: Server error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+/orders/{id}:
+  get:
+    summary: Get Order Details
+    description: Get details of a specific order (users see own orders, admins see all)
+    tags:
+      - Orders
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        example: "507f1f77bcf86cd799439012"
+    responses:
+      '200':
+        description: Order details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: '../schemas/schemas.yaml#/Order'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - cannot access other user's orders
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '404':
+        description: Order not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+  put:
+    summary: Update Order (Admin Only)
+    description: Update order status (requires admin role)
+    tags:
+      - Orders
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        example: "507f1f77bcf86cd799439012"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [pending, processing, shipped, delivered, cancelled]
+              notes:
+                type: string
+                nullable: true
+    responses:
+      '200':
+        description: Order updated successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: '../schemas/schemas.yaml#/Order'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - admin access required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '404':
+        description: Order not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'

@@ -1,0 +1,258 @@
+/auth/signup:
+  post:
+    summary: User Registration (Alumni)
+    description: |
+      Register a new alumni user account. Users must provide valid alumni ID from the institutional database.
+      After registration, users are placed in pending status and require admin approval before full access.
+      
+      **Authentication**: Keycloak
+      **Workflow**:
+      1. User submits registration with alumni_id
+      2. System sends welcome email and creates verification record
+      3. Admin reviews and approves/rejects
+      4. User receives notification of approval status
+      5. Approved users gain access to alumni features
+      
+      **Events Published**: user.registered (Kafka)
+    tags:
+      - Authentication
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                format: email
+                description: User email address (must be unique)
+              password:
+                type: string
+                minLength: 8
+                description: Account password (minimum 8 characters)
+              name:
+                type: string
+                description: Full name
+              alumni_id:
+                type: string
+                description: Institutional alumni ID for verification
+    responses:
+      '201':
+        description: User successfully registered - awaiting admin approval
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                message:
+                  type: string
+                  example: "Registration successful. Awaiting admin approval."
+                data:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                    email:
+                      type: string
+                    name:
+                      type: string
+                    alumni_id:
+                      type: string
+                    verification_status:
+                      type: string
+                      enum: [pending, approved, rejected]
+                      example: pending
+      '400':
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+            example:
+              success: false
+              message: "Validation failed"
+              errors:
+                - field: email
+                  message: "Valid email is required"
+      '409':
+        description: Email already registered
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+            example:
+              success: false
+              message: "Email already registered"
+
+/auth/login:
+  post:
+    summary: User Login
+    description: |
+      Authenticate user with email and password via Keycloak.
+      Returns JWT access and refresh tokens for authenticated requests.
+      
+      **Note**: Only approved users can log in. Pending or rejected users will receive 403.
+      
+      **Authentication**: Keycloak (Password Grant)
+    tags:
+      - Authentication
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - email
+              - password
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+    responses:
+      '200':
+        description: Successfully logged in
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+                data:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                    email:
+                      type: string
+                    name:
+                      type: string
+                    roles:
+                      type: array
+                      items:
+                        type: string
+                tokens:
+                  $ref: '../schemas/schemas.yaml#/AuthTokens'
+      '400':
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '401':
+        description: Invalid credentials or account not approved
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+            example:
+              success: false
+              message: "Invalid email or password"
+
+/auth/logout:
+  post:
+    summary: User Logout
+    description: |
+      Log out current user and optionally revoke refresh token server-side.
+      
+      **Note**: Clients should clear stored tokens after logout.
+    tags:
+      - Authentication
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              refresh_token:
+                type: string
+                description: Optional refresh token to revoke server-side
+    responses:
+      '200':
+        description: Successfully logged out
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/SuccessResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+/auth/refresh:
+  post:
+    summary: Refresh Access Token
+    description: Exchange refresh token for new access token
+    tags:
+      - Authentication
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - refresh_token
+            properties:
+              refresh_token:
+                type: string
+                example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    responses:
+      '200':
+        description: New access token issued
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                tokens:
+                  $ref: '../schemas/schemas.yaml#/AuthTokens'
+      '401':
+        description: Invalid refresh token
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+/auth/me:
+  get:
+    summary: Get Current User
+    description: Retrieve authenticated user's profile information
+    tags:
+      - Authentication
+    security:
+      - BearerAuth: []
+    responses:
+      '200':
+        description: Current user profile
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: '../schemas/schemas.yaml#/User'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'

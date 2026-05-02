@@ -1,0 +1,225 @@
+/products:
+  get:
+    summary: List All Products
+    description: Retrieve list of products (guests see only active products, authenticated see all per policy)
+    tags:
+      - Products
+    parameters:
+      - name: category
+        in: query
+        schema:
+          type: string
+        description: Filter by category
+        example: "clothing"
+      - name: skip
+        in: query
+        schema:
+          type: integer
+          default: 0
+        description: Number of products to skip (pagination)
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+        description: Maximum number of products to return
+    responses:
+      '200':
+        description: List of products
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: '../schemas/schemas.yaml#/Product'
+      '500':
+        description: Server error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+  post:
+    summary: Create Product (Admin Only)
+    description: Create a new product (requires admin role)
+    tags:
+      - Products
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/schemas.yaml#/ProductCreateRequest'
+    responses:
+      '201':
+        description: Product created successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: '../schemas/schemas.yaml#/Product'
+      '400':
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - admin access required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+/products/{id}:
+  get:
+    summary: Get Product Details
+    description: Retrieve detailed information about a specific product
+    tags:
+      - Products
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Product ID (MongoDB ObjectId)
+        example: "507f1f77bcf86cd799439011"
+    responses:
+      '200':
+        description: Product details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: '../schemas/schemas.yaml#/Product'
+      '404':
+        description: Product not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '500':
+        description: Server error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+  put:
+    summary: Update Product (Admin Only)
+    description: Update product details (requires admin role)
+    tags:
+      - Products
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        example: "507f1f77bcf86cd799439011"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/schemas.yaml#/ProductUpdateRequest'
+    responses:
+      '200':
+        description: Product updated successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: '../schemas/schemas.yaml#/Product'
+      '400':
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - admin access required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '404':
+        description: Product not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+  delete:
+    summary: Delete Product (Admin Only)
+    description: Delete a product (requires admin role)
+    tags:
+      - Products
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        example: "507f1f77bcf86cd799439011"
+    responses:
+      '200':
+        description: Product deleted successfully
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/SuccessResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - admin access required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '404':
+        description: Product not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'

@@ -1,0 +1,327 @@
+/admin/users/unverified:
+  get:
+    summary: List Unverified Users
+    description: Get a paginated list of users pending verification/approval
+    tags:
+      - Admin User Management
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: skip
+        in: query
+        description: Number of records to skip (pagination offset)
+        schema:
+          type: integer
+          default: 0
+        example: 0
+      - name: limit
+        in: query
+        description: Maximum number of records to return
+        schema:
+          type: integer
+          default: 10
+          maximum: 100
+        example: 10
+      - name: sort_by
+        in: query
+        description: Field to sort by
+        schema:
+          type: string
+          enum:
+            - registration_timestamp
+            - email
+            - name
+          default: registration_timestamp
+    responses:
+      '200':
+        description: Successfully retrieved unverified users
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  properties:
+                    users:
+                      type: array
+                      items:
+                        $ref: '../schemas/schemas.yaml#/UserVerification'
+                    total:
+                      type: integer
+                      example: 5
+                    skip:
+                      type: integer
+                      example: 0
+                    limit:
+                      type: integer
+                      example: 10
+      '401':
+        description: Unauthorized - authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - admin role required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+            example:
+              success: false
+              message: "Admin role required"
+
+/admin/users/{user_id}/verification:
+  get:
+    summary: Get User Verification Details
+    description: Retrieve detailed verification record for a specific user
+    tags:
+      - Admin User Management
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        description: The user ID to retrieve verification details for
+        schema:
+          type: string
+        example: "507f1f77bcf86cd799439011"
+    responses:
+      '200':
+        description: User verification details retrieved
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: '../schemas/schemas.yaml#/UserVerification'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '404':
+        description: User verification not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+/admin/users/{user_id}/approve:
+  post:
+    summary: Approve User Registration
+    description: Approve a pending user registration and grant alumni access
+    tags:
+      - Admin User Management
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        description: The user ID to approve
+        schema:
+          type: string
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              approval_reason:
+                type: string
+                description: Optional reason for approval
+                maxLength: 500
+                example: "Verified alumni credentials"
+    responses:
+      '200':
+        description: User successfully approved
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                message:
+                  type: string
+                  example: "User approved successfully"
+                data:
+                  type: object
+                  properties:
+                    user_id:
+                      type: string
+                    status:
+                      type: string
+                      example: "approved"
+                    approval_timestamp:
+                      type: string
+                      format: date-time
+                    approved_by:
+                      type: string
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '410':
+        description: User already processed or does not exist
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+/admin/users/{user_id}/reject:
+  post:
+    summary: Reject User Registration
+    description: Reject a pending user registration with reason
+    tags:
+      - Admin User Management
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        description: The user ID to reject
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - rejection_reason
+            properties:
+              rejection_reason:
+                type: string
+                description: Reason for rejecting the user
+                maxLength: 500
+                example: "Alumni verification failed"
+    responses:
+      '200':
+        description: User successfully rejected
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                message:
+                  type: string
+                  example: "User rejected successfully"
+                data:
+                  type: object
+                  properties:
+                    user_id:
+                      type: string
+                    status:
+                      type: string
+                      example: "rejected"
+                    rejection_timestamp:
+                      type: string
+                      format: date-time
+                    rejected_by:
+                      type: string
+      '400':
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '410':
+        description: User already processed
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+/admin/users/stats/verification:
+  get:
+    summary: Get User Verification Statistics
+    description: Get summary statistics about user verification status (admin dashboard)
+    tags:
+      - Admin User Management
+    security:
+      - BearerAuth: []
+    responses:
+      '200':
+        description: Verification statistics
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    total:
+                      type: integer
+                      description: Total number of registration requests
+                      example: 25
+                    pending:
+                      type: integer
+                      description: Users pending approval
+                      example: 8
+                    approved:
+                      type: integer
+                      description: Approved users
+                      example: 15
+                    rejected:
+                      type: integer
+                      description: Rejected users
+                      example: 2
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'

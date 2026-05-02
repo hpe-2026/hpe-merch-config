@@ -1,0 +1,246 @@
+/admin/policies:
+  get:
+    summary: List All Policies
+    description: Get all access control policies (admin only)
+    tags:
+      - Admin Policies
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: enabled
+        in: query
+        schema:
+          type: boolean
+        description: Filter by enabled status
+    responses:
+      '200':
+        description: List of policies
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: '../schemas/schemas.yaml#/Policy'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - admin access required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '500':
+        description: Server error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+  post:
+    summary: Create Policy
+    description: Create a new access control policy (admin only)
+    tags:
+      - Admin Policies
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/schemas.yaml#/PolicyCreateRequest'
+    responses:
+      '201':
+        description: Policy created successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: '../schemas/schemas.yaml#/Policy'
+      '400':
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - admin access required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+/admin/policies/{id}:
+  get:
+    summary: Get Policy Details
+    description: Get a specific policy (admin only)
+    tags:
+      - Admin Policies
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        example: "product-visibility"
+    responses:
+      '200':
+        description: Policy details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: '../schemas/schemas.yaml#/Policy'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - admin access required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '404':
+        description: Policy not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+  put:
+    summary: Update Policy
+    description: Update an existing policy (admin only)
+    tags:
+      - Admin Policies
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        example: "product-visibility"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              type:
+                type: string
+                enum: [attribute, action, conditional]
+              actions:
+                type: array
+                items:
+                  type: string
+              effect:
+                type: string
+                enum: [allow, deny]
+              rules:
+                type: array
+                items:
+                  type: object
+              enabled:
+                type: boolean
+    responses:
+      '200':
+        description: Policy updated successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  $ref: '../schemas/schemas.yaml#/Policy'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - admin access required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '404':
+        description: Policy not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+
+  delete:
+    summary: Delete Policy
+    description: Delete a policy (admin only)
+    tags:
+      - Admin Policies
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        example: "product-visibility"
+    responses:
+      '200':
+        description: Policy deleted successfully
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/SuccessResponse'
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '403':
+        description: Forbidden - admin access required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'
+      '404':
+        description: Policy not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/schemas.yaml#/ErrorResponse'

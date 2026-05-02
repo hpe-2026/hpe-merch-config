@@ -1,0 +1,218 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  REGISTRY: docker.io
+  NODE_BACKEND_IMAGE: nitte-merch-shop/node-backend
+  PYTHON_SERVICE_IMAGE: nitte-merch-shop/python-service
+
+jobs:
+  # Job 1: Lint and Test Node.js
+  test-node:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./node-backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint || true
+
+      - name: Run tests
+        run: npm test -- --passWithNoTests || true
+
+  # Job 2: Lint and Test Python
+  test-python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./python-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=app || true
+
+  # Job 3: Build and Push Docker Images
+  build-push:
+    needs: [test-node, test-python]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Node backend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./node-backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.NODE_BACKEND_IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.NODE_BACKEND_IMAGE }}:${{ github.sha }}
+
+      - name: Build and push Python service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./python-service
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.PYTHON_SERVICE_IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.PYTHON_SERVICE_IMAGE }}:${{ github.sha }}
+
+  # Job 4: Deploy to Staging
+  deploy-staging:
+    needs: build-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.27.0'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
+
+      - name: Deploy to Staging
+        run: |
+          kubectl create namespace nitte-merch --dry-run=client -o yaml | kubectl apply -f -
+          kubectl set image deployment/python-service \
+            python-service=${{ env.REGISTRY }}/${{ env.PYTHON_SERVICE_IMAGE }}:${{ github.sha }} \
+            -n nitte-merch || \
+          kubectl apply -f k8s/python-service/deployment.yaml
+          kubectl set image deployment/node-backend \
+            node-backend=${{ env.REGISTRY }}/${{ env.NODE_BACKEND_IMAGE }}:${{ github.sha }} \
+            -n nitte-merch || \
+          kubectl apply -f k8s/node-backend/deployment.yaml
+          kubectl rollout status deployment/python-service -n nitte-merch --timeout=5m
+          kubectl rollout status deployment/node-backend -n nitte-merch --timeout=5m
+
+  # Job 5: Security Scanning
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Job 6: Code Quality
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # Job 7: Performance Tests
+  performance-test:
+    needs: [test-node, test-python]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Start services with Docker Compose
+        run: docker-compose -f docker/docker-compose.yml up -d
+
+      - name: Wait for services
+        run: sleep 10
+
+      - name: Health check
+        run: |
+          curl -f http://localhost:3000/api/health || exit 1
+          curl -f http://localhost:8000/health || exit 1
+
+      - name: Load testing with Apache Bench
+        run: |
+          sudo apt-get install -y apache2-utils
+          ab -n 100 -c 10 http://localhost:3000/api/health || true
+          ab -n 100 -c 10 http://localhost:8000/health || true
+
+      - name: Cleanup
+        if: always()
+        run: docker-compose -f docker/docker-compose.yml down
+
+  # Job 8: Notify Results
+  notify:
+    needs: [test-node, test-python, build-push]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Send notification
+        run: |
+          echo "Pipeline Status: ${{ job.status }}"
+          # Add your notification logic here (Slack, Email, etc.)

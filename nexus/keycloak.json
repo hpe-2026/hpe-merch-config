@@ -1,0 +1,10 @@
+{
+  "realm": "nitte-realm",
+  "auth-server-url": "http://keycloak:8080",
+  "ssl-required": "none",
+  "resource": "nexus-client",
+  "credentials": {
+    "secret": "nexus-client-secret"
+  },
+  "confidential-port": 0
+}

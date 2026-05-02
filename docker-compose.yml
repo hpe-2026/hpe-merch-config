@@ -1,0 +1,321 @@
+services:
+  mongodb:
+    image: mongo:5.0
+    container_name: nitte-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: nitte_merch
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data:/data/db
+      - ./database/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - nitte-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:20.0.0
+    container_name: nitte-keycloak
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: dev-file
+      KC_FEATURES: import-realm
+      KEYCLOAK_IMPORT: /opt/keycloak/data/import/nitte-realm.json
+      KC_HOSTNAME_URL: http://localhost:8080
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+    volumes:
+      - ./keycloak/nitte-realm.json:/opt/keycloak/data/import/nitte-realm.json:ro
+    command: start-dev --import-realm
+    networks:
+      - nitte-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: nitte-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    depends_on:
+      - zookeeper
+    networks:
+      - nitte-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: nitte-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - nitte-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: nitte-jaeger
+    ports:
+      - "16686:16686"
+      - "6831:6831/udp"
+      - "14268:14268"
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: "9411"
+    networks:
+      - nitte-network
+
+  node-backend:
+    build:
+      context: ./node-backend
+      dockerfile: Dockerfile
+    image: node-backend:1.0.0
+    container_name: nitte-backend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MONGODB_URL: mongodb://app_writer:app_writer_pass@mongodb:27017/nitte_merch?authSource=nitte_merch
+      PYTHON_SERVICE_URL: http://python-service:8000
+      JWT_SECRET: super-secret-key-change-in-production
+      JWT_EXPIRY: 7d
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_REALM: nitte-realm
+      KEYCLOAK_CLIENT_ID: nitte-client
+      KEYCLOAK_CLIENT_SECRET: nitte-client-secret
+      KAFKA_BROKERS: kafka:9092
+      API_BASE: http://node-backend:3000
+      CORS_ORIGINS: http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:8080
+      LOG_LEVEL: info
+      REQUEST_TIMEOUT: 30000
+    depends_on:
+      - mongodb
+      - keycloak
+      - python-service
+    networks:
+      - nitte-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: frontend:1.0.0
+    container_name: nitte-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE: http://localhost:3000
+    depends_on:
+      - node-backend
+    networks:
+      - nitte-network
+
+  admin-dashboard:
+    build:
+      context: ./admin-dashboard
+      dockerfile: Dockerfile
+    image: admin-dashboard:1.0.0
+    container_name: nitte-admin
+    ports:
+      - "5174:5174"
+    environment:
+      VITE_API_BASE: http://localhost:3000
+    depends_on:
+      - node-backend
+    networks:
+      - nitte-network
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    image: notification-service:1.0.0
+    container_name: nitte-notifications
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      NOTIFICATION_EMAIL: notifications@nitte.edu
+    depends_on:
+      - kafka
+    networks:
+      - nitte-network
+
+  python-service:
+    build:
+      context: ./python-service
+      dockerfile: Dockerfile
+    image: python-service:1.0.0
+    container_name: nitte-python
+    ports:
+      - "8000:8000"
+    environment:
+      MONGODB_URL: mongodb://app_writer:app_writer_pass@mongodb:27017/nitte_merch?authSource=nitte_merch
+      DATABASE_NAME: nitte_merch
+      API_GATEWAY_URL: http://node-backend:3000
+      JAEGER_AGENT_HOST: jaeger
+      JAEGER_AGENT_PORT: 6831
+    depends_on:
+      - mongodb
+    networks:
+      - nitte-network
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: nitte-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - node-backend
+    networks:
+      - nitte-network
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: nitte-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    networks:
+      - nitte-network
+
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: nitte-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - nitte-network
+
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: nitte-promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+    networks:
+      - nitte-network
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: nitte-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_SERVER_ROOT_URL: "http://localhost:3001"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+      GF_AUTH_GENERIC_OAUTH_NAME: "Keycloak"
+      GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: "true"
+      GF_AUTH_GENERIC_OAUTH_CLIENT_ID: "grafana-client"
+      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "grafana-client-secret"
+      GF_AUTH_GENERIC_OAUTH_SCOPES: "openid profile email roles"
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: "http://localhost:8080/realms/nitte-realm/protocol/openid-connect/auth"
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: "http://keycloak:8080/realms/nitte-realm/protocol/openid-connect/token"
+      GF_AUTH_GENERIC_OAUTH_API_URL: "http://keycloak:8080/realms/nitte-realm/protocol/openid-connect/userinfo"
+      GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH: "preferred_username"
+      GF_AUTH_GENERIC_OAUTH_NAME_ATTRIBUTE_PATH: "name"
+      GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH: "email"
+      GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(realm_access.roles[*], 'admin-internal') && 'Admin' || contains(realm_access.roles[*], 'internal-user') && 'Editor' || 'Viewer'"
+      GF_AUTH_SIGNOUT_REDIRECT_URL: "http://localhost:8080/realms/nitte-realm/protocol/openid-connect/logout?post_logout_redirect_uri=http://localhost:3001"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - nitte-network
+
+  # ============================================================================
+  # DEVOPS & CI/CD SERVICES
+  # ============================================================================
+
+  jenkins:
+    build: ./jenkins
+    container_name: nitte-jenkins
+    ports:
+      - "8081:8080"
+      - "50000:50000"
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - CASC_JENKINS_CONFIG=/var/jenkins_home/casc/jenkins.yaml
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - ./jenkins/casc:/var/jenkins_home/casc:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - keycloak
+    networks:
+      - nitte-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  nexus:
+    image: sonatype/nexus3:latest
+    container_name: nitte-nexus
+    ports:
+      - "8082:8081"
+    environment:
+      - INSTALL4J_ADD_VM_PARAMS=-Xms2g -Xmx2g -XX:MaxDirectMemorySize=2g
+      - NEXUS_SECURITY_INITIAL_PASSWORD=nexus-admin-123
+      - KEYCLOAK_SERVER_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=nitte-realm
+      - KEYCLOAK_CLIENT_ID=nexus-client
+    volumes:
+      - nexus_data:/nexus-data
+    depends_on:
+      - keycloak
+    networks:
+      - nitte-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/service/rest/v1/status"]
+      interval: 60s
+      timeout: 30s
+      retries: 10
+      start_period: 120s
+
+networks:
+  nitte-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  jenkins_data:
+  nexus_data:
