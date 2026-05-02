@@ -246,6 +246,86 @@ Nexus OSS does not support OIDC natively (Pro edition only). Uses its own local 
 
 ---
 
+## Jenkins → Nexus CI/CD Pipeline
+
+The project includes a full CI/CD pipeline (`Jenkinsfile` at the project root) that builds, tests, and publishes the Node Backend as a versioned npm artifact to Nexus on every commit.
+
+### How It All Fits Together
+
+```
+Developer commits code
+       ↓
+  Jenkins detects new commit (or manual "Build Now")
+       ↓
+  Checks out code from local git repo
+       ↓
+  npm install  ← pulls packages from npmjs.com (public internet)
+       ↓
+  npm run lint  ← checks code style (non-blocking)
+       ↓
+  npm test  ← runs Jest unit tests (non-blocking)
+       ↓
+  npm pack  ← creates a versioned .tgz tarball (e.g. nitte-merch-shop-api-gateway-1.0.5.tgz)
+       ↓
+  npm publish → Nexus (nitte-npm-hosted)  ← pushes artifact to private registry
+       ↓
+  Health check against nitte-backend:3000
+```
+
+### Pipeline Stages Explained
+
+| Stage | What Happens |
+|-------|-------------|
+| **Checkout** | Jenkins clones the git repo at `file:///home/languid/Downloads/HPE/HPE-stuff` and checks out the latest commit on `main` |
+| **Install Dependencies** | Runs `npm install --legacy-peer-deps --registry https://registry.npmjs.org` inside `node-backend/`. Always fetches from public npm — never from Nexus |
+| **Lint** | Runs `npm run lint` via ESLint. Marked `|| true` so a lint failure does not break the build |
+| **Test** | Runs `npm test` via Jest with coverage. Marked `|| true` so test failures are reported but do not block artifact publishing. JUnit XML results are archived |
+| **Build Artifact** | Stamps the `package.json` version with the Jenkins build number (`1.0.<BUILD_NUMBER>`), then runs `npm pack` to create a `.tgz` tarball of the entire backend source |
+| **Publish to Nexus** | Authenticates to Nexus using the pre-stored `nexus-credentials` and publishes the tarball to the `nitte-npm-hosted` repository. Uses a project-level `.npmrc` written at runtime (not the global config) so it does not pollute future stages |
+| **Health Check** | Sends a `curl` to `http://nitte-backend:3000/api/health` from inside the Jenkins container — confirms the running backend is healthy on the Docker network |
+
+### Credentials Flow (How Jenkins Authenticates to Nexus)
+
+1. **Stored credential**: The Jenkins CasC file (`jenkins/casc/jenkins.yaml`) pre-seeds a `nexus-credentials` entry with `admin / nexus-admin-123` into Jenkins' credential store. This happens automatically when the Jenkins container starts — no manual UI entry needed.
+2. **Injected at runtime**: The `Jenkinsfile` declares `NEXUS_CREDS = credentials('nexus-credentials')` in the `environment` block. Jenkins injects two environment variables: `$NEXUS_CREDS_USR` (username) and `$NEXUS_CREDS_PSW` (password).
+3. **Basic auth encoding**: In the Publish stage, the shell computes `base64(username:password)` and writes it as `_auth` in a temporary `.npmrc` file. This is the correct npm v9+ basic-auth format (`_auth` replaces the old `_password` + `username` pair which was removed).
+4. **Scoped `.npmrc`**: The `.npmrc` file is written into the `node-backend/` directory (project-level), which takes precedence over the global `~/.npmrc`. After publishing, it is immediately deleted with `rm -f .npmrc` so it cannot affect subsequent builds.
+
+### Nexus Repository Setup
+
+The pipeline publishes to a **hosted npm repository** named `nitte-npm-hosted`. It must be created once via the Nexus UI:
+1. Go to `http://localhost:8082` → login as `admin / nexus-admin-123`
+2. ⚙ gear icon → **Repository → Repositories → + Create repository**
+3. Choose recipe: **npm (hosted)**
+4. Name: `nitte-npm-hosted`, Deployment policy: `Allow redeploy`
+5. Click **Create repository**
+
+After a successful build, the artifact is visible at:
+- **Nexus UI**: `http://localhost:8082` → Browse → `nitte-npm-hosted` → find the `.tgz` file
+- **Direct URL**: `http://localhost:8082/repository/nitte-npm-hosted/nitte-merch-shop-api-gateway/-/nitte-merch-shop-api-gateway-1.0.<N>.tgz`
+
+### Triggering the Pipeline
+
+```bash
+# Every time you want Jenkins to pick up new changes:
+git add .
+git commit -m "your message"
+# Then click Build Now in Jenkins UI at http://localhost:8081
+```
+
+Because the git repo is local (mounted into the Jenkins container), Jenkins reads the latest commit directly — no remote push needed.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `Jenkinsfile` | Declarative pipeline — all 7 stages |
+| `jenkins/Dockerfile` | Extends Jenkins LTS, installs Node.js 18.20.4 as a binary tarball |
+| `jenkins/plugins.txt` | Pre-installed plugins: `workflow-aggregator`, `git`, `nodejs`, `nexus-artifact-uploader`, `credentials-binding`, `ws-cleanup`, etc. |
+| `jenkins/casc/jenkins.yaml` | JCaC: Keycloak SSO + `nexus-credentials` pre-seeded |
+
+---
+
 ## Important Files
 
 | File | Purpose |
