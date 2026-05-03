@@ -179,13 +179,16 @@ start_services() {
   fi
   ok "Containers launched"
 
-  local total
-  total=$($COMPOSE_CMD config --services | wc -l | tr -d ' ')
+  # keycloak-setup is a one-shot bootstrap container — it exits on success.
+  # Exclude it from the "must be running" count.
+  local total oneshot="keycloak-setup"
+  total=$($COMPOSE_CMD config --services | grep -v "^${oneshot}$" | wc -l | tr -d ' ')
 
-  step "Waiting for $total services to report running (up to 90s)…"
+  step "Waiting for $total persistent services to report running (up to 90s)…"
   local count=0 ready=0
   while [[ $count -lt 90 ]]; do
-    ready=$($COMPOSE_CMD ps --services --filter "status=running" 2>/dev/null | wc -l | tr -d ' ')
+    ready=$($COMPOSE_CMD ps --services --filter "status=running" 2>/dev/null \
+      | grep -v "^${oneshot}$" | wc -l | tr -d ' ')
     printf '\r  Running: %s/%s services…   ' "$ready" "$total"
     [[ "$ready" -ge "$total" ]] && break
     sleep 1
@@ -199,7 +202,7 @@ start_services() {
     info "Tip: run '$0 logs' to inspect failing containers."
     exit 1
   fi
-  ok "All $total services are running"
+  ok "All $total persistent services are running"
 
   step "Probing API gateway health (up to 60s)…"
   local api_ok=0
@@ -270,6 +273,7 @@ show_status() {
     "Jaeger Proxy|nitte-proxy-jaeger|16686"
     "Loki|nitte-loki|3100"
     "Promtail|nitte-promtail|—"
+    "Keycloak Setup|nitte-keycloak-setup|—"
   )
 
   local SEP="  ${CYAN}$(printf '%.0s─' {1..70})${NC}"
@@ -296,12 +300,22 @@ show_status() {
 
     # Status colour + icon
     local status_color status_icon
+    # keycloak-setup exits on success — treat exited as OK for that container
+    local oneshot_ok=0
+    [[ "$container" == "nitte-keycloak-setup" && "$state" == "exited" ]] && oneshot_ok=1
+
     case "$state" in
-      running)                status_color="$GREEN";  status_icon="● running"   ; running_count=$((running_count+1)) ;;
-      exited|dead)            status_color="$RED";    status_icon="● $state"    ;;
-      restarting|paused)      status_color="$YELLOW"; status_icon="◌ $state"    ;;
-      absent)                 status_color="$RED";    status_icon="○ absent"    ;;
-      *)                      status_color="$YELLOW"; status_icon="◌ $state"    ;;
+      running)  status_color="$GREEN";  status_icon="● running"; running_count=$((running_count+1)) ;;
+      exited)   if [[ $oneshot_ok -eq 1 ]]; then
+                  status_color="$GREEN";  status_icon="✔ completed"
+                  running_count=$((running_count+1))
+                else
+                  status_color="$RED";    status_icon="● exited"
+                fi ;;
+      dead)           status_color="$RED";    status_icon="● dead"      ;;
+      restarting|paused) status_color="$YELLOW"; status_icon="◌ $state"  ;;
+      absent)         status_color="$RED";    status_icon="○ absent"    ;;
+      *)              status_color="$YELLOW"; status_icon="◌ $state"    ;;
     esac
 
     # Health colour
@@ -331,9 +345,9 @@ show_status() {
   printf '%b\n' "$SEP"
 
   if   [[ "$running_count" -eq "$total" ]]; then
-    printf '%b  ✔  All %d/%d services running%b\n\n' "$GREEN$BOLD" "$running_count" "$total" "$NC"
+    printf '%b  ✔  All %d/%d services running/completed%b\n\n' "$GREEN$BOLD" "$running_count" "$total" "$NC"
   elif [[ "$running_count" -gt 0 ]]; then
-    printf '%b  ⚠  %d/%d services running%b\n\n'    "$YELLOW$BOLD" "$running_count" "$total" "$NC"
+    printf '%b  ⚠  %d/%d services running%b\n\n'              "$YELLOW$BOLD" "$running_count" "$total" "$NC"
   else
     printf '%b  ✘  No services running — run: %s start%b\n\n' "$RED$BOLD" "$0" "$NC"
   fi
