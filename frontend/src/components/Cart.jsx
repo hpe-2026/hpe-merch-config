@@ -17,8 +17,8 @@ function loadRazorpayScript() {
   })
 }
 
-// Force dark backdrop on any Razorpay elements that appear
-function forceRazorpayDarkBackdrop() {
+// Force transparent backdrop on Razorpay so page content is visible behind modal
+function forceRazorpayTransparentBackdrop() {
   setTimeout(() => {
     // Find and style all razorpay-related elements
     const selectors = [
@@ -31,7 +31,7 @@ function forceRazorpayDarkBackdrop() {
     selectors.forEach(sel => {
       document.querySelectorAll(sel).forEach(el => {
         if (el.className && el.className.includes('backdrop')) {
-          el.style.cssText = 'z-index: 2147483646 !important; background-color: rgba(0,0,0,0.8) !important; opacity: 1 !important;'
+          el.style.cssText = 'z-index: 2147483646 !important; background-color: transparent !important; opacity: 0.5 !important;'
         }
         if (el.tagName === 'IFRAME') {
           el.style.zIndex = '2147483647'
@@ -39,12 +39,12 @@ function forceRazorpayDarkBackdrop() {
       })
     })
     // Also inject a style tag into body for any dynamically created elements
-    if (!document.getElementById('rzp-dark-styles')) {
+    if (!document.getElementById('rzp-transparent-styles')) {
       const style = document.createElement('style')
-      style.id = 'rzp-dark-styles'
+      style.id = 'rzp-transparent-styles'
       style.textContent = `
         .razorpay-backdrop, .razorpay-payment-backdrop { 
-          background: rgba(0,0,0,0.8) !important; 
+          background: transparent !important;
         }
       `
       document.body.appendChild(style)
@@ -52,34 +52,31 @@ function forceRazorpayDarkBackdrop() {
   }, 100)
 }
 
-// Aggressive CSS to force dark backdrop on Razorpay modal
+// CSS to force transparent backdrop on Razorpay modal
 const razorpayStyles = `
   /* Main container */
-  .razorpay-container { 
-    z-index: 2147483647 !important; 
+  .razorpay-container {
+    z-index: 2147483647 !important;
   }
-  /* Backdrop - multiple selectors for different Razorpay versions */
+  /* Backdrop - make it transparent */
   .razorpay-backdrop,
   .razorpay-payment-backdrop,
   [class*="razorpay"][class*="backdrop"],
-  [class*="razorpay"][class*="overlay"] { 
-    z-index: 2147483646 !important; 
-    background-color: rgba(0, 0, 0, 0.75) !important;
-    opacity: 1 !important;
+  [class*="razorpay"][class*="overlay"] {
+    z-index: 2147483646 !important;
+    background-color: transparent !important;
+    opacity: 0.3 !important;
   }
   /* The iframe/modal itself */
   .razorpay-checkout-frame,
   .razorpay-payment-frame,
   iframe[name*="razorpay"],
-  iframe[src*="razorpay"] { 
+  iframe[src*="razorpay"] {
     z-index: 2147483647 !important;
   }
-  /* Any white overlay that might appear */
-  [class*="razorpay"] { 
-    background-color: transparent !important; 
-  }
-  .razorpay-backdrop { 
-    background-color: rgba(0, 0, 0, 0.75) !important; 
+  /* Force any white overlay to be transparent */
+  [class*="razorpay"] {
+    background-color: transparent !important;
   }
 `
 
@@ -166,7 +163,7 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
           reject(new Error(resp.error?.description || 'Payment failed'))
         )
         rzp.open()
-        forceRazorpayDarkBackdrop()
+        forceRazorpayTransparentBackdrop()
       })
 
       setOrderPlaced(true)
