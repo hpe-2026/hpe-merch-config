@@ -296,7 +296,8 @@
       "firstName": "Amazon",
       "lastName": "Merchant",
       "credentials": [{ "type": "password", "value": "Amazon@123", "temporary": false }],
-      "realmRoles": ["merchant-amazon"]
+      "realmRoles": ["merchant-amazon"],
+      "requiredActions": ["CONFIGURE_TOTP"]
     },
     {
       "username": "flipkart-merchant@flipkart.com",
@@ -306,7 +307,8 @@
       "firstName": "Flipkart",
       "lastName": "Merchant",
       "credentials": [{ "type": "password", "value": "Flipkart@123", "temporary": false }],
-      "realmRoles": ["merchant-flipkart"]
+      "realmRoles": ["merchant-flipkart"],
+      "requiredActions": ["CONFIGURE_TOTP"]
     }
   ]
 }
