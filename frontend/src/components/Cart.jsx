@@ -25,10 +25,17 @@ function startBackdropObserver() {
 
   backdropObserver = new MutationObserver(() => {
     const backdrop = document.querySelector('.razorpay-backdrop, .razorpay-payment-backdrop')
+    const modal = document.querySelector('.razorpay-container, .razorpay-checkout-frame')
+    
     if (backdrop) {
       backdrop.style.setProperty('background-color', 'transparent', 'important')
       backdrop.style.setProperty('background', 'transparent', 'important')
       backdrop.style.setProperty('opacity', '0.3', 'important')
+    }
+    
+    if (modal) {
+      modal.style.setProperty('background-color', 'transparent', 'important')
+      modal.style.setProperty('background', 'transparent', 'important')
     }
   })
 
@@ -51,9 +58,16 @@ function stopBackdropObserver() {
 function forceRazorpayTransparentBackdrop() {
   setTimeout(() => {
     const backdrop = document.querySelector('.razorpay-backdrop, .razorpay-payment-backdrop')
+    const modal = document.querySelector('.razorpay-container, .razorpay-checkout-frame')
+    
     if (backdrop) {
       backdrop.style.cssText = 'background-color: transparent !important; background: transparent !important; opacity: 0.3 !important; z-index: 2147483646 !important;'
     }
+    
+    if (modal) {
+      modal.style.cssText = 'background-color: transparent !important; background: transparent !important; z-index: 2147483647 !important;'
+    }
+    
     startBackdropObserver()
   }, 50)
 }
