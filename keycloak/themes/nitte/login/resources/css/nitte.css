@@ -1,79 +1,118 @@
 /* ── NITTE Custom Keycloak Login Theme ─────────────────── */
 
-/* Page background */
-body {
-  background: #0f1117 !important;
+/* ── Page & background ──────────────────────────────────── */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif !important;
+  background: #0f1117 !important;
   color: #e2e8f0 !important;
 }
 
-/* Hide default Keycloak header/footer chrome */
-#kc-header, .login-pf-header { display: none !important; }
-
-/* Center the card */
-.login-pf-page .container-fluid,
-#kc-container-wrapper {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0f1117;
+body.login-pf-page {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100vh !important;
+  background: #0f1117 !important;
 }
 
-/* The card itself */
-#kc-content,
-.card-pf,
-.login-pf-page .card-pf {
+/* Gradient glow */
+body.login-pf-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 15%, rgba(99,102,241,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 85%, rgba(16,185,129,0.12) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Layout centering ───────────────────────────────────── */
+/* Hide the top header banner Keycloak injects */
+#kc-header, .login-pf-page > header, .login-pf-header { display: none !important; }
+
+/* Make the grid fill remaining height and center vertically */
+.login-pf-page .container-fluid {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative;
+  z-index: 1;
+  padding: 40px 16px !important;
+}
+
+/* Kill Bootstrap offset columns so card sits in the middle */
+.login-pf-page .row { width: 100% !important; display: flex !important; justify-content: center !important; }
+.login-pf-page [class*="col-"] {
+  float: none !important;
+  margin: 0 auto !important;
+  max-width: 440px !important;
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+/* ── Card ───────────────────────────────────────────────── */
+.card-pf {
   background: rgba(255,255,255,0.04) !important;
-  border: 1px solid rgba(255,255,255,0.08) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5) !important;
-  padding: 36px !important;
-  max-width: 440px;
-  width: 100%;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.55) !important;
+  padding: 40px 38px 36px !important;
+  backdrop-filter: blur(10px) !important;
+  width: 100% !important;
 }
 
-/* Realm name / header inside card */
-#kc-page-title,
-h1#kc-page-title {
-  font-size: 22px !important;
-  font-weight: 700 !important;
-  color: #f1f5f9 !important;
-  margin-bottom: 6px !important;
-  text-align: center;
-}
-
-/* Sub-label */
-#kc-header-wrapper {
-  color: #94a3b8 !important;
-  font-size: 13px !important;
-  text-align: center;
+/* ── NITTE branding injected via ::before on the card ───── */
+.card-pf::before {
+  content: 'N  NITTE — Admin & DevOps Portal';
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: 0.04em;
   margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 
-/* Form groups / labels */
-.form-group { margin-bottom: 18px !important; }
+/* ── Page title (realm name shown by Keycloak) ──────────── */
+#kc-page-title {
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  color: #94a3b8 !important;
+  text-align: left !important;
+  margin-bottom: 20px !important;
+}
+
+/* ── Form ───────────────────────────────────────────────── */
+.form-group { margin-bottom: 20px !important; }
 
 label, .control-label {
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   color: #94a3b8 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: 0.07em !important;
+  margin-bottom: 6px !important;
+  display: block !important;
 }
 
-/* Inputs */
+/* ── Inputs ─────────────────────────────────────────────── */
 input[type="text"],
 input[type="password"],
-input[type="email"],
-input[type="tel"] {
-  background: rgba(255,255,255,0.06) !important;
-  border: 1px solid rgba(255,255,255,0.12) !important;
-  border-radius: 8px !important;
+input[type="email"] {
+  background: rgba(255,255,255,0.07) !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  border-radius: 9px !important;
   color: #f1f5f9 !important;
   font-size: 14px !important;
-  padding: 10px 14px !important;
+  padding: 11px 14px !important;
   width: 100% !important;
+  display: block !important;
+  box-shadow: none !important;
   transition: border-color 0.2s, box-shadow 0.2s !important;
 }
 
@@ -81,76 +120,72 @@ input[type="text"]:focus,
 input[type="password"]:focus,
 input[type="email"]:focus {
   border-color: #6366f1 !important;
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.2) !important;
-  background: rgba(255,255,255,0.09) !important;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.22) !important;
+  background: rgba(255,255,255,0.10) !important;
   outline: none !important;
 }
 
-input::placeholder { color: #475569 !important; }
+/* ── OTP input (2FA) ────────────────────────────────────── */
+#otp {
+  font-size: 26px !important;
+  letter-spacing: 0.35em !important;
+  text-align: center !important;
+  padding: 14px !important;
+}
 
-/* Login / submit button */
+/* ── Forgot password / options row ─────────────────────── */
+#kc-form-options {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  margin-bottom: 20px !important;
+}
+#kc-form-options a, .login-pf-page a {
+  color: #818cf8 !important;
+  text-decoration: none !important;
+  font-size: 12px !important;
+}
+#kc-form-options a:hover { color: #a5b4fc !important; text-decoration: underline !important; }
+
+/* ── Submit button ──────────────────────────────────────── */
 input[type="submit"],
 .btn-primary,
 #kc-login {
   width: 100% !important;
-  padding: 11px !important;
-  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+  padding: 12px !important;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
   border: none !important;
-  border-radius: 8px !important;
+  border-radius: 9px !important;
   color: #fff !important;
   font-size: 15px !important;
   font-weight: 600 !important;
   cursor: pointer !important;
-  transition: opacity 0.2s !important;
-  margin-top: 8px !important;
+  letter-spacing: 0.02em !important;
+  transition: opacity 0.18s, transform 0.1s !important;
+  box-shadow: 0 4px 16px rgba(99,102,241,0.35) !important;
 }
-input[type="submit"]:hover, .btn-primary:hover { opacity: 0.9 !important; }
+input[type="submit"]:hover, .btn-primary:hover, #kc-login:hover {
+  opacity: 0.88 !important;
+  transform: translateY(-1px) !important;
+}
 
-/* Forgot password link */
-#kc-form-options a,
-.login-pf-page a {
-  color: #818cf8 !important;
-  text-decoration: none !important;
+/* ── Alert messages ─────────────────────────────────────── */
+.alert {
+  border-radius: 9px !important;
   font-size: 13px !important;
+  margin-bottom: 18px !important;
+  padding: 10px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
 }
-#kc-form-options a:hover, .login-pf-page a:hover {
-  color: #a5b4fc !important;
-  text-decoration: underline !important;
-}
+.alert-error   { background: rgba(239,68,68,0.13) !important;  border: 1px solid rgba(239,68,68,0.28) !important;  color: #fca5a5 !important; }
+.alert-warning { background: rgba(234,179,8,0.10) !important;  border: 1px solid rgba(234,179,8,0.28) !important;  color: #fde047 !important; }
+.alert-success { background: rgba(16,185,129,0.10) !important; border: 1px solid rgba(16,185,129,0.28) !important; color: #6ee7b7 !important; }
+.alert-info    { background: rgba(99,102,241,0.10) !important; border: 1px solid rgba(99,102,241,0.28) !important; color: #a5b4fc !important; }
+.pficon, .kc-feedback-text { color: inherit !important; }
 
-/* Remember me checkbox */
-#kc-form-options {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: #94a3b8;
-}
-#kc-form-options input[type="checkbox"] { accent-color: #6366f1; }
+/* ── Hide PatternFly chrome ─────────────────────────────── */
+.login-pf-page .login-pf-brand,
+.login-pf-signup { display: none !important; }
 
-/* Error / alert messages */
-.alert { border-radius: 8px !important; font-size: 13px !important; margin-bottom: 16px !important; }
-.alert-error   { background: rgba(239,68,68,0.15) !important;  border: 1px solid rgba(239,68,68,0.3) !important;  color: #fca5a5 !important; }
-.alert-warning { background: rgba(234,179,8,0.12) !important;  border: 1px solid rgba(234,179,8,0.3) !important;  color: #fde047 !important; }
-.alert-success { background: rgba(16,185,129,0.12) !important; border: 1px solid rgba(16,185,129,0.3) !important; color: #6ee7b7 !important; }
-.alert-info    { background: rgba(99,102,241,0.12) !important; border: 1px solid rgba(99,102,241,0.3) !important; color: #a5b4fc !important; }
-.alert .pficon, .alert .kc-feedback-text { color: inherit !important; }
-
-/* OTP input (2FA page) */
-#otp {
-  font-size: 22px !important;
-  letter-spacing: 0.3em !important;
-  text-align: center !important;
-}
-
-/* Hide PatternFly decorative elements */
-.login-pf-page .login-pf-brand { display: none !important; }
-.login-pf-page .login-pf-background { background: #0f1117 !important; }
-
-/* Footer text */
-#kc-info-message p, .instruction {
-  color: #64748b !important;
-  font-size: 13px !important;
-  text-align: center;
-}
