@@ -52,6 +52,7 @@ BASE_IMAGES=(
   "grafana/promtail:2.9.4"
   "jenkins/jenkins:lts-jdk17"
   "sonatype/nexus3:latest"
+  "quay.io/oauth2-proxy/oauth2-proxy:v7.6.0"
   "node:18-alpine"
   "python:3.11-slim"
 )
@@ -261,10 +262,12 @@ show_status() {
     "Python Service|nitte-python|—"
     "Jenkins|nitte-jenkins|8081"
     "Nexus Repository|nitte-nexus|8082"
-    "Prometheus|nitte-prometheus|9090"
+    "Prometheus|nitte-prometheus|—"
     "Alertmanager|nitte-alertmanager|9093"
     "Grafana|nitte-grafana|3001"
-    "Jaeger|nitte-jaeger|16686"
+    "Jaeger|nitte-jaeger|—"
+    "Prometheus Proxy|nitte-proxy-prometheus|9090"
+    "Jaeger Proxy|nitte-proxy-jaeger|16686"
     "Loki|nitte-loki|3100"
     "Promtail|nitte-promtail|—"
   )
@@ -390,10 +393,10 @@ print_summary() {
   printf '  %-24s %-32s %s\n' "Keycloak"           "http://localhost:8080" "Identity & access management"
   printf '  %-24s %-32s %s\n' "Jenkins"            "http://localhost:8081" "CI/CD pipelines (DevOps)"
   printf '  %-24s %-32s %s\n' "Nexus Repository"   "http://localhost:8082" "Artifact & package registry"
-  printf '  %-24s %-32s %s\n' "Prometheus"         "http://localhost:9090" "Metrics scraper"
+  printf '  %-24s %-32s %s\n' "Prometheus"         "http://localhost:9090" "Metrics (Keycloak SSO — @nitte.ac.in)"
   printf '  %-24s %-32s %s\n' "Alertmanager"       "http://localhost:9093" "Alert routing & silencing"
-  printf '  %-24s %-32s %s\n' "Grafana"            "http://localhost:3001" "Dashboards & log explorer"
-  printf '  %-24s %-32s %s\n' "Jaeger"             "http://localhost:16686" "Distributed trace viewer"
+  printf '  %-24s %-32s %s\n' "Grafana"            "http://localhost:3001" "Dashboards (Keycloak SSO or admin/admin123)"
+  printf '  %-24s %-32s %s\n' "Jaeger"             "http://localhost:16686" "Traces (Keycloak SSO — @nitte.ac.in)"
   printf '  %-24s %-32s %s\n' "Loki"               "http://localhost:3100"  "Log aggregation API"
   printf '  %-24s %-32s %s\n' "API Docs"           "http://localhost:3000/api/docs" "Swagger / OpenAPI UI"
   printf '\n'
@@ -423,10 +426,20 @@ print_summary() {
   printf '  %-18s %-38s %s\n' "Nexus Admin"       "admin"                            "nexus-admin-123"
   printf '\n'
 
-  printf '  %s[ Grafana → http://localhost:3001  (Keycloak SSO) ]%s\n' "$YELLOW" "$NC"
-  printf '  %-18s %-38s %s\n' "Internal Admin"    "internal-admin@nitte.ac.in"       "InternalAdmin@123  ⚑ 2FA  → Grafana Admin"
-  printf '  %-18s %-38s %s\n' "Internal User"     "internal-user@nitte.ac.in"        "InternalUser@123   → Grafana Editor"
+  printf '  %s[ Grafana \u2192 http://localhost:3001  (Keycloak SSO) ]%s\n' "$YELLOW" "$NC"
+  printf '  %-18s %-38s %s\n' "Internal Admin"    "internal-admin@nitte.ac.in"       "InternalAdmin@123  \u2691 2FA  \u2192 Grafana Admin"
+  printf '  %-18s %-38s %s\n' "Internal User"     "internal-user@nitte.ac.in"        "InternalUser@123   \u2192 Grafana Editor"
   printf '  %-18s %-38s %s\n' "Local Fallback"    "admin  (local)"                    "admin123"
+  printf '\n'
+
+  printf '  %s[ Prometheus \u2192 http://localhost:9090  (Keycloak SSO) ]%s\n' "$YELLOW" "$NC"
+  printf '  %-18s %-38s %s\n' "Internal Admin"    "internal-admin@nitte.ac.in"       "InternalAdmin@123  \u2691 2FA"
+  printf '  %-18s %-38s %s\n' "Internal User"     "internal-user@nitte.ac.in"        "InternalUser@123"
+  printf '\n'
+
+  printf '  %s[ Jaeger \u2192 http://localhost:16686  (Keycloak SSO) ]%s\n' "$YELLOW" "$NC"
+  printf '  %-18s %-38s %s\n' "Internal Admin"    "internal-admin@nitte.ac.in"       "InternalAdmin@123  \u2691 2FA"
+  printf '  %-18s %-38s %s\n' "Internal User"     "internal-user@nitte.ac.in"        "InternalUser@123"
   printf '\n'
 
   printf '  %s[ Keycloak → http://localhost:8080/admin ]%s\n' "$YELLOW" "$NC"

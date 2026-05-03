@@ -3,21 +3,24 @@
 A full-stack alumni e-commerce platform with full observability, identity, and
 event-driven architecture — runnable end-to-end with **one command**.
 
+> **Custom Keycloak theme** — all login pages (including TOTP setup, OTP verify, and the Keycloak admin console) use the branded `nitte` dark theme.
+
 > **One-command setup:** `./docker-setup.sh` (Linux/macOS) or `.\docker-setup.ps1` (Windows)
 
 For a step-by-step demo guide (Windows + Linux), see **[DEMO.md](./DEMO.md)**.
 
 ---
 
-## What's inside (16 services)
+## What's inside (19 services)
 
 | Tier | Services |
 |---|---|
 | **App** | `frontend` (storefront, port 5173) · `admin-dashboard` (admin console, 5174) · `node-backend` (API gateway, 3000) · `python-service` (catalog/orders, 8000) · `notification-service` (Kafka consumer) |
 | **Data / Identity** | `mongodb` (27017) · `keycloak` (8080) |
 | **Streaming** | `zookeeper` (2181) · `kafka` (9092) |
-| **Observability** | `prometheus` (9090) · `grafana` (3001) · `loki` (3100) · `promtail` · `jaeger` (16686) |
+| **Observability** | `prometheus` · `grafana` (3001) · `loki` (3100) · `promtail` · `jaeger` · `alertmanager` (9093) |
 | **DevOps / CI/CD** | `jenkins` (8081) · `nexus` (8082) |
+| **Auth Proxies** | `oauth2-proxy-prometheus` (9090) · `oauth2-proxy-jaeger` (16686) |
 
 ---
 
@@ -26,7 +29,7 @@ For a step-by-step demo guide (Windows + Linux), see **[DEMO.md](./DEMO.md)**.
 - **Docker Desktop** (Windows / macOS) **or** Docker Engine + Compose v2 (Linux)
   with the daemon running
 - ~8 GB free RAM (~6 GB minimum), ~12 GB free disk
-- Open ports: 3000-3002, 5173-5174, 8000, 8080-8082, 9090, 9092, 16686, 27017
+- Open ports: 3000-3002, 5173-5174, 8000, 8080-8082, 9090, 9092-9093, 16686, 27017
 
 That's it — every other dependency runs in containers.
 
@@ -50,7 +53,7 @@ chmod +x docker-setup.sh
 The script will:
 1. Verify Docker is installed and running
 2. Pull base images sequentially (slow-network friendly)
-3. Build and start all 14 services
+3. Build and start all 19 services
 4. Wait for every container to be running and probe the API health endpoint
 5. Print all access URLs and demo credentials
 
@@ -89,10 +92,11 @@ First run takes ~5–10 minutes. Subsequent runs (cached layers): ~30 seconds.
 | Keycloak | <http://localhost:8080> | Identity provider |
 | Jenkins | <http://localhost:8081> | CI/CD server (admin / admin123) |
 | Nexus | <http://localhost:8082> | Artifact repository (admin / nexus-admin-123) |
-| Prometheus | <http://localhost:9090> | Metrics scrape & query |
-| Grafana | <http://localhost:3001> | Dashboards (admin / admin123) |
+| Prometheus | <http://localhost:9090> | Metrics — **Keycloak SSO required** (`@nitte.ac.in`) |
+| Grafana | <http://localhost:3001> | Dashboards — Keycloak SSO or `admin / admin123` |
+| Alertmanager | <http://localhost:9093> | Alert routing UI |
 | Loki | <http://localhost:3100> | Log aggregation API |
-| Jaeger | <http://localhost:16686> | Distributed tracing UI |
+| Jaeger | <http://localhost:16686> | Tracing — **Keycloak SSO required** (`@nitte.ac.in`) |
 
 ---
 
@@ -110,8 +114,8 @@ First run takes ~5–10 minutes. Subsequent runs (cached layers): ~30 seconds.
 ### Internal Users (nitte.ac.in Domain)
 | Role | Username | Password | Access |
 |---|---|---|---|
-| Internal Admin | `internal-admin@nitte.ac.in` | `InternalAdmin@123` | Jenkins, Nexus Admin, Keycloak Admin, 2FA required |
-| Internal User | `internal-user@nitte.ac.in` | `InternalUser@123` | Jenkins (viewer), Jaeger, Loki, Grafana (read-only) |
+| Internal Admin | `internal-admin@nitte.ac.in` | `InternalAdmin@123` | Jenkins, Nexus Admin, Keycloak Admin, Prometheus, Jaeger — **2FA (TOTP) required** |
+| Internal User | `internal-user@nitte.ac.in` | `InternalUser@123` | Jenkins (viewer), Grafana (editor), Jaeger, Loki |
 
 ### Infrastructure
 | Service | Username | Password |
@@ -129,7 +133,10 @@ Additional spec users exist for Keycloak demos — see [keycloak/KEYCLOAK_DEMO.m
 
 - **Storefront / Admin login** → backend `/api/v1/auth/*` → Keycloak OIDC password grant → JWT
 - **Service-to-service** → Keycloak `client_credentials` flow → JWT with `mongo_writer` role
+- **Jenkins / Grafana SSO** → Keycloak OIDC authorization code flow → role-mapped access
+- **Prometheus / Jaeger** → `oauth2-proxy` (OIDC) → Keycloak login required → `@nitte.ac.in` only
 - All JWTs include `sub`, `preferred_username`, `realm_access.roles`
+- **Custom theme**: all Keycloak login pages use the `nitte` dark theme (login, TOTP setup, OTP verify, admin console)
 
 See **[keycloak/KEYCLOAK_DEMO.md](./keycloak/KEYCLOAK_DEMO.md)** for the full
 realm structure, role map, and copy-pastable token tests.

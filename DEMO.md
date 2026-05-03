@@ -31,10 +31,11 @@ microservice architecture. The audience will see:
 - An **event-driven notification service** (Kafka consumer) that "sends" emails when admins approve users
 - **Identity & SSO via Keycloak** with realm roles, service accounts, and JWTs
 - A complete **observability stack**:
-  - **Prometheus** for metrics
-  - **Grafana** for dashboards
-  - **Loki + Promtail** for log aggregation across all 14 containers
-  - **Jaeger** for distributed tracing across HTTP calls
+  - **Prometheus** for metrics (protected by Keycloak SSO)
+  - **Grafana** for dashboards (Keycloak SSO)
+  - **Loki + Promtail** for log aggregation across all containers
+  - **Jaeger** for distributed tracing (protected by Keycloak SSO)
+  - **oauth2-proxy** gates Prometheus and Jaeger — only `@nitte.ac.in` users can access
 
 Everything runs in Docker. **Nothing else needs to be installed.**
 
@@ -154,9 +155,10 @@ After the script finishes, check the status:
 .\docker-setup.ps1 status       # Windows
 ```
 
-You should see **16 containers** all in **Up** state, with names like
+You should see **19 containers** all in **Up** state, with names like
 `nitte-backend`, `nitte-frontend`, `nitte-admin`, `nitte-mongodb`,
-`nitte-keycloak`, `nitte-jenkins`, `nitte-nexus`, etc.
+`nitte-keycloak`, `nitte-jenkins`, `nitte-nexus`, `nitte-proxy-prometheus`,
+`nitte-proxy-jaeger`, etc.
 
 Open these URLs in your browser to sanity-check:
 
@@ -168,8 +170,8 @@ Open these URLs in your browser to sanity-check:
 | <http://localhost:8081> | Jenkins CI/CD dashboard |
 | <http://localhost:8082> | Nexus repository manager |
 | <http://localhost:3001> | Grafana login |
-| <http://localhost:9090> | Prometheus query UI |
-| <http://localhost:16686> | Jaeger tracing UI |
+| <http://localhost:9090> | Prometheus — redirects to Keycloak login (use `internal-admin` or `internal-user`) |
+| <http://localhost:16686> | Jaeger — redirects to Keycloak login (use `internal-admin` or `internal-user`) |
 
 ---
 
@@ -255,18 +257,19 @@ This proves the event-driven architecture is wired end-to-end.
 
 ### Step 4 — Show Keycloak (3 min)
 
-1. Open <http://localhost:8080>, log in as `admin` / `admin`
-2. In the top-left dropdown, switch to the **nitte-realm**
-3. Walk through:
+1. Open <http://localhost:8080> — note the **custom dark `nitte` theme** on the login page
+2. Log in as `admin` / (your admin password)
+3. In the top-left dropdown, switch to the **nitte-realm**
+4. Walk through:
    - **Realm settings** — realm enabled, brute-force protection on
    - **Clients → nitte-client** — confidential, standard flow + service accounts
      enabled, redirect URIs `*`
    - **Clients → nitte-client → Service accounts roles** — `mongo_writer` is
      assigned (proves spec item 9)
-   - **Realm roles** — admin, alumni, non_alumni, merchant, mongo_writer
-   - **Users** — all spec users present (`admin_user`, `alumni_user`,
-     `guest_user`, `merchant_user`)
-4. Prove the JWT contains the right claims (paste in a terminal):
+   - **Realm roles** — admin, alumni, non_alumni, merchant, mongo_writer, admin-internal, internal-user
+   - **Users** — all spec users present
+   - **Clients** — `nitte-client`, `jenkins-client`, `grafana-client`, `observability-proxy`
+5. Prove the JWT contains the right claims (paste in a terminal):
 
    ```bash
    curl -s -X POST \
@@ -284,8 +287,12 @@ This proves the event-driven architecture is wired end-to-end.
 
 1. Open the admin console → **Metrics** tab — shows live API request rates,
    latency, errors, and a green status card for every microservice
-2. Open <http://localhost:9090> → query: `up` → all 4 jobs return 1
-3. Open <http://localhost:3001> (Grafana, login `admin / admin123`):
+2. Open <http://localhost:9090> → you'll be redirected to Keycloak login
+   - Log in as `internal-admin@nitte.ac.in` / `InternalAdmin@123` (+ TOTP code)
+   - After auth, you land on Prometheus with `up` query showing all jobs = 1
+3. Open <http://localhost:3001> (Grafana) → click **Sign in with Keycloak**
+   - Log in as `internal-admin@nitte.ac.in` → lands as **Grafana Admin**
+   - Or `internal-user@nitte.ac.in` → lands as **Grafana Editor**
    - **Explore** → datasource **Prometheus** → query
      `rate(http_requests_total[1m])` to see the live API traffic graph
 
@@ -298,14 +305,16 @@ In Grafana → **Explore** → switch datasource to **Loki**:
 {container="nitte-notifications"} |= "approval"
 ```
 
-Both queries return live log lines. You're showing logs from **all 14
+Both queries return live log lines. You're showing logs from **all 19
 containers** unified into one query language.
 
 #### Tracing (Jaeger)
 
-1. Open the admin console → **Traces** tab
-2. Pick the **nitte-backend** service → recent traces show every API call
-3. Click a trace → opens Jaeger UI showing the full span tree (HTTP request →
+1. Open <http://localhost:16686> → redirected to Keycloak login
+   - Log in as any `@nitte.ac.in` user → lands on Jaeger UI
+2. Open the admin console → **Traces** tab
+3. Pick the **nitte-backend** service → recent traces show every API call
+4. Click a trace → opens Jaeger UI showing the full span tree (HTTP request →
    MongoDB query → response)
 
 ### Step 6 — Run the smoke test (30 s)
@@ -328,10 +337,10 @@ A cheat sheet you can refer to mid-demo:
 |---|---|---|
 | Storefront | <http://localhost:5173> | Real product imagery, cart, orders, sign-up |
 | Admin Console | <http://localhost:5174> | Users → approve → Kafka event |
-| Keycloak | <http://localhost:8080> (admin/admin) | Realms, clients, roles, JWT |
-| Prometheus | <http://localhost:9090> | `up`, `rate(http_requests_total[1m])` |
-| Grafana | <http://localhost:3001> (admin/admin123) | Loki queries + Prometheus datasource |
-| Jaeger | <http://localhost:16686> | Find traces → span timeline |
+| Keycloak | <http://localhost:8080> (custom dark theme) | Realms, clients, roles, JWT, TOTP |
+| Prometheus | <http://localhost:9090> (Keycloak SSO — `@nitte.ac.in`) | `up`, `rate(http_requests_total[1m])` |
+| Grafana | <http://localhost:3001> (Keycloak SSO or admin/admin123) | Loki queries + Prometheus datasource |
+| Jaeger | <http://localhost:16686> (Keycloak SSO — `@nitte.ac.in`) | Find traces → span timeline |
 
 ---
 
@@ -442,7 +451,7 @@ For frontend / admin-dashboard, also do a hard browser refresh (`Ctrl + Shift + 
    approve there).
 3. **Have a terminal open with notification logs streaming** — it's a great
    "wow" moment when an approval click triggers a log line in real time.
-4. **Use `./docker-setup.sh status` early** to prove all 14 services are up.
+4. **Use `./docker-setup.sh status` early** to prove all 19 services are up.
    Visual confirmation goes a long way.
 
 Good luck with your demo. If anything breaks, the troubleshooting section
