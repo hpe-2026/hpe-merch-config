@@ -7,6 +7,26 @@
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
+  "requiredActions": [
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "CONFIGURE_TOTP",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 10,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PASSWORD",
+      "name": "Update Password",
+      "providerId": "UPDATE_PASSWORD",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 20,
+      "config": {}
+    }
+  ],
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
@@ -156,7 +176,8 @@
       "firstName": "Admin",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "admin@123",    "temporary": false }],
-      "realmRoles": ["admin"]
+      "realmRoles": ["admin"],
+      "requiredActions": ["CONFIGURE_TOTP"]
     },
     {
       "username": "alumni@nitte.edu",
@@ -176,7 +197,8 @@
       "firstName": "Merchant",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "merchant@123", "temporary": false }],
-      "realmRoles": ["merchant"]
+      "realmRoles": ["merchant"],
+      "requiredActions": ["CONFIGURE_TOTP"]
     },
     {
       "username": "admin_user",
