@@ -33,7 +33,7 @@
       </details>
 
       <form action="${url.loginAction}" method="post">
-        <input type="hidden" name="totp-hidden" id="totp-hidden" value="${totp.totpSecretEncoded}"/>
+        <input type="hidden" id="totpSecret" name="totpSecret" value="${totp.totpSecret}"/>
 
         <div class="field">
           <label for="totp">One-time code</label>
