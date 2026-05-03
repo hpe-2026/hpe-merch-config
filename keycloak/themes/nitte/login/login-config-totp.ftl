@@ -33,7 +33,7 @@
       </details>
 
       <form action="${url.loginAction}" method="post">
-        <input type="hidden" name="totp-hidden" id="totp-hidden"/>
+        <input type="hidden" name="totp-hidden" id="totp-hidden" value="${totp.totpSecretEncoded}"/>
 
         <div class="field">
           <label for="totp">One-time code</label>
@@ -54,10 +54,5 @@
 
     </div>
   </div>
-  <script>
-    document.getElementById('saveTOTPBtn').addEventListener('click', function () {
-      document.getElementById('totp-hidden').value = document.getElementById('totp').value;
-    });
-  </script>
 </body>
 </html>
