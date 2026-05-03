@@ -17,39 +17,45 @@ function loadRazorpayScript() {
   })
 }
 
-// Force transparent backdrop on Razorpay so page content is visible behind modal
+// Mutation observer to continuously force transparent backdrop on Razorpay modal
+let backdropObserver = null
+
+function startBackdropObserver() {
+  if (backdropObserver) return
+
+  backdropObserver = new MutationObserver(() => {
+    const backdrop = document.querySelector('.razorpay-backdrop, .razorpay-payment-backdrop')
+    if (backdrop) {
+      backdrop.style.setProperty('background-color', 'transparent', 'important')
+      backdrop.style.setProperty('background', 'transparent', 'important')
+      backdrop.style.setProperty('opacity', '0.3', 'important')
+    }
+  })
+
+  backdropObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class']
+  })
+}
+
+function stopBackdropObserver() {
+  if (backdropObserver) {
+    backdropObserver.disconnect()
+    backdropObserver = null
+  }
+}
+
+// Immediate style override for Razorpay backdrop
 function forceRazorpayTransparentBackdrop() {
   setTimeout(() => {
-    // Find and style all razorpay-related elements
-    const selectors = [
-      '.razorpay-backdrop',
-      '.razorpay-payment-backdrop',
-      '[class*="razorpay"]',
-      'iframe[name*="razorpay"]',
-      'iframe[src*="razorpay"]'
-    ]
-    selectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(el => {
-        if (el.className && el.className.includes('backdrop')) {
-          el.style.cssText = 'z-index: 2147483646 !important; background-color: transparent !important; opacity: 0.5 !important;'
-        }
-        if (el.tagName === 'IFRAME') {
-          el.style.zIndex = '2147483647'
-        }
-      })
-    })
-    // Also inject a style tag into body for any dynamically created elements
-    if (!document.getElementById('rzp-transparent-styles')) {
-      const style = document.createElement('style')
-      style.id = 'rzp-transparent-styles'
-      style.textContent = `
-        .razorpay-backdrop, .razorpay-payment-backdrop { 
-          background: transparent !important;
-        }
-      `
-      document.body.appendChild(style)
+    const backdrop = document.querySelector('.razorpay-backdrop, .razorpay-payment-backdrop')
+    if (backdrop) {
+      backdrop.style.cssText = 'background-color: transparent !important; background: transparent !important; opacity: 0.3 !important; z-index: 2147483646 !important;'
     }
-  }, 100)
+    startBackdropObserver()
+  }, 50)
 }
 
 // CSS to force transparent backdrop on Razorpay modal
