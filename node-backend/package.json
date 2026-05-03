@@ -42,6 +42,7 @@
     "kafkajs": "^2.2.4",
     "mongoose": "7.6.3",
     "prom-client": "14.2.0",
+    "razorpay": "^2.9.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "9.0.0",
