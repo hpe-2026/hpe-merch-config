@@ -1,191 +1,129 @@
-/* ── NITTE Custom Keycloak Login Theme ─────────────────── */
+/* ── NITTE Keycloak Login Theme ──────────────────────────── */
 
-/* ── Page & background ──────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 html, body {
   height: 100%;
-  margin: 0;
-  padding: 0;
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif !important;
-  background: #0f1117 !important;
-  color: #e2e8f0 !important;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  background: #0f1117;
+  color: #e2e8f0;
 }
 
-body.login-pf-page {
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: 100vh !important;
-  background: #0f1117 !important;
-}
-
-/* Gradient glow */
-body.login-pf-page::before {
-  content: '';
-  position: fixed;
-  inset: 0;
+/* Full-page centered flex container */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px 16px;
   background:
-    radial-gradient(ellipse 70% 50% at 15% 15%, rgba(99,102,241,0.18) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 85% 85%, rgba(16,185,129,0.12) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: 0;
+    radial-gradient(ellipse 70% 50% at 15% 20%, rgba(99,102,241,0.15) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 85% 80%, rgba(16,185,129,0.10) 0%, transparent 55%),
+    #0f1117;
 }
 
-/* ── Layout centering ───────────────────────────────────── */
-/* Hide the top header banner Keycloak injects */
-#kc-header, .login-pf-page > header, .login-pf-header { display: none !important; }
-
-/* Make the grid fill remaining height and center vertically */
-.login-pf-page .container-fluid {
-  flex: 1 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  position: relative;
-  z-index: 1;
-  padding: 40px 16px !important;
+/* Small title above the card */
+.portal-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-/* Kill Bootstrap offset columns so card sits in the middle */
-.login-pf-page .row { width: 100% !important; display: flex !important; justify-content: center !important; }
-.login-pf-page [class*="col-"] {
-  float: none !important;
-  margin: 0 auto !important;
-  max-width: 440px !important;
-  width: 100% !important;
-  padding: 0 !important;
+/* The card */
+.card {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  padding: 36px 32px 32px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 
-/* ── Card ───────────────────────────────────────────────── */
-.card-pf {
-  background: rgba(255,255,255,0.04) !important;
-  border: 1px solid rgba(255,255,255,0.10) !important;
-  border-radius: 18px !important;
-  box-shadow: 0 12px 48px rgba(0,0,0,0.55) !important;
-  padding: 40px 38px 36px !important;
-  backdrop-filter: blur(10px) !important;
-  width: 100% !important;
+/* Alert banners */
+.alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.alert-error   { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.30);  color: #fca5a5; }
+.alert-warning { background: rgba(234,179,8,0.10);  border: 1px solid rgba(234,179,8,0.28);  color: #fde047; }
+.alert-success { background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.28); color: #6ee7b7; }
+.alert-info    { background: rgba(99,102,241,0.10); border: 1px solid rgba(99,102,241,0.28); color: #a5b4fc; }
+
+/* Field rows */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 20px;
 }
 
-/* ── NITTE branding injected via ::before on the card ───── */
-.card-pf::before {
-  content: 'N  NITTE — Admin & DevOps Portal';
-  display: block;
-  font-size: 18px;
-  font-weight: 700;
-  color: #f1f5f9;
-  letter-spacing: 0.04em;
-  margin-bottom: 28px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-/* ── Page title (realm name shown by Keycloak) ──────────── */
-#kc-page-title {
-  font-size: 15px !important;
-  font-weight: 500 !important;
-  color: #94a3b8 !important;
-  text-align: left !important;
-  margin-bottom: 20px !important;
-}
-
-/* ── Form ───────────────────────────────────────────────── */
-.form-group { margin-bottom: 20px !important; }
-
-label, .control-label {
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  color: #94a3b8 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.07em !important;
-  margin-bottom: 6px !important;
-  display: block !important;
-}
-
-/* ── Inputs ─────────────────────────────────────────────── */
 input[type="text"],
 input[type="password"],
 input[type="email"] {
-  background: rgba(255,255,255,0.07) !important;
-  border: 1px solid rgba(255,255,255,0.18) !important;
-  border-radius: 9px !important;
-  color: #f1f5f9 !important;
-  font-size: 14px !important;
-  padding: 11px 14px !important;
-  width: 100% !important;
-  display: block !important;
-  box-shadow: none !important;
-  transition: border-color 0.2s, box-shadow 0.2s !important;
+  width: 100%;
+  padding: 11px 13px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 input[type="text"]:focus,
 input[type="password"]:focus,
 input[type="email"]:focus {
-  border-color: #6366f1 !important;
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.22) !important;
-  background: rgba(255,255,255,0.10) !important;
-  outline: none !important;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.20);
+  background: rgba(255, 255, 255, 0.09);
 }
 
-/* ── OTP input (2FA) ────────────────────────────────────── */
-#otp {
-  font-size: 26px !important;
-  letter-spacing: 0.35em !important;
-  text-align: center !important;
-  padding: 14px !important;
+/* Forgot password */
+.forgot-row {
+  text-align: right;
+  margin-bottom: 22px;
+  margin-top: -8px;
 }
+.forgot-row a {
+  font-size: 12px;
+  color: #818cf8;
+  text-decoration: none;
+}
+.forgot-row a:hover { color: #a5b4fc; text-decoration: underline; }
 
-/* ── Forgot password / options row ─────────────────────── */
-#kc-form-options {
-  display: flex !important;
-  justify-content: flex-end !important;
-  align-items: center !important;
-  margin-bottom: 20px !important;
+/* Submit button */
+.btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.30);
+  transition: opacity 0.18s, transform 0.12s;
 }
-#kc-form-options a, .login-pf-page a {
-  color: #818cf8 !important;
-  text-decoration: none !important;
-  font-size: 12px !important;
-}
-#kc-form-options a:hover { color: #a5b4fc !important; text-decoration: underline !important; }
-
-/* ── Submit button ──────────────────────────────────────── */
-input[type="submit"],
-.btn-primary,
-#kc-login {
-  width: 100% !important;
-  padding: 12px !important;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
-  border: none !important;
-  border-radius: 9px !important;
-  color: #fff !important;
-  font-size: 15px !important;
-  font-weight: 600 !important;
-  cursor: pointer !important;
-  letter-spacing: 0.02em !important;
-  transition: opacity 0.18s, transform 0.1s !important;
-  box-shadow: 0 4px 16px rgba(99,102,241,0.35) !important;
-}
-input[type="submit"]:hover, .btn-primary:hover, #kc-login:hover {
-  opacity: 0.88 !important;
-  transform: translateY(-1px) !important;
-}
-
-/* ── Alert messages ─────────────────────────────────────── */
-.alert {
-  border-radius: 9px !important;
-  font-size: 13px !important;
-  margin-bottom: 18px !important;
-  padding: 10px 14px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-}
-.alert-error   { background: rgba(239,68,68,0.13) !important;  border: 1px solid rgba(239,68,68,0.28) !important;  color: #fca5a5 !important; }
-.alert-warning { background: rgba(234,179,8,0.10) !important;  border: 1px solid rgba(234,179,8,0.28) !important;  color: #fde047 !important; }
-.alert-success { background: rgba(16,185,129,0.10) !important; border: 1px solid rgba(16,185,129,0.28) !important; color: #6ee7b7 !important; }
-.alert-info    { background: rgba(99,102,241,0.10) !important; border: 1px solid rgba(99,102,241,0.28) !important; color: #a5b4fc !important; }
-.pficon, .kc-feedback-text { color: inherit !important; }
-
-/* ── Hide PatternFly chrome ─────────────────────────────── */
-.login-pf-page .login-pf-brand,
-.login-pf-signup { display: none !important; }
-
+.btn:hover  { opacity: 0.88; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
