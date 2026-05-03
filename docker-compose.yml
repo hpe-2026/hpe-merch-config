@@ -31,7 +31,13 @@ services:
     volumes:
       - ./keycloak/nitte-realm.json:/opt/keycloak/data/import/nitte-realm.json:ro
       - ./keycloak/themes/nitte:/opt/keycloak/themes/nitte:ro
-    command: start-dev --import-realm
+      - ./keycloak/keycloak-bootstrap.sh:/opt/keycloak/keycloak-bootstrap.sh:ro
+    command: >
+      sh -c "
+        /opt/keycloak/bin/kc.sh start-dev --import-realm &
+        /opt/keycloak/keycloak-bootstrap.sh &
+        wait
+      "
     networks:
       - nitte-network
 
