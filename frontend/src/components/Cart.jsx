@@ -17,107 +17,6 @@ function loadRazorpayScript() {
   })
 }
 
-// Mutation observer to continuously force transparent backdrop on Razorpay modal
-let backdropObserver = null
-
-function startBackdropObserver() {
-  if (backdropObserver) return
-
-  backdropObserver = new MutationObserver(() => {
-    const backdrop = document.querySelector('.razorpay-backdrop, .razorpay-payment-backdrop')
-    const modal = document.querySelector('.razorpay-container, .razorpay-checkout-frame')
-    const iframes = document.querySelectorAll('iframe[src*="razorpay"]')
-    
-    if (backdrop) {
-      backdrop.style.setProperty('background-color', 'transparent', 'important')
-      backdrop.style.setProperty('background', 'transparent', 'important')
-      backdrop.style.setProperty('opacity', '0.3', 'important')
-    }
-    
-    if (modal) {
-      modal.style.setProperty('background-color', 'transparent', 'important')
-      modal.style.setProperty('background', 'transparent', 'important')
-    }
-    
-    // Also target any div with white background that might be the backdrop
-    document.querySelectorAll('div[class*="razorpay"], div[class*="backdrop"]').forEach(el => {
-      const computed = window.getComputedStyle(el)
-      if (computed.backgroundColor === 'rgb(255, 255, 255)' || computed.backgroundColor === '#ffffff') {
-        el.style.setProperty('background-color', 'transparent', 'important')
-      }
-    })
-  })
-
-  backdropObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['style', 'class']
-  })
-}
-
-function stopBackdropObserver() {
-  if (backdropObserver) {
-    backdropObserver.disconnect()
-    backdropObserver = null
-  }
-}
-
-// Immediate style override for Razorpay backdrop
-function forceRazorpayTransparentBackdrop() {
-  setTimeout(() => {
-    const backdrop = document.querySelector('.razorpay-backdrop, .razorpay-payment-backdrop')
-    const modal = document.querySelector('.razorpay-container, .razorpay-checkout-frame')
-    const iframes = document.querySelectorAll('iframe[src*="razorpay"]')
-    
-    if (backdrop) {
-      backdrop.style.cssText = 'background-color: transparent !important; background: transparent !important; opacity: 0.3 !important; z-index: 2147483646 !important;'
-    }
-    
-    if (modal) {
-      modal.style.cssText = 'background-color: transparent !important; background: transparent !important; z-index: 2147483647 !important;'
-    }
-    
-    // Target any white background divs
-    document.querySelectorAll('div[class*="razorpay"], div[class*="backdrop"]').forEach(el => {
-      const computed = window.getComputedStyle(el)
-      if (computed.backgroundColor === 'rgb(255, 255, 255)' || computed.backgroundColor === '#ffffff') {
-        el.style.setProperty('background-color', 'transparent', 'important')
-      }
-    })
-    
-    startBackdropObserver()
-  }, 50)
-}
-
-// CSS to force transparent backdrop on Razorpay modal
-const razorpayStyles = `
-  /* Main container */
-  .razorpay-container {
-    z-index: 2147483647 !important;
-  }
-  /* Backdrop - make it transparent */
-  .razorpay-backdrop,
-  .razorpay-payment-backdrop,
-  [class*="razorpay"][class*="backdrop"],
-  [class*="razorpay"][class*="overlay"] {
-    z-index: 2147483646 !important;
-    background-color: transparent !important;
-    opacity: 0.3 !important;
-  }
-  /* The iframe/modal itself */
-  .razorpay-checkout-frame,
-  .razorpay-payment-frame,
-  iframe[name*="razorpay"],
-  iframe[src*="razorpay"] {
-    z-index: 2147483647 !important;
-  }
-  /* Force any white overlay to be transparent */
-  [class*="razorpay"] {
-    background-color: transparent !important;
-  }
-`
-
 export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, setCurrentPage }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -169,7 +68,6 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
           },
           theme: { color: '#4f46e5' },
           modal: {
-            backdrop: 'rgba(0,0,0,0.3)',
             ondismiss: () => reject(new Error('cancelled')),
           },
           handler: async (response) => {
@@ -205,7 +103,6 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
           reject(new Error(resp.error?.description || 'Payment failed'))
         )
         rzp.open()
-        forceRazorpayTransparentBackdrop()
       })
 
       setOrderPlaced(true)
@@ -259,9 +156,7 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
   }
 
   return (
-    <>
-      <style>{razorpayStyles}</style>
-      <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <p className="text-xs font-semibold text-indigo-600 tracking-wider uppercase">Checkout</p>
@@ -403,6 +298,5 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
         </aside>
       </div>
     </div>
-    </>
   )
 }
