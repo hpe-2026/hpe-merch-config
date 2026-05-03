@@ -79,6 +79,13 @@ class OrderUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
 
+class PaymentInfo(BaseModel):
+    provider: Optional[str] = None
+    razorpay_order_id: Optional[str] = None
+    razorpay_payment_id: Optional[str] = None
+    razorpay_signature: Optional[str] = None
+    status: Optional[str] = None
+
 class Order(BaseModel):
     id: str = Field(alias="_id")
     order_id: str
@@ -88,6 +95,7 @@ class Order(BaseModel):
     shipping_address: str
     notes: str
     status: str
+    payment: Optional[PaymentInfo] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
