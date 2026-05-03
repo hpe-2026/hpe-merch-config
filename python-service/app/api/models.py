@@ -67,6 +67,13 @@ class OrderItem(BaseModel):
     quantity: int = Field(..., ge=1)
     price: float = Field(..., gt=0)
 
+class PaymentInfo(BaseModel):
+    provider: Optional[str] = None
+    razorpay_order_id: Optional[str] = None
+    razorpay_payment_id: Optional[str] = None
+    razorpay_signature: Optional[str] = None
+    status: Optional[str] = None
+
 class OrderCreate(BaseModel):
     user_id: str
     user_email: str
@@ -79,13 +86,6 @@ class OrderCreate(BaseModel):
 class OrderUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
-
-class PaymentInfo(BaseModel):
-    provider: Optional[str] = None
-    razorpay_order_id: Optional[str] = None
-    razorpay_payment_id: Optional[str] = None
-    razorpay_signature: Optional[str] = None
-    status: Optional[str] = None
 
 class Order(BaseModel):
     id: str = Field(alias="_id")
