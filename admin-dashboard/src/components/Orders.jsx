@@ -216,6 +216,7 @@ export default function Orders() {
                 <th className="text-left px-5 py-3 font-medium">Customer</th>
                 <th className="text-left px-5 py-3 font-medium">Items</th>
                 <th className="text-right px-5 py-3 font-medium">Total</th>
+                <th className="text-left px-5 py-3 font-medium">Payment</th>
                 <th className="text-center px-5 py-3 font-medium">Status</th>
                 <th className="text-right px-5 py-3 font-medium">Date</th>
               </tr>
@@ -247,6 +248,19 @@ export default function Orders() {
                     </td>
                     <td className="px-5 py-3.5 text-right font-semibold text-slate-900">
                       {fmtINR(orderTotal(o))}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {o.payment?.provider === 'razorpay' ? (
+                        <div className="text-xs">
+                          <p className="font-medium text-slate-900">Razorpay</p>
+                          <p className="text-slate-500 font-mono text-[10px]">{o.payment.razorpay_payment_id?.slice(-12) || '—'}</p>
+                          <p className={`text-[10px] ${o.payment.status === 'paid' ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            {o.payment.status || 'pending'}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-center">
                       <StatusMenu
