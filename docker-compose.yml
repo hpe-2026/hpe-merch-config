@@ -31,13 +31,26 @@ services:
     volumes:
       - ./keycloak/nitte-realm.json:/opt/keycloak/data/import/nitte-realm.json:ro
       - ./keycloak/themes/nitte:/opt/keycloak/themes/nitte:ro
-      - ./keycloak/keycloak-bootstrap.sh:/opt/keycloak/keycloak-bootstrap.sh:ro
-    command: >
-      sh -c "
-        /opt/keycloak/bin/kc.sh start-dev --import-realm &
-        /opt/keycloak/keycloak-bootstrap.sh &
-        wait
-      "
+    command: start-dev --import-realm
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/realms/master"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    networks:
+      - nitte-network
+
+  keycloak-setup:
+    image: quay.io/keycloak/keycloak:20.0.0
+    container_name: nitte-keycloak-setup
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    volumes:
+      - ./keycloak/keycloak-bootstrap.sh:/bootstrap.sh:ro
+    entrypoint: ["/bin/sh", "/bootstrap.sh"]
+    restart: "no"
     networks:
       - nitte-network
 
