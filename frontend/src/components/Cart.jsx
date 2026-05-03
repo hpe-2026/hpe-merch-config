@@ -104,6 +104,14 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
           reject(new Error(resp.error?.description || 'Payment failed'))
         )
         rzp.open()
+
+        // Try to override backdrop after modal opens
+        setTimeout(() => {
+          const backdrop = document.querySelector('.razorpay-backdrop')
+          if (backdrop) {
+            backdrop.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'
+          }
+        }, 100)
       })
 
       setOrderPlaced(true)
