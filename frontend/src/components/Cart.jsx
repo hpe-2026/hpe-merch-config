@@ -68,6 +68,7 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
           },
           theme: { color: '#4f46e5' },
           modal: {
+            backdrop: 'rgba(255, 255, 255, 0.1)',
             ondismiss: () => reject(new Error('cancelled')),
           },
           handler: async (response) => {
