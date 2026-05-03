@@ -67,10 +67,6 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
             email: user?.email || '',
           },
           theme: { color: '#4f46e5' },
-          modal: {
-            backdrop: 'rgba(255, 255, 255, 0.1)',
-            ondismiss: () => reject(new Error('cancelled')),
-          },
           handler: async (response) => {
             try {
               // Step 3 — verify signature + create DB order
@@ -104,19 +100,6 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
           reject(new Error(resp.error?.description || 'Payment failed'))
         )
         rzp.open()
-
-        // Try to override backdrop after modal opens
-        setTimeout(() => {
-          const backdrop = document.querySelector('.razorpay-backdrop')
-          const container = document.querySelector('.razorpay-container')
-          
-          if (backdrop) {
-            backdrop.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'
-          }
-          if (container) {
-            container.style.backgroundColor = 'transparent'
-          }
-        }, 100)
       })
 
       setOrderPlaced(true)
