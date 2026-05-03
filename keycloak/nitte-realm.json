@@ -3,7 +3,7 @@
   "realm": "nitte-realm",
   "displayName": "NITTE Alumni Merchandise (Alumni Shop)",
   "enabled": true,
-  "loginTheme": "nitte",
+  "loginTheme": "keycloak",
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
