@@ -30,6 +30,7 @@ services:
       KC_HOSTNAME_STRICT_HTTPS: "false"
     volumes:
       - ./keycloak/nitte-realm.json:/opt/keycloak/data/import/nitte-realm.json:ro
+      - ./keycloak/themes/nitte:/opt/keycloak/themes/nitte:ro
     command: start-dev --import-realm
     networks:
       - nitte-network

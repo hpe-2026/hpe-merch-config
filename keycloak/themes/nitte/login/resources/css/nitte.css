@@ -1,0 +1,194 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body.nitte-body {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f1117;
+  color: #e2e8f0;
+}
+
+.nitte-bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(99,102,241,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 60% at 80% 80%, rgba(16,185,129,0.10) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.nitte-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.nitte-card {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 40px 36px 36px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+}
+
+.nitte-logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.nitte-logo-icon {
+  width: 46px;
+  height: 46px;
+  background: linear-gradient(135deg, #6366f1, #10b981);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.nitte-logo-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #f1f5f9;
+}
+
+.nitte-logo-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.nitte-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.nitte-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.nitte-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.nitte-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+  background: rgba(255,255,255,0.08);
+}
+
+.nitte-input::placeholder { color: #475569; }
+
+.nitte-otp-input {
+  font-size: 24px;
+  letter-spacing: 0.4em;
+  text-align: center;
+  padding: 14px;
+}
+
+.nitte-otp-hint {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.nitte-error {
+  font-size: 12px;
+  color: #f87171;
+  margin-top: 4px;
+}
+
+.nitte-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.nitte-remember { color: #94a3b8; display: flex; align-items: center; gap: 6px; }
+.nitte-remember input { accent-color: #6366f1; }
+
+.nitte-link {
+  color: #818cf8;
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+.nitte-link:hover { color: #a5b4fc; text-decoration: underline; }
+
+.nitte-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.nitte-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+.nitte-btn:active { transform: translateY(0); }
+
+.nitte-alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+.nitte-alert-error   { background: rgba(239,68,68,0.15);  border: 1px solid rgba(239,68,68,0.3);  color: #fca5a5; }
+.nitte-alert-warning { background: rgba(234,179,8,0.12);  border: 1px solid rgba(234,179,8,0.3);  color: #fde047; }
+.nitte-alert-success { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+.nitte-alert-info    { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; }
+
+.nitte-info {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 18px;
+  text-align: center;
+}
+
+.nitte-footer {
+  font-size: 12px;
+  color: #334155;
+  text-align: center;
+}
+
+.nitte-password-wrap { position: relative; }
