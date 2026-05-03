@@ -17,6 +17,16 @@ function loadRazorpayScript() {
   })
 }
 
+// Ensure Razorpay modal appears above all content with proper dark backdrop
+const razorpayStyles = `
+  .razorpay-container { z-index: 9999 !important; }
+  .razorpay-backdrop { 
+    z-index: 9998 !important; 
+    background: rgba(0,0,0,0.6) !important; 
+  }
+  .razorpay-checkout-frame { z-index: 9999 !important; }
+`
+
 export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, setCurrentPage }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -153,7 +163,9 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <>
+      <style>{razorpayStyles}</style>
+      <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <p className="text-xs font-semibold text-indigo-600 tracking-wider uppercase">Checkout</p>
@@ -295,5 +307,6 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
         </aside>
       </div>
     </div>
+    </>
   )
 }
