@@ -4,7 +4,7 @@
 This is a **full-stack e-commerce web application** built specifically for NITTE university alumni. Alumni register with their university credentials, wait for admin approval, then browse and purchase exclusive merchandise (apparel, stationery, collectibles). The entire stack is containerized with Docker Compose and includes enterprise-grade observability (metrics, logs, distributed tracing) and security (Keycloak identity management).
 
 ## Architecture Overview
-The application runs as **16 Docker containers** on a private bridge network (`nitte-network`). Each container is a microservice with a single responsibility. Here is the complete service map:
+The application runs as **19 Docker containers** on a private bridge network (`nitte-network`). Each container is a microservice with a single responsibility. Here is the complete service map:
 
 | Service | Technology | Port | Responsibility |
 |---------|-----------|------|---------------|
@@ -17,9 +17,12 @@ The application runs as **16 Docker containers** on a private bridge network (`n
 | **Keycloak** | Keycloak 20.0.0 | 8080 | Identity & Access Management (IAM) — passwords, JWT tokens, roles |
 | **Kafka** | Apache Kafka 7.3.0 | 9092 | Event streaming bus — `user.registered`, `user.approved`, `user.rejected` |
 | **Zookeeper** | Zookeeper 7.3.0 | 2181 | Kafka coordinator — manages broker metadata and leader election |
-| **Prometheus** | Prometheus v2.48.0 | 9090 | Time-series metrics DB — scrapes `/metrics` endpoints every 15s |
-| **Grafana** | Grafana 10.2.2 | 3001 | Visualization — dashboards from Prometheus metrics and Loki logs |
-| **Jaeger** | Jaeger 1.52 | 16686 | Distributed tracing — tracks a single request across all services |
+| **Prometheus** | Prometheus v2.48.0 | internal | Time-series metrics DB — scrapes `/metrics` endpoints every 15s |
+| **Grafana** | Grafana 10.2.2 | 3001 | Visualization — dashboards from Prometheus metrics and Loki logs (Keycloak SSO) |
+| **Jaeger** | Jaeger 1.52 | internal | Distributed tracing — tracks a single request across all services |
+| **Alertmanager** | Prometheus Alertmanager v0.26.0 | 9093 | Alert routing, silencing and grouping |
+| **oauth2-proxy (Prometheus)** | oauth2-proxy v7.6.0 | 9090 | Keycloak OIDC auth gate for Prometheus — `@nitte.ac.in` only |
+| **oauth2-proxy (Jaeger)** | oauth2-proxy v7.6.0 | 16686 | Keycloak OIDC auth gate for Jaeger — `@nitte.ac.in` only |
 | **Loki** | Grafana Loki 2.9.4 | 3100 | Log aggregation DB — stores container logs queryably |
 | **Promtail** | Grafana Promtail 2.9.4 | internal | Log shipper — reads Docker logs and pushes them into Loki |
 | **Jenkins** | Jenkins LTS JDK17 | 8081 | CI/CD server — build pipelines, automated deployments |
@@ -55,22 +58,26 @@ The backend uses Mongoose (ODM) to map JS objects to MongoDB documents.
 Key concepts:
 - **Realm (`nitte-realm`)**: A container for this app's users, roles, and clients.
 - **Client (`nitte-client`)**: The backend app registered in the realm. Uses a **service account** (client ID + secret) to perform admin operations like creating/enabling users.
+- **Custom theme (`nitte`)**: All Keycloak login pages (password login, TOTP setup, OTP verify) and the admin console use a branded dark theme. Template files live in `keycloak/themes/nitte/login/`.
+- **OIDC clients**: `jenkins-client` (Jenkins SSO), `grafana-client` (Grafana SSO), `observability-proxy` (Prometheus + Jaeger oauth2-proxy).
 - **Demo users** (auto-seeded from `nitte-realm.json`):
   - `admin@nitte.edu` / `admin@123` → `admin`
   - `alumni@nitte.edu` / `alumni@123` → `alumni`
   - `merchant@nitte.edu` / `merchant@123` → `merchant`
+  - `internal-admin@nitte.ac.in` / `InternalAdmin@123` → `admin-internal` (2FA/TOTP required)
+  - `internal-user@nitte.ac.in` / `InternalUser@123` → `internal-user`
 
 ### 8. Kafka + Zookeeper (Event Streaming)
 **Tech**: Apache Kafka 7.3.0 + Zookeeper 7.3.0. Port 9092 (Kafka), 2181 (Zookeeper). Kafka is the message bus. The backend publishes events to topics. The Notification Service consumes them. This **decouples** services — if the notification service is down, Kafka holds messages until it recovers. Zookeeper manages Kafka broker metadata and leader election.
 
 ### 9. Prometheus (Metrics)
-**Tech**: Prometheus v2.48.0. Port 9090. A time-series database. Scrapes `/metrics` from services every 15s. Stores request counts, latency, error rates, resource usage. Query language: PromQL.
+**Tech**: Prometheus v2.48.0. Internal port only (no direct external access). A time-series database. Scrapes `/metrics` from services every 15s. Stores request counts, latency, error rates, resource usage. Query language: PromQL. Accessed externally via `oauth2-proxy-prometheus` at `http://localhost:9090` — requires Keycloak login (`@nitte.ac.in` domain).
 
 ### 10. Grafana (Visualization)
-**Tech**: Grafana 10.2.2. Port 3001. Reads from Prometheus (metrics) and Loki (logs) and draws dashboards. Pre-configured with data sources. Lets admins see live system health in color-coded graphs.
+**Tech**: Grafana 10.2.2. Port 3001. Reads from Prometheus (metrics) and Loki (logs) and draws dashboards. Pre-configured with data sources. Configured with **Keycloak SSO** via Generic OAuth — `internal-admin@nitte.ac.in` maps to Grafana Admin, `internal-user@nitte.ac.in` maps to Grafana Editor. Local fallback: `admin / admin123`.
 
 ### 11. Jaeger (Distributed Tracing)
-**Tech**: Jaeger 1.52. Port 16686. Tracks a single request across multiple services. Example: "Place Order" touches Frontend → Backend → MongoDB → Kafka → Notification Service. Jaeger assigns a **trace ID** and records time spent in each **span**. The Admin Dashboard's Traces tab queries Jaeger's API to show these.
+**Tech**: Jaeger 1.52. Internal port only (no direct external access). Tracks a single request across multiple services. Example: "Place Order" touches Frontend → Backend → MongoDB → Kafka → Notification Service. Jaeger assigns a **trace ID** and records time spent in each **span**. The Admin Dashboard's Traces tab queries Jaeger's API to show these. Accessed externally via `oauth2-proxy-jaeger` at `http://localhost:16686` — requires Keycloak login (`@nitte.ac.in` domain).
 
 ### 12. Loki + Promtail (Log Aggregation)
 **Tech**: Grafana Loki 2.9.4 + Promtail 2.9.4. Port 3100 (Loki). **Promtail** reads Docker container logs from the host filesystem and pushes them to **Loki** with labels (service name, log level). **Grafana** queries Loki so you search all logs in one place instead of running `docker logs` per container.
@@ -188,11 +195,14 @@ alumni@example.com → Keycloak → JWT (roles: alumni) → Frontend/Admin Porta
 
 ### Internal User Flow
 ```
-internal-user@nitte.ac.in → Keycloak → JWT (roles: admin-internal) → Jenkins/Nexus/Keycloak Admin
-                                       → JWT (roles: internal-user) → Jenkins (viewer), Grafana
+internal-admin@nitte.ac.in → Keycloak (+ TOTP 2FA) → JWT (admin-internal) → Jenkins Admin, Grafana Admin,
+                                                                             Prometheus, Jaeger, Keycloak Admin
+internal-user@nitte.ac.in  → Keycloak              → JWT (internal-user)  → Jenkins (viewer), Grafana Editor,
+                                                                             Jaeger, Loki
 ```
 - Internal users pre-provisioned by IT
 - **2FA (TOTP) required** for `admin-internal` role
+- **Prometheus and Jaeger** protected by `oauth2-proxy` — only `@nitte.ac.in` accounts can pass
 - Access controlled by email domain (`nitte.ac.in`)
 
 ### Persistent Identity Mapping
@@ -330,9 +340,10 @@ Because the git repo is local (mounted into the Jenkins container), Jenkins read
 
 | File | Purpose |
 |------|---------|
-| `docker-compose.yml` | Defines all 16 services, images, ports, env vars, volumes, network |
+| `docker-compose.yml` | Defines all 19 services, images, ports, env vars, volumes, network |
 | `docker-setup.sh` / `.ps1` | Cross-platform wrapper scripts for Docker Compose commands |
-| `keycloak/nitte-realm.json` | Pre-configured realm with users, roles, clients. Auto-imported on first Keycloak boot |
+| `keycloak/nitte-realm.json` | Pre-configured realm with users, roles, clients (`nitte-client`, `jenkins-client`, `grafana-client`, `observability-proxy`). Auto-imported on first Keycloak boot |
+| `keycloak/themes/nitte/` | Custom Keycloak dark theme — `login.ftl`, `login-config-totp.ftl`, `login-otp.ftl`, `nitte.css` |
 | `node-backend/src/routes/authSimple.js` | Signup + login logic (Keycloak Direct Grant, RS256 verification) |
 | `node-backend/src/routes/adminUsers.js` | Approve/reject logic, Keycloak user enable/disable |
 | `node-backend/src/config/keycloak.js` | Keycloak helpers: createUser, passwordGrant, verifyAccessToken, setUserEnabled |
@@ -371,4 +382,6 @@ Because the git repo is local (mounted into the Jenkins container), Jenkins read
 - **Keycloak realm import happens only on first boot.** If you edit `nitte-realm.json`, run `docker compose down -v` to wipe volumes, then start again to re-import.
 - **New signups create a disabled Keycloak user.** The admin approval step is the only way to enable them and assign the `alumni` role.
 - **In production**, Keycloak runs behind a branded custom domain (e.g., `login.yourapp.com`) with custom CSS theming. End users never see the Keycloak admin console.
+- **Prometheus and Jaeger** no longer have direct external port mappings — all access goes through `oauth2-proxy`. Internal services (Grafana datasource, alertmanager) still reach them via Docker network.
+- **Grafana OAuth state** is persisted in a named Docker volume (`grafana_data`). If the volume is wiped and recreated, user auth_id links are fresh and auto-resolved via email lookup (`GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP=true`).
 
