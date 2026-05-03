@@ -105,11 +105,11 @@ First run takes ~5–10 minutes. Subsequent runs (cached layers): ~30 seconds.
 ### External Users (Alumni/Admin Portal)
 | Role | Username | Password |
 |---|---|---|
-| Site Admin | `admin@nitte.edu` | `admin@123` — **2FA (TOTP) required** |
+| Site Admin | `admin@nitte.edu` | `admin@123` |
 | Alumni | `alumni@nitte.edu` | `alumni@123` |
-| Merchant | `merchant@nitte.edu` | `merchant@123` — **2FA (TOTP) required** |
-| Amazon Merchant | `amazon-merchant@amazon.com` | `Amazon@123` — **2FA (TOTP) required** |
-| Flipkart Merchant | `flipkart-merchant@flipkart.com` | `Flipkart@123` — **2FA (TOTP) required** |
+| Merchant | `merchant@nitte.edu` | `merchant@123` |
+| Amazon Merchant | `amazon-merchant@amazon.com` | `Amazon@123` |
+| Flipkart Merchant | `flipkart-merchant@flipkart.com` | `Flipkart@123` |
 
 ### Internal Users (nitte.ac.in Domain)
 | Role | Username | Password | Access |
