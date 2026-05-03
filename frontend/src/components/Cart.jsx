@@ -17,14 +17,70 @@ function loadRazorpayScript() {
   })
 }
 
-// Ensure Razorpay modal appears above all content with proper dark backdrop
+// Force dark backdrop on any Razorpay elements that appear
+function forceRazorpayDarkBackdrop() {
+  setTimeout(() => {
+    // Find and style all razorpay-related elements
+    const selectors = [
+      '.razorpay-backdrop',
+      '.razorpay-payment-backdrop',
+      '[class*="razorpay"]',
+      'iframe[name*="razorpay"]',
+      'iframe[src*="razorpay"]'
+    ]
+    selectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        if (el.className && el.className.includes('backdrop')) {
+          el.style.cssText = 'z-index: 2147483646 !important; background-color: rgba(0,0,0,0.8) !important; opacity: 1 !important;'
+        }
+        if (el.tagName === 'IFRAME') {
+          el.style.zIndex = '2147483647'
+        }
+      })
+    })
+    // Also inject a style tag into body for any dynamically created elements
+    if (!document.getElementById('rzp-dark-styles')) {
+      const style = document.createElement('style')
+      style.id = 'rzp-dark-styles'
+      style.textContent = `
+        .razorpay-backdrop, .razorpay-payment-backdrop { 
+          background: rgba(0,0,0,0.8) !important; 
+        }
+      `
+      document.body.appendChild(style)
+    }
+  }, 100)
+}
+
+// Aggressive CSS to force dark backdrop on Razorpay modal
 const razorpayStyles = `
-  .razorpay-container { z-index: 9999 !important; }
-  .razorpay-backdrop { 
-    z-index: 9998 !important; 
-    background: rgba(0,0,0,0.6) !important; 
+  /* Main container */
+  .razorpay-container { 
+    z-index: 2147483647 !important; 
   }
-  .razorpay-checkout-frame { z-index: 9999 !important; }
+  /* Backdrop - multiple selectors for different Razorpay versions */
+  .razorpay-backdrop,
+  .razorpay-payment-backdrop,
+  [class*="razorpay"][class*="backdrop"],
+  [class*="razorpay"][class*="overlay"] { 
+    z-index: 2147483646 !important; 
+    background-color: rgba(0, 0, 0, 0.75) !important;
+    opacity: 1 !important;
+  }
+  /* The iframe/modal itself */
+  .razorpay-checkout-frame,
+  .razorpay-payment-frame,
+  iframe[name*="razorpay"],
+  iframe[src*="razorpay"] { 
+    z-index: 2147483647 !important;
+  }
+  /* Any white overlay that might appear */
+  [class*="razorpay"] { 
+    background-color: transparent !important; 
+  }
+  .razorpay-backdrop { 
+    background-color: rgba(0, 0, 0, 0.75) !important; 
+  }
 `
 
 export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, setCurrentPage }) {
@@ -110,6 +166,7 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
           reject(new Error(resp.error?.description || 'Payment failed'))
         )
         rzp.open()
+        forceRazorpayDarkBackdrop()
       })
 
       setOrderPlaced(true)
