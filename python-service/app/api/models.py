@@ -74,6 +74,7 @@ class OrderCreate(BaseModel):
     shipping_address: str
     notes: Optional[str] = ""
     status: str = "pending"
+    payment: Optional[PaymentInfo] = None
 
 class OrderUpdate(BaseModel):
     status: Optional[str] = None
