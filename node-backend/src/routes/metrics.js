@@ -97,57 +97,17 @@ router.get('/query_range', async (req, res) => {
  */
 router.get('/dashboard', async (req, res) => {
   try {
-    // Get the metrics register to read counters directly
-    const { productsViewed, ordersCreated, authAttempts, databaseOperations } = await import('../metrics.js').then(m => {
-      const metrics = m.register.metrics();
-      return { productsViewed: 0, ordersCreated: 0, authAttempts: 0, databaseOperations: 0 };
-    });
-    
-    // Parse the Prometheus format metrics to get current values
-    let metricsText = '';
-    try {
-      const { register } = await import('../metrics.js');
-      metricsText = await register.metrics();
-    } catch (e) {
-      logger.warn('Could not read local metrics:', e.message);
-    }
-    
-    let productsViewedVal = 0;
-    let ordersCreatedVal = 0;
-    let authAttemptsVal = 0;
-    let dbOpsVal = 0;
-    
-    // Extract values from Prometheus text format
-    const lines = metricsText.split('\n');
-    for (const line of lines) {
-      if (line.match(/^products_viewed_total\s+\d/) && !line.includes('{')) {
-        productsViewedVal = parseFloat(line.split(/\s+/)[1]) || 0;
-      }
-      if (line.match(/^orders_created_total\s+\d/) && !line.includes('{')) {
-        ordersCreatedVal = parseFloat(line.split(/\s+/)[1]) || 0;
-      }
-      if (line.match(/^auth_attempts_total\s+\d/) && !line.includes('{')) {
-        authAttemptsVal = parseFloat(line.split(/\s+/)[1]) || 0;
-      }
-      if (line.match(/^database_operations_total\s+\d/) && !line.includes('{')) {
-        dbOpsVal = parseFloat(line.split(/\s+/)[1]) || 0;
-      }
-    }
-    
-    // Query Prometheus for request metrics
+    // All metrics queried from Prometheus using rate() for per-second accuracy
     const queries = {
       requests_per_sec: 'sum(rate(http_requests_total[5m]))',
       error_rate: 'sum(rate(http_requests_total{status_code=~"5.."}[5m])) / (sum(rate(http_requests_total[5m])) + 0.0001)',
       p95_latency: 'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))',
       active_connections: 'active_connections',
+      products_viewed: 'rate(products_viewed_total[5m])',
+      orders_rate: 'rate(orders_created_total[5m])',
     };
 
-    const results = {
-      products_viewed: productsViewedVal.toFixed(2),
-      orders_rate: ordersCreatedVal.toFixed(2),
-      auth_attempts: authAttemptsVal.toFixed(2),
-      db_operations: dbOpsVal.toFixed(2),
-    };
+    const results = {};
 
     // Query each Prometheus metric
     for (const [key, query] of Object.entries(queries)) {
