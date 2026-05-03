@@ -17,21 +17,6 @@ function loadRazorpayScript() {
   })
 }
 
-// CSS to hide or make transparent any full-screen div that Razorpay creates
-const razorpayBackdropStyles = `
-  /* Target any fixed position div that might be the backdrop */
-  div[style*="position: fixed"],
-  div[style*="position:fixed"] {
-    background-color: transparent !important;
-  }
-  /* Target Razorpay backdrop specifically */
-  .razorpay-backdrop,
-  .razorpay-overlay {
-    background-color: transparent !important;
-    background: transparent !important;
-  }
-`
-
 export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, setCurrentPage }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -168,9 +153,7 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
   }
 
   return (
-    <>
-      <style>{razorpayBackdropStyles}</style>
-      <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <p className="text-xs font-semibold text-indigo-600 tracking-wider uppercase">Checkout</p>
@@ -312,6 +295,5 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
         </aside>
       </div>
     </div>
-    </>
   )
 }
