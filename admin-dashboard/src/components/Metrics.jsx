@@ -133,14 +133,15 @@ export default function Metrics() {
     }
   }
 
-  // Real service health from Prometheus `up` query
+  // Real service health from Prometheus `up` query — routed via backend proxy
+  // (Prometheus is auth-gated; only @nitte.ac.in users can access it directly)
   const fetchServiceHealth = async () => {
     try {
-      const res = await axios.get(`${PROM_URL}/api/v1/query`, {
+      const res = await axios.get(`${API_BASE}/api/v1/metrics/query`, {
         params: { query: 'up' },
         timeout: 3000,
       })
-      const rows = res.data?.data?.result || []
+      const rows = res.data?.data?.data?.result || res.data?.data?.result || []
       const list = rows.map((r) => ({
         job: r.metric.job || 'unknown',
         instance: r.metric.instance,
