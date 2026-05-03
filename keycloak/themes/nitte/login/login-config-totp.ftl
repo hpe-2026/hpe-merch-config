@@ -49,10 +49,15 @@
                  autocomplete="off" placeholder="e.g. My Phone"/>
         </div>
 
-        <input type="submit" class="btn" value="Activate 2FA"/>
+        <input type="submit" class="btn" id="saveTOTPBtn" value="Activate 2FA"/>
       </form>
 
     </div>
   </div>
+  <script>
+    document.getElementById('saveTOTPBtn').addEventListener('click', function () {
+      document.getElementById('totp-hidden').value = document.getElementById('totp').value;
+    });
+  </script>
 </body>
 </html>
