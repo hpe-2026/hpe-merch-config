@@ -168,6 +168,10 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
             email: user?.email || '',
           },
           theme: { color: '#4f46e5' },
+          modal: {
+            backdrop: 'rgba(0,0,0,0.3)',
+            ondismiss: () => reject(new Error('cancelled')),
+          },
           handler: async (response) => {
             try {
               // Step 3 — verify signature + create DB order
