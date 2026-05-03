@@ -40,6 +40,7 @@ import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import metricsRoutes from './routes/metrics.js';
 import jaegerRoutes from './routes/jaeger.js';
+import paymentsRoutes from './routes/payments.js';
 
 const app = express();
 
@@ -315,6 +316,7 @@ app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/metrics', metricsRoutes);
 app.use('/api/v1/jaeger', jaegerRoutes);
+app.use('/api/v1/payments', paymentsRoutes);
 
 // ============================ POLICY SYSTEM ============================
 // Initialize RBAC policy engine

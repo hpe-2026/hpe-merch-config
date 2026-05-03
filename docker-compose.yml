@@ -115,6 +115,8 @@ services:
       CORS_ORIGINS: http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:8080
       LOG_LEVEL: info
       REQUEST_TIMEOUT: 30000
+      RAZORPAY_KEY_ID: rzp_test_SkyURyeOfwXob0
+      RAZORPAY_KEY_SECRET: 5oyFiJoBoScZ3wFDq2wgm4lq
     depends_on:
       - mongodb
       - keycloak

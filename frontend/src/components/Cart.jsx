@@ -1,17 +1,31 @@
-import { useState } from 'react'
-import { Trash2, ShoppingBag, AlertCircle, CheckCircle2, Minus, Plus, Lock, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Trash2, ShoppingBag, AlertCircle, CheckCircle2, Minus, Plus, Loader2, CreditCard } from 'lucide-react'
 import axios from 'axios'
 import { API_BASE } from '../config/api'
 import { useAuthStore } from '../features/auth/store/authStore'
 import { useCartStore } from '../features/cart/store/cartStore'
+
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (document.getElementById('razorpay-sdk')) return resolve(true)
+    const script = document.createElement('script')
+    script.id = 'razorpay-sdk'
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
 
 export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, setCurrentPage }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [orderPlaced, setOrderPlaced] = useState(false)
   const token = useAuthStore(state => state.token)
-
+  const user = useAuthStore(state => state.user)
   const clearCart = useCartStore((s) => s.clearCart)
+
+  useEffect(() => { loadRazorpayScript() }, [])
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
   const tax = subtotal * 0.08
@@ -20,52 +34,81 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
   const fmt = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
 
   const handleCheckout = async () => {
-    if (cartItems.length === 0) {
-      setError('Your cart is empty')
-      return
-    }
+    if (cartItems.length === 0) { setError('Your cart is empty'); return }
+    if (!token) { setError('Please log in first to place an order'); return }
 
     try {
       setLoading(true)
       setError(null)
 
-      if (!token) {
-        setError('Please log in first to place an order')
-        setLoading(false)
-        return
-      }
+      const loaded = await loadRazorpayScript()
+      if (!loaded) { setError('Failed to load Razorpay. Check your connection.'); setLoading(false); return }
 
-      const orderData = {
-        items: cartItems.map(item => ({
-          product_id: item._id,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        shipping_address: 'Demo Address, City, State 12345',
-        notes: 'Demo order - please deliver ASAP',
-        status: 'pending'
-      }
-
-      const response = await axios.post(
-        `${API_BASE}/api/v1/orders`,
-        orderData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
+      // Step 1 — create Razorpay order on backend
+      const { data: initData } = await axios.post(
+        `${API_BASE}/api/v1/payments/create-order`,
+        { amount: total },
+        { headers: { Authorization: `Bearer ${token}` } }
       )
-      
+
+      const { razorpay_order_id, amount, currency, key_id } = initData.data
+
+      // Step 2 — open Razorpay modal
+      await new Promise((resolve, reject) => {
+        const options = {
+          key: key_id,
+          amount,
+          currency,
+          name: 'NITTE Alumni Shop',
+          description: `${itemCount} item${itemCount !== 1 ? 's' : ''}`,
+          order_id: razorpay_order_id,
+          prefill: {
+            name: user?.name || user?.username || '',
+            email: user?.email || '',
+          },
+          theme: { color: '#4f46e5' },
+          handler: async (response) => {
+            try {
+              // Step 3 — verify signature + create DB order
+              await axios.post(
+                `${API_BASE}/api/v1/payments/verify`,
+                {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  items: cartItems.map(item => ({
+                    product_id: item._id,
+                    quantity: item.quantity,
+                    price: item.price,
+                  })),
+                  shipping_address: 'Demo Address, City, State 12345',
+                  notes: 'Paid via Razorpay',
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+              )
+              resolve()
+            } catch (err) {
+              reject(new Error(err.response?.data?.message || 'Order creation failed after payment'))
+            }
+          },
+          modal: {
+            ondismiss: () => reject(new Error('cancelled')),
+          },
+        }
+        const rzp = new window.Razorpay(options)
+        rzp.on('payment.failed', (resp) =>
+          reject(new Error(resp.error?.description || 'Payment failed'))
+        )
+        rzp.open()
+      })
+
       setOrderPlaced(true)
       clearCart()
-
-      setTimeout(() => {
-        setCurrentPage('orders')
-        setOrderPlaced(false)
-      }, 1800)
+      setTimeout(() => { setCurrentPage('orders'); setOrderPlaced(false) }, 1800)
     } catch (err) {
-      setError('Failed to place order. ' + (err.response?.data?.message || err.message))
+      if (err.message !== 'cancelled') {
+        setError(err.message || 'Payment failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -235,18 +278,18 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Placing order…
+                  Opening Razorpay…
                 </>
               ) : (
                 <>
-                  <Lock className="w-4 h-4" />
-                  Place order · {fmt(total)}
+                  <CreditCard className="w-4 h-4" />
+                  Pay {fmt(total)} · Razorpay
                 </>
               )}
             </button>
 
             <p className="mt-3 text-xs text-slate-500 text-center">
-              Secure checkout · Free shipping on all orders
+              Secured by Razorpay · Free shipping on all orders
             </p>
           </div>
         </aside>
