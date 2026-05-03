@@ -26,6 +26,7 @@ function startBackdropObserver() {
   backdropObserver = new MutationObserver(() => {
     const backdrop = document.querySelector('.razorpay-backdrop, .razorpay-payment-backdrop')
     const modal = document.querySelector('.razorpay-container, .razorpay-checkout-frame')
+    const iframes = document.querySelectorAll('iframe[src*="razorpay"]')
     
     if (backdrop) {
       backdrop.style.setProperty('background-color', 'transparent', 'important')
@@ -37,6 +38,14 @@ function startBackdropObserver() {
       modal.style.setProperty('background-color', 'transparent', 'important')
       modal.style.setProperty('background', 'transparent', 'important')
     }
+    
+    // Also target any div with white background that might be the backdrop
+    document.querySelectorAll('div[class*="razorpay"], div[class*="backdrop"]').forEach(el => {
+      const computed = window.getComputedStyle(el)
+      if (computed.backgroundColor === 'rgb(255, 255, 255)' || computed.backgroundColor === '#ffffff') {
+        el.style.setProperty('background-color', 'transparent', 'important')
+      }
+    })
   })
 
   backdropObserver.observe(document.body, {
@@ -59,6 +68,7 @@ function forceRazorpayTransparentBackdrop() {
   setTimeout(() => {
     const backdrop = document.querySelector('.razorpay-backdrop, .razorpay-payment-backdrop')
     const modal = document.querySelector('.razorpay-container, .razorpay-checkout-frame')
+    const iframes = document.querySelectorAll('iframe[src*="razorpay"]')
     
     if (backdrop) {
       backdrop.style.cssText = 'background-color: transparent !important; background: transparent !important; opacity: 0.3 !important; z-index: 2147483646 !important;'
@@ -67,6 +77,14 @@ function forceRazorpayTransparentBackdrop() {
     if (modal) {
       modal.style.cssText = 'background-color: transparent !important; background: transparent !important; z-index: 2147483647 !important;'
     }
+    
+    // Target any white background divs
+    document.querySelectorAll('div[class*="razorpay"], div[class*="backdrop"]').forEach(el => {
+      const computed = window.getComputedStyle(el)
+      if (computed.backgroundColor === 'rgb(255, 255, 255)' || computed.backgroundColor === '#ffffff') {
+        el.style.setProperty('background-color', 'transparent', 'important')
+      }
+    })
     
     startBackdropObserver()
   }, 50)
