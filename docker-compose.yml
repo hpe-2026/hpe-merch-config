@@ -225,8 +225,10 @@ services:
     ports:
       - "9090:4180"
     depends_on:
-      - prometheus
-      - keycloak
+      prometheus:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
     networks:
       - nitte-network
 
@@ -253,8 +255,10 @@ services:
     ports:
       - "16686:4181"
     depends_on:
-      - jaeger
-      - keycloak
+      jaeger:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
     networks:
       - nitte-network
 
