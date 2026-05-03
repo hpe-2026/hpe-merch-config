@@ -98,6 +98,24 @@
       "fullScopeAllowed": true
     },
     {
+      "clientId": "observability-proxy",
+      "name": "Observability Proxy",
+      "description": "oauth2-proxy client for Prometheus and Jaeger",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "observability-proxy-secret",
+      "redirectUris": [
+        "http://localhost:9090/oauth2/callback",
+        "http://localhost:16686/oauth2/callback"
+      ],
+      "webOrigins": ["http://localhost:9090", "http://localhost:16686"],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": true
+    },
+    {
       "clientId": "grafana-client",
       "name": "Grafana Monitoring",
       "description": "Client for Grafana OAuth2 SSO",
