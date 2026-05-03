@@ -108,8 +108,13 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
         // Try to override backdrop after modal opens
         setTimeout(() => {
           const backdrop = document.querySelector('.razorpay-backdrop')
+          const container = document.querySelector('.razorpay-container')
+          
           if (backdrop) {
             backdrop.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'
+          }
+          if (container) {
+            container.style.backgroundColor = 'transparent'
           }
         }, 100)
       })
