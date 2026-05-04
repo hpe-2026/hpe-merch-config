@@ -34,9 +34,7 @@ future_iso() { date -u -d "+${1:-15} minutes" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null 
                || date -u -v+${1:-15}M +"%Y-%m-%dT%H:%M:%SZ"; }   # macOS fallback
 
 check_deps() {
-  for cmd in curl jq; do
-    command -v "$cmd" &>/dev/null || { err "Required: $cmd"; exit 1; }
-  done
+  command -v curl &>/dev/null || { err "Required: curl"; exit 1; }
   curl -fsS "$AM/-/healthy" &>/dev/null || { err "Alertmanager not reachable at $AM"; exit 1; }
 }
 
@@ -47,80 +45,19 @@ post_alerts() {
 
   step "Posting synthetic alerts to Alertmanager ($AM)…"
 
+  # Build JSON payload in pure Bash (no jq needed)
+  local JSON
+  JSON=$(printf '[
+  {"labels":{"alertname":"BackendDown","severity":"critical","job":"node-backend","instance":"node-backend:3000","source":"simulation"},"annotations":{"summary":"Backend API is down","description":"[SIMULATION] node-backend unreachable for > 1 minute."},"startsAt":"%s","endsAt":"%s"},
+  {"labels":{"alertname":"HighErrorRate","severity":"critical","source":"simulation"},"annotations":{"summary":"High HTTP 5xx error rate","description":"[SIMULATION] 5xx error rate is 12%% over the last 5 minutes."},"startsAt":"%s","endsAt":"%s"},
+  {"labels":{"alertname":"HighLatencyP95","severity":"critical","source":"simulation"},"annotations":{"summary":"p95 latency above 2s","description":"[SIMULATION] 95th percentile response time is 3.2s."},"startsAt":"%s","endsAt":"%s"},
+  {"labels":{"alertname":"HighAuthFailureRate","severity":"warning","source":"simulation"},"annotations":{"summary":"High authentication failure rate","description":"[SIMULATION] 45%% of auth attempts are failing — possible brute force."},"startsAt":"%s","endsAt":"%s"},
+  {"labels":{"alertname":"NoOrdersRecently","severity":"warning","source":"simulation"},"annotations":{"summary":"No orders placed in 30 minutes","description":"[SIMULATION] Zero orders created in the last 30 minutes."},"startsAt":"%s","endsAt":"%s"}
+]' "$STARTS" "$ENDS" "$STARTS" "$ENDS" "$STARTS" "$ENDS" "$STARTS" "$ENDS" "$STARTS" "$ENDS")
+
   curl -s -X POST "$AM/api/v2/alerts" \
     -H "Content-Type: application/json" \
-    -d "$(jq -n \
-      --arg s "$STARTS" --arg e "$ENDS" \
-      '[
-        {
-          "labels": {
-            "alertname": "BackendDown",
-            "severity":  "critical",
-            "job":       "node-backend",
-            "instance":  "node-backend:3000",
-            "source":    "simulation"
-          },
-          "annotations": {
-            "summary":     "Backend API is down",
-            "description": "[SIMULATION] node-backend unreachable for > 1 minute."
-          },
-          "startsAt": $s,
-          "endsAt":   $e
-        },
-        {
-          "labels": {
-            "alertname": "HighErrorRate",
-            "severity":  "critical",
-            "source":    "simulation"
-          },
-          "annotations": {
-            "summary":     "High HTTP 5xx error rate",
-            "description": "[SIMULATION] 5xx error rate is 12% over the last 5 minutes."
-          },
-          "startsAt": $s,
-          "endsAt":   $e
-        },
-        {
-          "labels": {
-            "alertname": "HighLatencyP95",
-            "severity":  "critical",
-            "source":    "simulation"
-          },
-          "annotations": {
-            "summary":     "p95 latency above 2s",
-            "description": "[SIMULATION] 95th percentile response time is 3.2s."
-          },
-          "startsAt": $s,
-          "endsAt":   $e
-        },
-        {
-          "labels": {
-            "alertname": "HighAuthFailureRate",
-            "severity":  "warning",
-            "source":    "simulation"
-          },
-          "annotations": {
-            "summary":     "High authentication failure rate",
-            "description": "[SIMULATION] 45% of auth attempts are failing — possible brute force."
-          },
-          "startsAt": $s,
-          "endsAt":   $e
-        },
-        {
-          "labels": {
-            "alertname": "NoOrdersRecently",
-            "severity":  "warning",
-            "source":    "simulation"
-          },
-          "annotations": {
-            "summary":     "No orders placed in 30 minutes",
-            "description": "[SIMULATION] Zero orders created in the last 30 minutes."
-          },
-          "startsAt": $s,
-          "endsAt":   $e
-        }
-      ]'
-    )" > /dev/null
+    -d "$JSON" > /dev/null
 
   ok "5 synthetic alerts posted — active for 15 minutes"
   info "View at: $AM/#/alerts"
@@ -133,18 +70,19 @@ resolve_alerts() {
   local PAST; PAST=$(date -u -d "-1 minute" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null \
                     || date -u -v-1M +"%Y-%m-%dT%H:%M:%SZ")
 
-  # Post same alerts with endsAt in the past to mark them resolved
+  # Build resolve payload in pure Bash (no jq needed)
+  local JSON
+  JSON=$(printf '[
+  {"labels":{"alertname":"BackendDown","source":"simulation"},"endsAt":"%s","startsAt":"%s"},
+  {"labels":{"alertname":"HighErrorRate","source":"simulation"},"endsAt":"%s","startsAt":"%s"},
+  {"labels":{"alertname":"HighLatencyP95","source":"simulation"},"endsAt":"%s","startsAt":"%s"},
+  {"labels":{"alertname":"HighAuthFailureRate","source":"simulation"},"endsAt":"%s","startsAt":"%s"},
+  {"labels":{"alertname":"NoOrdersRecently","source":"simulation"},"endsAt":"%s","startsAt":"%s"}
+]' "$PAST" "$PAST" "$PAST" "$PAST" "$PAST" "$PAST" "$PAST" "$PAST" "$PAST" "$PAST")
+
   curl -s -X POST "$AM/api/v2/alerts" \
     -H "Content-Type: application/json" \
-    -d "$(jq -n --arg p "$PAST" \
-      '[
-        {"labels":{"alertname":"BackendDown",       "source":"simulation"},"endsAt":$p,"startsAt":$p},
-        {"labels":{"alertname":"HighErrorRate",      "source":"simulation"},"endsAt":$p,"startsAt":$p},
-        {"labels":{"alertname":"HighLatencyP95",     "source":"simulation"},"endsAt":$p,"startsAt":$p},
-        {"labels":{"alertname":"HighAuthFailureRate","source":"simulation"},"endsAt":$p,"startsAt":$p},
-        {"labels":{"alertname":"NoOrdersRecently",   "source":"simulation"},"endsAt":$p,"startsAt":$p}
-      ]'
-    )" > /dev/null
+    -d "$JSON" > /dev/null
 
   ok "Synthetic alerts resolved"
 }
@@ -194,17 +132,28 @@ show_alert_status() {
   printf '\n%s%s Alertmanager — current firing alerts %s%s\n' "$BOLD$CYAN" "═══" "═══" "$NC"
   local resp
   resp=$(curl -s "$AM/api/v2/alerts?active=true" 2>/dev/null || echo "[]")
-  local count; count=$(echo "$resp" | jq 'length' 2>/dev/null || echo "0")
+  # Simple grep-based count instead of jq
+  local count; count=$(echo "$resp" | grep -o '"alertname"' | wc -l | tr -d ' ')
   if [[ "$count" -eq 0 ]]; then
     info "No active alerts"
   else
-    echo "$resp" | jq -r '.[] | "  \(.labels.severity | ascii_upcase) \(.labels.alertname) — \(.annotations.summary)"' 2>/dev/null || echo "$resp"
+    # Simple sed/awk extraction instead of jq
+    echo "$resp" | grep -o '"alertname":"[^"]*"' | sed 's/"alertname":"//g;s/"//g' | while read -r name; do
+      printf '  %s\n' "$name"
+    done
   fi
 
   printf '\n%s%s Prometheus — alert states %s%s\n' "$BOLD$CYAN" "═══" "═══" "$NC"
-  curl -s "$PROM/api/v1/alerts" 2>/dev/null \
-    | jq -r '.data.alerts[] | "  \(.state | ascii_upcase) \(.labels.alertname) (\(.labels.severity))"' 2>/dev/null \
-    || info "Could not reach Prometheus"
+  local prom_resp
+  prom_resp=$(curl -s "$PROM/api/v1/alerts" 2>/dev/null || echo '')
+  if [[ -n "$prom_resp" ]]; then
+    # Extract alert names with grep instead of jq
+    echo "$prom_resp" | grep -o '"alertname":"[^"]*"' | sed 's/"alertname":"//g;s/"//g' | while read -r name; do
+      printf '  %s\n' "$name"
+    done
+  else
+    info "Could not reach Prometheus"
+  fi
   echo
 }
 
