@@ -303,10 +303,9 @@ start_port_forwards() {
 
   pf_bg() {
     local label="$1" svc="$2" ports="$3"
-    ( while true; do
-        kubectl port-forward -n "$NS" "svc/$svc" $ports >/dev/null 2>&1
-        sleep 1
-      done ) &
+    nohup bash -c "while true; do kubectl port-forward -n ${NS} svc/${svc} ${ports} 2>/dev/null; sleep 2; done" \
+      >/dev/null 2>&1 &
+    disown $!
     echo $! >> "$PF_PIDS_FILE"
     ok "Port-forward: $label  ($ports)"
   }
@@ -599,6 +598,7 @@ main() {
   case "$action" in
     start)   start_services ;;
     stop)    stop_services ;;
+    forward) stop_port_forwards_quiet; start_port_forwards; mount_repo_for_jenkins ;;
     restart) restart_services ;;
     clean)   clean_all ;;
     status)  show_status ;;
