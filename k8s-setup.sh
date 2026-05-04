@@ -107,6 +107,40 @@ ensure_minikube() {
   ok "Docker pointed at minikube"
 }
 
+# ---------- Pull standard images into minikube's daemon ---------------------
+pull_base_images() {
+  header "Pulling Standard Images into Minikube"
+
+  local images=(
+    "confluentinc/cp-zookeeper:7.3.0"
+    "confluentinc/cp-kafka:7.3.0"
+    "prom/prometheus:v2.48.0"
+    "prom/alertmanager:v0.26.0"
+    "grafana/grafana:10.2.2"
+    "grafana/loki:2.9.4"
+    "grafana/promtail:2.9.4"
+    "jaegertracing/all-in-one:1.52"
+    "quay.io/oauth2-proxy/oauth2-proxy:v7.6.0"
+    "busybox:1.35"
+    "curlimages/curl:8.5.0"
+  )
+
+  local total=${#images[@]} idx=0 pids=()
+  for img in "${images[@]}"; do
+    idx=$((idx+1))
+    if docker image inspect "$img" &>/dev/null; then
+      ok "[$idx/$total] cached: $img"
+    else
+      step "[$idx/$total] pulling $img…"
+      docker pull "$img" >/dev/null 2>&1 &
+      pids+=($!)
+    fi
+  done
+
+  for pid in "${pids[@]}"; do wait "$pid" || true; done
+  ok "All standard images ready in minikube"
+}
+
 # ---------- Build custom images ----------------------------------------------
 build_images() {
   header "Building Custom Images"
@@ -336,6 +370,7 @@ probe_api() {
 start_services() {
   check_prereqs
   ensure_minikube
+  pull_base_images
   build_images
   step "Creating namespace…"
   kubectl apply -f "$K8S_DIR/namespace.yaml" >/dev/null
