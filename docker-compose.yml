@@ -356,7 +356,7 @@ services:
       - jenkins_data:/var/jenkins_home
       - ./jenkins/casc:/var/jenkins_home/casc:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - /home/languid/Downloads/HPE/HPE-stuff:/home/languid/Downloads/HPE/HPE-stuff:ro
+      - .:/workspace/repo:ro
     depends_on:
       - keycloak
     networks:
