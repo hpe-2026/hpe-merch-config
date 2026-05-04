@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-setup
+  namespace: nitte
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: keycloak-setup
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+      - name: wait-for-keycloak
+        image: curlimages/curl:8.5.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for Keycloak to be ready..."
+          until curl -fsS http://keycloak:8080/realms/master > /dev/null 2>&1; do
+            echo "  keycloak not ready yet, sleeping 5s..."
+            sleep 5
+          done
+          echo "Keycloak is ready!"
+      containers:
+      - name: keycloak-setup
+        image: quay.io/keycloak/keycloak:20.0.0
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh", "/bootstrap.sh"]
+        volumeMounts:
+        - name: bootstrap-script
+          mountPath: /bootstrap.sh
+          subPath: keycloak-bootstrap.sh
+          readOnly: true
+      volumes:
+      - name: bootstrap-script
+        configMap:
+          name: keycloak-bootstrap-config
+          defaultMode: 0755
+          items:
+          - key: keycloak-bootstrap.sh
+            path: keycloak-bootstrap.sh

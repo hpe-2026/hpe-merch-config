@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins
+  namespace: nitte
+  labels:
+    app: jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      initContainers:
+      - name: wait-for-keycloak
+        image: busybox:1.35
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nc -z keycloak 8080; do echo "waiting for keycloak"; sleep 5; done']
+      containers:
+      - name: jenkins
+        image: nitte-jenkins:1.0.0
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        - containerPort: 50000
+        env:
+        - name: JAVA_OPTS
+          value: "-Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true"
+        - name: CASC_JENKINS_CONFIG
+          value: "/var/jenkins_home/casc/jenkins.yaml"
+        volumeMounts:
+        - name: jenkins-data
+          mountPath: /var/jenkins_home
+        - name: jenkins-casc
+          mountPath: /var/jenkins_home/casc/jenkins.yaml
+          subPath: jenkins.yaml
+          readOnly: true
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+        - name: workspace-repo
+          mountPath: /workspace/repo
+          readOnly: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /login
+            port: 8080
+          initialDelaySeconds: 90
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /login
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 10
+      volumes:
+      - name: jenkins-data
+        persistentVolumeClaim:
+          claimName: jenkins-pvc
+      - name: jenkins-casc
+        configMap:
+          name: jenkins-casc-config
+          items:
+          - key: jenkins.yaml
+            path: jenkins.yaml
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+      - name: workspace-repo
+        hostPath:
+          path: /workspace/repo
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins
+  namespace: nitte
+spec:
+  selector:
+    app: jenkins
+  ports:
+  - name: web
+    port: 8080
+    targetPort: 8080
+  - name: agent
+    port: 50000
+    targetPort: 50000
+  type: ClusterIP
