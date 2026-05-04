@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: nitte
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+      - name: keycloak
+        image: quay.io/keycloak/keycloak:20.0.0
+        imagePullPolicy: IfNotPresent
+        args: ["start-dev", "--import-realm"]
+        ports:
+        - containerPort: 8080
+        env:
+        - name: KEYCLOAK_ADMIN
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: KEYCLOAK_ADMIN
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: KEYCLOAK_ADMIN_PASSWORD
+        - name: KC_DB
+          value: dev-file
+        - name: KC_FEATURES
+          value: import-realm
+        - name: KEYCLOAK_IMPORT
+          value: /opt/keycloak/data/import/nitte-realm.json
+        - name: KC_HOSTNAME_URL
+          value: http://localhost:8080
+        - name: KC_HOSTNAME_STRICT
+          value: "false"
+        - name: KC_HOSTNAME_STRICT_HTTPS
+          value: "false"
+        volumeMounts:
+        - name: keycloak-realm
+          mountPath: /opt/keycloak/data/import/nitte-realm.json
+          subPath: nitte-realm.json
+          readOnly: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /realms/master
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /realms/master
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+      volumes:
+      - name: keycloak-realm
+        configMap:
+          name: keycloak-realm-config
+          items:
+          - key: nitte-realm.json
+            path: nitte-realm.json
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: nitte
+spec:
+  selector:
+    app: keycloak
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: ClusterIP

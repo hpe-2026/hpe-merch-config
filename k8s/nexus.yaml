@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexus
+  namespace: nitte
+  labels:
+    app: nexus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nexus
+  template:
+    metadata:
+      labels:
+        app: nexus
+    spec:
+      initContainers:
+      - name: wait-for-keycloak
+        image: busybox:1.35
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nc -z keycloak 8080; do echo "waiting for keycloak"; sleep 5; done']
+      containers:
+      - name: nexus
+        image: nitte-nexus:1.0.0
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8081
+        env:
+        - name: INSTALL4J_ADD_VM_PARAMS
+          value: "-Xms2g -Xmx2g -XX:MaxDirectMemorySize=2g"
+        - name: NEXUS_SECURITY_INITIAL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: NEXUS_INITIAL_PASSWORD
+        - name: KEYCLOAK_SERVER_URL
+          value: "http://keycloak:8080"
+        - name: KEYCLOAK_REALM
+          value: nitte-realm
+        - name: KEYCLOAK_CLIENT_ID
+          value: nexus-client
+        volumeMounts:
+        - name: nexus-data
+          mountPath: /nexus-data
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+          limits:
+            memory: "3Gi"
+            cpu: "1500m"
+        livenessProbe:
+          httpGet:
+            path: /service/rest/v1/status
+            port: 8081
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /service/rest/v1/status
+            port: 8081
+          initialDelaySeconds: 90
+          periodSeconds: 15
+          failureThreshold: 10
+      volumes:
+      - name: nexus-data
+        persistentVolumeClaim:
+          claimName: nexus-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus
+  namespace: nitte
+spec:
+  selector:
+    app: nexus
+  ports:
+  - port: 8081
+    targetPort: 8081
+  type: ClusterIP
