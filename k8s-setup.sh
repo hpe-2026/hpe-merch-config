@@ -337,6 +337,9 @@ start_services() {
   check_prereqs
   ensure_minikube
   build_images
+  step "Creating namespace…"
+  kubectl apply -f "$K8S_DIR/namespace.yaml" >/dev/null
+  ok "Namespace ready"
   create_configmaps
   deploy_manifests
   wait_ready
