@@ -78,17 +78,21 @@ class NotificationConsumer {
             const messageValue = message.value.toString('utf-8');
             const payload = JSON.parse(messageValue);
 
+            // Extract persistent identity from Kafka headers for cross-service correlation
+            const keycloakSubjectId = message.headers?.['keycloak-subject-id']?.toString('utf-8') || null;
+
             logger.info('Received message', {
               topic,
               partition,
               key: message.key?.toString('utf-8'),
+              keycloakSubjectId,
             });
 
             // Route to appropriate handler
             if (topic === config.kafka.topics.userApproved) {
-              await this.handleUserApproved(payload);
+              await this.handleUserApproved(payload, keycloakSubjectId);
             } else if (topic === config.kafka.topics.userRejected) {
-              await this.handleUserRejected(payload);
+              await this.handleUserRejected(payload, keycloakSubjectId);
             }
             notificationsProcessed.inc({ topic, status: 'success' });
           } catch (error) {
@@ -114,11 +118,12 @@ class NotificationConsumer {
   /**
    * Handle user-approved event
    */
-  async handleUserApproved(payload) {
+  async handleUserApproved(payload, keycloakSubjectId = null) {
     try {
       logger.info('Processing user approval notification', {
         user_id: payload.user_id,
         email: payload.email,
+        keycloakSubjectId,
       });
 
       const user = {
@@ -142,6 +147,7 @@ class NotificationConsumer {
 
       logger.info('Approval notification sent', {
         user_id: payload.user_id,
+        keycloakSubjectId,
         email: {
           sent: emailResult.success,
           method: emailResult.mode,
@@ -154,6 +160,7 @@ class NotificationConsumer {
     } catch (error) {
       logger.error('Error handling user approval:', error.message, {
         payload,
+        keycloakSubjectId,
       });
       throw error;
     }
@@ -162,11 +169,12 @@ class NotificationConsumer {
   /**
    * Handle user-rejected event
    */
-  async handleUserRejected(payload) {
+  async handleUserRejected(payload, keycloakSubjectId = null) {
     try {
       logger.info('Processing user rejection notification', {
         user_id: payload.user_id,
         email: payload.email,
+        keycloakSubjectId,
       });
 
       const user = {
@@ -194,6 +202,7 @@ class NotificationConsumer {
 
       logger.info('Rejection notification sent', {
         user_id: payload.user_id,
+        keycloakSubjectId,
         email: {
           sent: emailResult.success,
           method: emailResult.mode,
@@ -206,6 +215,7 @@ class NotificationConsumer {
     } catch (error) {
       logger.error('Error handling user rejection:', error.message, {
         payload,
+        keycloakSubjectId,
       });
       throw error;
     }

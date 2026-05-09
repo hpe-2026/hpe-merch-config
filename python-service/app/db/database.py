@@ -2,7 +2,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING
 import logging
 from app.config import settings
-from opentelemetry import trace
+from opentelemetry import trace, baggage
 from opentelemetry.trace import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -85,6 +85,18 @@ class MongoDatabase:
             span.set_attribute("mongodb.operation", operation_name)
             if query:
                 span.set_attribute("mongodb.query", str(query)[:100])  # Limit length
+            
+            # Attach persistent identity from propagated baggage
+            keycloak_subject_id = baggage.get_baggage("keycloak.subject_id")
+            keycloak_user_email = baggage.get_baggage("keycloak.user_email")
+            keycloak_user_roles = baggage.get_baggage("keycloak.user_roles")
+            if keycloak_subject_id:
+                span.set_attribute("keycloak.subject_id", keycloak_subject_id)
+            if keycloak_user_email:
+                span.set_attribute("keycloak.user_email", keycloak_user_email)
+            if keycloak_user_roles:
+                span.set_attribute("keycloak.user_roles", keycloak_user_roles)
+            
             return span
 
 # Global database instance

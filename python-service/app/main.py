@@ -11,7 +11,7 @@ import time
 import os
 
 # OpenTelemetry imports for Jaeger tracing
-from opentelemetry import trace
+from opentelemetry import trace, baggage
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -131,7 +131,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         return response
 
 class OTelMetadataMiddleware(BaseHTTPMiddleware):
-    """Add metadata to OpenTelemetry spans"""
+    """Add metadata to OpenTelemetry spans, including persistent identity from baggage"""
     async def dispatch(self, request, call_next):
         tracer = trace.get_tracer(__name__)
         
@@ -139,6 +139,18 @@ class OTelMetadataMiddleware(BaseHTTPMiddleware):
             span.set_attribute("http.method", request.method)
             span.set_attribute("http.url", str(request.url))
             span.set_attribute("http.target", request.url.path)
+            
+            # Extract persistent identity from propagated baggage for cross-service correlation
+            keycloak_subject_id = baggage.get_baggage("keycloak.subject_id")
+            keycloak_user_email = baggage.get_baggage("keycloak.user_email")
+            keycloak_user_roles = baggage.get_baggage("keycloak.user_roles")
+            
+            if keycloak_subject_id:
+                span.set_attribute("keycloak.subject_id", keycloak_subject_id)
+            if keycloak_user_email:
+                span.set_attribute("keycloak.user_email", keycloak_user_email)
+            if keycloak_user_roles:
+                span.set_attribute("keycloak.user_roles", keycloak_user_roles)
             
             response = await call_next(request)
             

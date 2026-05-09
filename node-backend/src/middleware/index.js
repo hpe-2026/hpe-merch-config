@@ -2,6 +2,32 @@ import jwt from 'jsonwebtoken';
 import authService from '../services/authService.js';
 import keycloakConfig from '../config/keycloak.js';
 import logger from '../config/logger.js';
+import { setKeycloakSubjectInBaggage } from '../tracing.js';
+import otelApi from '@opentelemetry/api';
+
+const { trace, context, baggage } = otelApi;
+
+/**
+ * Attach Keycloak identity to the active trace span and baggage.
+ * This enables persistent identity correlation across logs and traces.
+ */
+function attachPersistentIdentity(req, userId, email, roles) {
+  try {
+    const activeCtx = context.active();
+    const currentSpan = trace.getSpan(activeCtx);
+
+    if (currentSpan && currentSpan.setAttribute) {
+      currentSpan.setAttribute('keycloak.subject_id', userId || 'anonymous');
+      currentSpan.setAttribute('keycloak.user_email', email || 'anonymous');
+      currentSpan.setAttribute('keycloak.user_roles', JSON.stringify(roles || []));
+    }
+
+    // Also set baggage so identity propagates to downstream services
+    setKeycloakSubjectInBaggage(userId, email, roles);
+  } catch (err) {
+    logger.debug('Failed to attach persistent identity:', err.message);
+  }
+}
 
 export const authMiddleware = async (req, res, next) => {
   try {
@@ -25,6 +51,7 @@ export const authMiddleware = async (req, res, next) => {
         role: 'admin',
         userId: 'admin-user'
       };
+      attachPersistentIdentity(req, req.user.userId, req.user.email, req.user.roles);
       next();
       return;
     }
@@ -37,6 +64,7 @@ export const authMiddleware = async (req, res, next) => {
         roles: decoded.roles || (decoded.role ? [decoded.role] : ['user']),
         userId: decoded.user_id || decoded.id || decoded.sub,
       };
+      attachPersistentIdentity(req, req.user.userId, req.user.email, req.user.roles);
       next();
       return;
     } catch (jwtErr) {
@@ -56,6 +84,7 @@ export const authMiddleware = async (req, res, next) => {
         token: token,
         email_verified: userInfo.email_verified,
       };
+      attachPersistentIdentity(req, req.user.userId, req.user.email, req.user.roles);
       next();
       return;
     } catch (kcErr) {

@@ -25,6 +25,8 @@ spec:
         env:
         - name: ZOOKEEPER_CLIENT_PORT
           value: "2181"
+        - name: KAFKA_OPTS
+          value: "-XX:-UseContainerSupport"
         resources:
           requests:
             memory: "128Mi"
@@ -91,6 +93,8 @@ spec:
           value: "1"
         - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
           value: "true"
+        - name: KAFKA_OPTS
+          value: "-XX:-UseContainerSupport"
         resources:
           requests:
             memory: "256Mi"
