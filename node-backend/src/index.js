@@ -13,7 +13,7 @@ import {
   httpRequestsTotal,
   activeConnections,
 } from './metrics.js';
-import tracer from './tracing.js';
+import tracer, { trace, context, propagation, otelApi, sdk } from './tracing.js';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yaml';
 import fs from 'fs';
@@ -71,38 +71,41 @@ app.use((req, res, next) => {
   next();
 });
 
-// Jaeger tracing middleware
+// OpenTelemetry tracing middleware — creates a parent span for each request
+// and runs the middleware chain within its context so child spans and baggage propagate
 app.use((req, res, next) => {
   try {
-    // Only use tracer if it has the extract method (full SDK)
-    let span = null;
-    if (tracer && typeof tracer.extract === 'function') {
-      const wireCtx = tracer.extract('http_headers', req.headers);
-      span = tracer.startSpan(req.path, {
-        childOf: wireCtx,
-        tags: {
-          'http.method': req.method,
-          'http.url': req.url,
-        },
-      });
-    }
+    const parentContext = propagation.extract(context.active(), req.headers);
+    const span = tracer.startSpan(`${req.method} ${req.path}`, {
+      attributes: {
+        'http.method': req.method,
+        'http.url': req.url,
+      },
+    }, parentContext);
 
-    req.span = span;
+    const requestContext = trace.setSpan(parentContext, span);
+    req.otelSpan = span;
 
     res.on('finish', () => {
-      if (span && typeof span.setTag === 'function') {
-        span.setTag('http.status_code', res.statusCode);
-        
+      if (span && typeof span.setAttribute === 'function') {
+        span.setAttribute('http.status_code', res.statusCode);
+
         // Mark as error if status code indicates an error (4xx or 5xx)
         if (res.statusCode >= 400) {
-          span.setTag('error', true);
-          span.setTag('error.kind', 'HTTP');
-          span.setTag('http.status_text', res.statusMessage || 'Error');
+          span.setStatus({ code: otelApi.SpanStatusCode.ERROR, message: res.statusMessage || 'Error' });
+          span.setAttribute('error', true);
+          span.setAttribute('error.kind', 'HTTP');
         }
-        
-        span.finish();
+
+        span.end();
       }
     });
+
+    // Run the rest of the middleware chain within the request's OTel context
+    // so that authMiddleware can attach identity to this span and child spans
+    // created in route handlers are nested correctly.
+    context.with(requestContext, next);
+    return;
   } catch (err) {
     logger.debug('Tracing middleware error:', err.message);
   }
@@ -424,9 +427,12 @@ const startServer = async () => {
           logger.warn('Error disconnecting Kafka producer:', kafkaError.message);
         }
         // Flush remaining spans to Jaeger
-        tracer.close(() => {
-          logger.info('Jaeger tracer closed');
+        sdk.shutdown().then(() => {
+          logger.info('OpenTelemetry SDK shut down');
           // await disconnectDatabase();
+          process.exit(0);
+        }).catch((err) => {
+          logger.warn('OpenTelemetry shutdown error:', err.message);
           process.exit(0);
         });
       });
@@ -443,9 +449,12 @@ const startServer = async () => {
           logger.warn('Error disconnecting Kafka producer:', kafkaError.message);
         }
         // Flush remaining spans to Jaeger
-        tracer.close(() => {
-          logger.info('Jaeger tracer closed');
+        sdk.shutdown().then(() => {
+          logger.info('OpenTelemetry SDK shut down');
           // await disconnectDatabase();
+          process.exit(0);
+        }).catch((err) => {
+          logger.warn('OpenTelemetry shutdown error:', err.message);
           process.exit(0);
         });
       });

@@ -3,8 +3,8 @@ import logger from '../config/logger.js';
 
 const router = express.Router();
 
-const JAEGER_API = 'http://nitte-jaeger:16686/api';
-const JAEGER_UI = 'http://nitte-jaeger:16686';
+const JAEGER_API = process.env.JAEGER_API_URL || 'http://jaeger:16686/api';
+const JAEGER_UI = process.env.JAEGER_UI_URL || 'http://jaeger:16686';
 
 // Health check for Jaeger
 router.get('/health', async (req, res) => {

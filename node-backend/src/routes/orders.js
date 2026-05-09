@@ -5,7 +5,19 @@ import { authMiddleware, adminMiddleware } from '../middleware/index.js';
 import logger from '../config/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import { ordersCreated, databaseOperations } from '../metrics.js';
-import tracer from '../tracing.js';
+import tracer, { context } from '../tracing.js';
+
+/**
+ * Enrich a span with persistent identity attributes from the authenticated user.
+ */
+function attachIdentityToSpan(span, req) {
+  const user = req?.user;
+  if (user) {
+    span.setAttribute('keycloak.subject_id', user.userId || 'anonymous');
+    span.setAttribute('keycloak.user_email', user.email || 'anonymous');
+    span.setAttribute('keycloak.user_roles', JSON.stringify(user.roles || []));
+  }
+}
 
 const router = express.Router();
 
@@ -33,7 +45,7 @@ router.get(
   '/',
   authMiddleware,
   async (req, res, next) => {
-    // Create independent span for this service's operation
+    // Create child span for this service's operation
     const span = tracer.startSpan('mongodb.find', {
       attributes: {
         'db.system': 'mongodb',
@@ -42,7 +54,8 @@ router.get(
         'db.mongodb.collection': 'orders',
         'service.name': 'nitte-api-gateway'
       }
-    });
+    }, context.active());
+    attachIdentityToSpan(span, req);
 
     try {
       // Admin gets all orders, regular users get only their orders
@@ -83,7 +96,7 @@ router.get(
   async (req, res, next) => {
     const { id } = req.params;
     
-    // Create independent span for this service's operation
+    // Create child span for this service's operation
     const span = tracer.startSpan('mongodb.find_one', {
       attributes: {
         'db.system': 'mongodb',
@@ -93,7 +106,8 @@ router.get(
         'db.mongodb.query.id': id,
         'service.name': 'nitte-api-gateway'
       }
-    });
+    }, context.active());
+    attachIdentityToSpan(span, req);
 
     try {
       const order = await pythonServiceClient.getOrderById(id);
@@ -148,7 +162,7 @@ router.post(
   orderValidator,
   handleValidationErrors,
   async (req, res, next) => {
-    // Create independent span for this service's operation
+    // Create child span for this service's operation
     const span = tracer.startSpan('mongodb.insert', {
       attributes: {
         'db.system': 'mongodb',
@@ -157,7 +171,8 @@ router.post(
         'db.mongodb.collection': 'orders',
         'service.name': 'nitte-api-gateway'
       }
-    });
+    }, context.active());
+    attachIdentityToSpan(span, req);
 
     try {
       const orderData = {
@@ -208,7 +223,7 @@ router.put(
   async (req, res, next) => {
     const { id } = req.params;
     
-    // Create independent span for this service's operation
+    // Create child span for this service's operation
     const span = tracer.startSpan('mongodb.update', {
       attributes: {
         'db.system': 'mongodb',
@@ -218,7 +233,8 @@ router.put(
         'db.mongodb.query.id': id,
         'service.name': 'nitte-api-gateway'
       }
-    });
+    }, context.active());
+    attachIdentityToSpan(span, req);
 
     try {
       const updateData = {

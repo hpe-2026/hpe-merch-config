@@ -77,4 +77,4 @@ export function createAuthenticatedSpan(name, options = {}, keycloakSubjectId, u
 }
 
 export default tracer;
-export { trace, context, propagation, baggage };
+export { trace, context, propagation, baggage, otelApi, sdk };

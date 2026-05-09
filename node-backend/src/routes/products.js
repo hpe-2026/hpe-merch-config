@@ -4,7 +4,19 @@ import pythonServiceClient from '../services/pythonServiceClient.js';
 import { authMiddleware, adminMiddleware } from '../middleware/index.js';
 import logger from '../config/logger.js';
 import { productsViewed, databaseOperations } from '../metrics.js';
-import tracer from '../tracing.js';
+import tracer, { context } from '../tracing.js';
+
+/**
+ * Enrich a span with persistent identity attributes when a user is present.
+ */
+function attachIdentityToSpan(span, req) {
+  const user = req?.user;
+  if (user) {
+    span.setAttribute('keycloak.subject_id', user.userId || 'anonymous');
+    span.setAttribute('keycloak.user_email', user.email || 'anonymous');
+    span.setAttribute('keycloak.user_roles', JSON.stringify(user.roles || []));
+  }
+}
 
 const router = express.Router();
 
@@ -30,7 +42,7 @@ const handleValidationErrors = (req, res, next) => {
 
 // Get all products
 router.get('/', async (req, res, next) => {
-  // Create independent span for this service's operation
+  // Create child span for this service's operation
   const span = tracer.startSpan('mongodb.find', {
     attributes: {
       'db.system': 'mongodb',
@@ -39,7 +51,8 @@ router.get('/', async (req, res, next) => {
       'db.mongodb.collection': 'products',
       'service.name': 'nitte-api-gateway'
     }
-  });
+  }, context.active());
+  attachIdentityToSpan(span, req);
 
   try {
     const products = await pythonServiceClient.getProducts();
@@ -76,9 +89,9 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   const { id } = req.params;
   
-  // Create independent span for this service's operation
+  // Create child span for this service's operation
   const span = tracer.startSpan('mongodb.find_one', {
-    tags: {
+    attributes: {
       'db.system': 'mongodb',
       'db.name': 'nitte_merch_shop',
       'db.operation': 'find_one',
@@ -86,15 +99,16 @@ router.get('/:id', async (req, res, next) => {
       'db.mongodb.query.id': id,
       'service.name': 'nitte-api-gateway'
     }
-  });
+  }, context.active());
+  attachIdentityToSpan(span, req);
 
   try {
     const product = await pythonServiceClient.getProductById(id);
     productsViewed.inc();
     databaseOperations.inc({ operation: 'get_product', status: 'success' });
     
-    if (span && typeof span.setTag === 'function') {
-      span.setTag('status.code', 'OK');
+    if (span && typeof span.setAttribute === 'function') {
+      span.setAttribute('status.code', 'OK');
     }
     
     res.status(200).json({
@@ -103,11 +117,11 @@ router.get('/:id', async (req, res, next) => {
     });
   } catch (error) {
     if (error.message === 'Product not found') {
-      if (span && typeof span.setTag === 'function') {
-        span.setTag('status.code', 'NOT_FOUND');
+      if (span && typeof span.setAttribute === 'function') {
+        span.setAttribute('status.code', 'NOT_FOUND');
       }
-      if (span && typeof span.finish === 'function' && !span._finished) {
-        span.finish();
+      if (span && typeof span.end === 'function') {
+        span.end();
       }
       return res.status(404).json({
         success: false,
@@ -115,17 +129,17 @@ router.get('/:id', async (req, res, next) => {
       });
     }
     logger.error('Failed to fetch product', { error: error.message });
-    if (span && typeof span.setTag === 'function') {
-      span.setTag('error', true);
-      span.setTag('error.message', error.message);
+    if (span && typeof span.setAttribute === 'function') {
+      span.setAttribute('error', true);
+      span.setAttribute('error.message', error.message);
     }
     res.status(500).json({
       success: false,
       message: 'Failed to fetch product',
     });
   } finally {
-    if (span && typeof span.finish === 'function' && !span._finished) {
-      span.finish();
+    if (span && typeof span.end === 'function') {
+      span.end();
     }
   }
 });

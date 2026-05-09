@@ -1,6 +1,7 @@
 import { Kafka } from 'kafkajs';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../config/logger.js';
+import { getKeycloakSubjectFromBaggage } from '../tracing.js';
 
 class KafkaProducer {
   constructor() {
@@ -114,6 +115,7 @@ class KafkaProducer {
     }
 
     try {
+      const keycloakSubjectId = getKeycloakSubjectFromBaggage();
       const kafkaMessage = {
         key: message.user_id || message.email || null,
         value: JSON.stringify({
@@ -124,6 +126,7 @@ class KafkaProducer {
         headers: {
           'event-type': eventType,
           'timestamp': new Date().toISOString(),
+          ...(keycloakSubjectId && { 'keycloak-subject-id': keycloakSubjectId }),
         },
       };
 

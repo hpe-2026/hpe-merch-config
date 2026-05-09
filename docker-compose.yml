@@ -64,6 +64,7 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_OPTS: "-XX:-UseContainerSupport"
     depends_on:
       - zookeeper
     networks:
@@ -76,6 +77,7 @@ services:
       - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
+      KAFKA_OPTS: "-XX:-UseContainerSupport"
     networks:
       - nitte-network
 
@@ -273,6 +275,7 @@ services:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
       - '--web.external-url=http://localhost:9093'
+      - '--cluster.listen-address='
     networks:
       - nitte-network
 
@@ -322,6 +325,7 @@ services:
       GF_AUTH_GENERIC_OAUTH_TOKEN_URL: "http://keycloak:8080/realms/nitte-realm/protocol/openid-connect/token"
       GF_AUTH_GENERIC_OAUTH_API_URL: "http://keycloak:8080/realms/nitte-realm/protocol/openid-connect/userinfo"
       GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH: "preferred_username"
+      GF_AUTH_GENERIC_OAUTH_ID_ATTRIBUTE_PATH: "sub"
       GF_AUTH_GENERIC_OAUTH_NAME_ATTRIBUTE_PATH: "name"
       GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH: "email"
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(realm_access.roles[*], 'admin-internal') && 'Admin' || contains(realm_access.roles[*], 'internal-user') && 'Editor' || 'Viewer'"
