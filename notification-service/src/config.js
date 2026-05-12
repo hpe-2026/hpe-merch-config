@@ -13,6 +13,7 @@ const config = {
       userApproved: 'user-approved',
       userRejected: 'user-rejected',
       unverifiedUsers: 'unverified-users',
+      keycloakEvents: 'keycloak-events',
     },
     connectionTimeout: 3000,
     requestTimeout: 30000,
@@ -32,6 +33,19 @@ const config = {
       },
       from: process.env.SMTP_FROM || 'noreply@nitte-merch-shop.com',
     },
+  },
+
+  // Slack configuration
+  slack: {
+    enabled: process.env.SLACK_ENABLED !== 'false',
+    webhookUrl: process.env.SLACK_WEBHOOK_URL || '',
+  },
+
+  // Ticket / escalation configuration
+  ticket: {
+    enabled: process.env.TICKET_ENABLED !== 'false',
+    provider: process.env.TICKET_PROVIDER || 'console', // 'console' or 'rest'
+    endpoint: process.env.TICKET_ENDPOINT || '',
   },
 
   // Service configuration

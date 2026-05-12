@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-rbac-proxy
+  namespace: nitte
+  labels:
+    app: loki-rbac-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loki-rbac-proxy
+  template:
+    metadata:
+      labels:
+        app: loki-rbac-proxy
+    spec:
+      initContainers:
+      - name: wait-for-loki
+        image: busybox:1.35
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nc -z loki 3100; do echo "waiting for loki"; sleep 2; done']
+      - name: wait-for-keycloak
+        image: busybox:1.35
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nc -z keycloak 8080; do echo "waiting for keycloak"; sleep 5; done']
+      containers:
+      - name: loki-rbac-proxy
+        image: loki-rbac-proxy:1.0.0
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 3200
+        env:
+        - name: PORT
+          value: "3200"
+        - name: LOKI_URL
+          value: http://loki:3100
+        - name: KEYCLOAK_JWKS_URL
+          value: http://keycloak:8080/realms/nitte-realm/protocol/openid-connect/certs
+        - name: PROMTAIL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: PROMTAIL_API_KEY
+        - name: ADMIN_ROLE
+          value: keycloak-admin
+        - name: DEFAULT_TENANT
+          value: default
+        - name: ADMIN_TENANT
+          value: keycloak-admin
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3200
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki-rbac-proxy
+  namespace: nitte
+spec:
+  selector:
+    app: loki-rbac-proxy
+  ports:
+  - port: 3200
+    targetPort: 3200
+  type: ClusterIP

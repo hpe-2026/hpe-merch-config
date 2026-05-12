@@ -1,6 +1,7 @@
 import logger from './logger.js';
 import emailService from './services/emailService.js';
 import smsService from './services/smsService.js';
+import keycloakEventHandler from './services/keycloakEventHandler.js';
 import NotificationConsumer from './kafka/consumer.js';
 import { startMetricsServer } from './metricsServer.js';
 
@@ -30,6 +31,11 @@ async function start() {
     logger.info(' Initializing SMS service...');
     await smsService.initialize();
     logger.info(' SMS service initialized');
+
+    // Initialize Keycloak event handler
+    logger.info(' Initializing Keycloak event handler...');
+    await keycloakEventHandler.initialize();
+    logger.info(' Keycloak event handler initialized');
 
     // Initialize Kafka consumer
     logger.info(' Initializing Kafka consumer...');

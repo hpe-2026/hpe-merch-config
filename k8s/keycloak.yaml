@@ -14,6 +14,7 @@ spec:
     metadata:
       labels:
         app: keycloak
+        promtail.io/scrape: "true"
     spec:
       containers:
       - name: keycloak
@@ -45,10 +46,26 @@ spec:
           value: "false"
         - name: KC_HOSTNAME_STRICT_HTTPS
           value: "false"
+        - name: NOTIFICATION_SERVICE_URL
+          value: http://notification-service:9100/api/v1/events
+        - name: NOTIFICATION_TIMEOUT_SECONDS
+          value: "5"
+        - name: QUARKUS_LOG_FILE_ENABLE
+          value: "true"
+        - name: QUARKUS_LOG_FILE_PATH
+          value: /opt/keycloak/log/keycloak.log
+        - name: QUARKUS_LOG_FILE_FORMAT
+          value: '%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n'
         volumeMounts:
         - name: keycloak-realm
           mountPath: /opt/keycloak/data/import/nitte-realm.json
           subPath: nitte-realm.json
+          readOnly: true
+        - name: keycloak-logs
+          mountPath: /opt/keycloak/log
+        - name: keycloak-spi
+          mountPath: /opt/keycloak/providers/keycloak-event-listener-1.0.0.jar
+          subPath: keycloak-event-listener-1.0.0.jar
           readOnly: true
         resources:
           requests:
@@ -73,6 +90,25 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 10
+      - name: promtail-sidecar
+        image: grafana/promtail:2.9.4
+        imagePullPolicy: IfNotPresent
+        args:
+          - -config.file=/etc/promtail/config.yml
+        volumeMounts:
+        - name: keycloak-logs
+          mountPath: /var/log/keycloak
+          readOnly: true
+        - name: promtail-keycloak-config
+          mountPath: /etc/promtail/config.yml
+          subPath: promtail-keycloak-config.yml
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "10m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
       volumes:
       - name: keycloak-realm
         configMap:
@@ -80,6 +116,17 @@ spec:
           items:
           - key: nitte-realm.json
             path: nitte-realm.json
+      - name: keycloak-logs
+        emptyDir: {}
+      - name: keycloak-spi
+        configMap:
+          name: keycloak-spi-config
+          items:
+          - key: keycloak-event-listener-1.0.0.jar
+            path: keycloak-event-listener-1.0.0.jar
+      - name: promtail-keycloak-config
+        configMap:
+          name: promtail-keycloak-config
 ---
 apiVersion: v1
 kind: Service

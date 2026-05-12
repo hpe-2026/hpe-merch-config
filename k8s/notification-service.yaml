@@ -31,6 +31,18 @@ spec:
           value: "kafka:9092"
         - name: NOTIFICATION_EMAIL
           value: "notifications@nitte.edu"
+        - name: SLACK_ENABLED
+          value: "true"
+        - name: SLACK_WEBHOOK_URL
+          value: ""
+        - name: TICKET_ENABLED
+          value: "true"
+        - name: TICKET_PROVIDER
+          value: "console"
+        - name: TICKET_ENDPOINT
+          value: ""
+        - name: KEYCLOAK_ADMIN_EMAILS
+          value: "internal-admin@nitte.ac.in"
         resources:
           requests:
             memory: "64Mi"

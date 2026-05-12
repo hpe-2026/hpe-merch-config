@@ -44,9 +44,15 @@
       { "name": "internal-user",      "description": "Internal NITTE staff with limited DevOps access (Jenkins viewer, observability read-only)" },
       { "name": "mongo_writer",       "description": "Internal service role allowed to write to MongoDB" },
       { "name": "nexus-admin",        "description": "Nexus repository administrator" },
-      { "name": "nexus-developer",    "description": "Nexus repository developer (read/write)" }
+      { "name": "nexus-developer",    "description": "Nexus repository developer (read/write)" },
+      { "name": "keycloak-admin",     "description": "Keycloak administrator with access to audit and security logs" }
     ]
   },
+  "eventsEnabled": true,
+  "eventsExpiration": 86400,
+  "eventsListeners": [ "jboss-logging" ],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
   "clients": [
     {
       "clientId": "nitte-client",
@@ -273,7 +279,7 @@
       "firstName": "Internal",
       "lastName": "Admin",
       "credentials": [{ "type": "password", "value": "InternalAdmin@123", "temporary": false }],
-      "realmRoles": ["admin-internal", "nexus-admin"],
+      "realmRoles": ["admin-internal", "nexus-admin", "keycloak-admin"],
       "requiredActions": ["CONFIGURE_TOTP"]
     },
     {

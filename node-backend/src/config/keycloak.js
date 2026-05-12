@@ -391,6 +391,29 @@ class KeycloakConfig {
   }
 
   /**
+   * Set emailVerified flag on a Keycloak user (used during admin approval)
+   */
+  async setUserEmailVerified(userId, emailVerified, adminToken) {
+    try {
+      await axios.put(
+        `${this.getRealmUrl()}/users/${userId}`,
+        { emailVerified },
+        {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 5000,
+        }
+      );
+      return true;
+    } catch (error) {
+      logger.error(`Failed to set emailVerified=${emailVerified} on user ${userId}:`, error.response?.data || error.message);
+      return false;
+    }
+  }
+
+  /**
    * Assign a role to a user in Keycloak (admin API)
    */
   async assignRoleToUser(userId, roleId, adminToken) {

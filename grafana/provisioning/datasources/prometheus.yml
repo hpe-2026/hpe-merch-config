@@ -19,7 +19,7 @@ datasources:
   - name: Loki
     type: loki
     access: proxy
-    url: http://loki:3100
+    url: http://loki-rbac-proxy:3200
     editable: true
     jsonData:
       maxLines: 1000

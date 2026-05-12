@@ -19,6 +19,10 @@ services:
     container_name: nitte-keycloak
     ports:
       - "8080:8080"
+    volumes:
+      - ./keycloak/nitte-realm.json:/opt/keycloak/data/import/nitte-realm.json:ro
+      - ./keycloak-event-listener/target/keycloak-event-listener-1.0.0.jar:/opt/keycloak/providers/keycloak-event-listener-1.0.0.jar:ro
+      - keycloak_logs:/opt/keycloak/log
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
@@ -28,8 +32,11 @@ services:
       KC_HOSTNAME_URL: http://localhost:8080
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
-    volumes:
-      - ./keycloak/nitte-realm.json:/opt/keycloak/data/import/nitte-realm.json:ro
+      NOTIFICATION_SERVICE_URL: http://notification-service:9100/api/v1/events
+      NOTIFICATION_TIMEOUT_SECONDS: "5"
+      QUARKUS_LOG_FILE_ENABLE: "true"
+      QUARKUS_LOG_FILE_PATH: /opt/keycloak/log/keycloak.log
+      QUARKUS_LOG_FILE_FORMAT: '%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n'
     command: start-dev --import-realm
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/realms/master"]
@@ -164,6 +171,12 @@ services:
     environment:
       KAFKA_BROKERS: kafka:9092
       NOTIFICATION_EMAIL: notifications@nitte.edu
+      SLACK_ENABLED: "true"
+      SLACK_WEBHOOK_URL: ""
+      TICKET_ENABLED: "true"
+      TICKET_PROVIDER: console
+      TICKET_ENDPOINT: ""
+      KEYCLOAK_ADMIN_EMAILS: internal-admin@nitte.ac.in
     depends_on:
       - kafka
     networks:
@@ -304,6 +317,39 @@ services:
     networks:
       - nitte-network
 
+  promtail-keycloak:
+    image: grafana/promtail:2.9.4
+    container_name: nitte-promtail-keycloak
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./promtail/promtail-keycloak-config.yml:/etc/promtail/config.yml:ro
+      - keycloak_logs:/var/log/keycloak:ro
+    depends_on:
+      - loki
+      - keycloak
+    networks:
+      - nitte-network
+
+  loki-rbac-proxy:
+    build:
+      context: ./loki-rbac-proxy
+      dockerfile: Dockerfile
+    image: loki-rbac-proxy:1.0.0
+    container_name: nitte-loki-rbac-proxy
+    environment:
+      PORT: "3200"
+      LOKI_URL: http://loki:3100
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/nitte-realm/protocol/openid-connect/certs
+      PROMTAIL_API_KEY: promtail-loki-secret
+      ADMIN_ROLE: keycloak-admin
+      DEFAULT_TENANT: default
+      ADMIN_TENANT: keycloak-admin
+    depends_on:
+      - loki
+      - keycloak
+    networks:
+      - nitte-network
+
   grafana:
     image: grafana/grafana:10.2.2
     container_name: nitte-grafana
@@ -328,7 +374,7 @@ services:
       GF_AUTH_GENERIC_OAUTH_ID_ATTRIBUTE_PATH: "sub"
       GF_AUTH_GENERIC_OAUTH_NAME_ATTRIBUTE_PATH: "name"
       GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH: "email"
-      GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(realm_access.roles[*], 'admin-internal') && 'Admin' || contains(realm_access.roles[*], 'internal-user') && 'Editor' || 'Viewer'"
+      GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(realm_access.roles[*], 'admin-internal') && 'Admin' || contains(realm_access.roles[*], 'keycloak-admin') && 'Admin' || contains(realm_access.roles[*], 'internal-user') && 'Editor' || 'Viewer'"
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT_MODE: "false"
       GF_AUTH_GENERIC_OAUTH_SKIP_ORG_ROLE_SYNC: "false"
       GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP: "true"
@@ -404,5 +450,6 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  keycloak_logs:
   jenkins_data:
   nexus_data:
