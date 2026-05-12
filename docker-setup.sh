@@ -170,6 +170,18 @@ start_services() {
   check_prereqs
   pull_base_images
 
+  header "Building Keycloak Event Listener SPI"
+  if [[ ! -f "./keycloak-event-listener/target/keycloak-event-listener-1.0.0.jar" ]]; then
+    step "Building Keycloak event listener plugin via Docker Maven…"
+    if ! bash ./keycloak-event-listener/build.sh; then
+      err "Failed to build Keycloak event listener SPI. Ensure Docker is running."
+      exit 1
+    fi
+    ok "Keycloak event listener built"
+  else
+    ok "Keycloak event listener JAR already present"
+  fi
+
   header "Building & Starting Services"
   step "Running: $COMPOSE_CMD up --build -d"
   if ! $COMPOSE_CMD up --build -d; then
@@ -272,7 +284,9 @@ show_status() {
     "Prometheus Proxy|nitte-proxy-prometheus|9090"
     "Jaeger Proxy|nitte-proxy-jaeger|16686"
     "Loki|nitte-loki|3100"
+    "Loki RBAC Proxy|nitte-loki-rbac-proxy|3200"
     "Promtail|nitte-promtail|—"
+    "Promtail Keycloak|nitte-promtail-keycloak|—"
     "Keycloak Setup|nitte-keycloak-setup|—"
   )
 

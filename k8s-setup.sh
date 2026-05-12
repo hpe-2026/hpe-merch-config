@@ -153,6 +153,7 @@ build_images() {
     "python-service:1.0.0|./python-service"
     "nitte-jenkins:1.0.0|./jenkins"
     "nitte-nexus:1.0.0|./nexus"
+    "loki-rbac-proxy:1.0.0|./loki-rbac-proxy"
   )
 
   local total=${#images[@]}
@@ -215,6 +216,12 @@ create_configmaps() {
   cm_from_file jenkins-casc-config \
     --from-file=jenkins.yaml=./jenkins/casc/jenkins.yaml
 
+  cm_from_file keycloak-spi-config \
+    --from-file=keycloak-event-listener-1.0.0.jar=./keycloak-event-listener/target/keycloak-event-listener-1.0.0.jar
+
+  cm_from_file promtail-keycloak-config \
+    --from-file=promtail-keycloak-config.yml=./promtail/promtail-keycloak-config.yml
+
   ok "All ConfigMaps created/updated"
 }
 
@@ -241,6 +248,7 @@ deploy_manifests() {
     "promtail.yaml"
     "prometheus.yaml"
     "grafana.yaml"
+    "loki-rbac-proxy.yaml"
     "oauth2-proxies.yaml"
     "jenkins.yaml"
     "nexus.yaml"
@@ -274,6 +282,7 @@ wait_ready() {
     "grafana"
     "oauth2-proxy-prometheus"
     "oauth2-proxy-jaeger"
+    "loki-rbac-proxy"
     "jenkins"
     "nexus"
   )
@@ -370,6 +379,19 @@ start_services() {
   check_prereqs
   ensure_minikube
   pull_base_images
+
+  header "Building Keycloak Event Listener SPI"
+  if [[ ! -f "./keycloak-event-listener/target/keycloak-event-listener-1.0.0.jar" ]]; then
+    step "Building Keycloak event listener plugin via Docker Maven…"
+    if ! bash ./keycloak-event-listener/build.sh; then
+      err "Failed to build Keycloak event listener SPI. Ensure Docker is running."
+      exit 1
+    fi
+    ok "Keycloak event listener built"
+  else
+    ok "Keycloak event listener JAR already present"
+  fi
+
   build_images
   step "Creating namespace…"
   kubectl apply -f "$K8S_DIR/namespace.yaml" >/dev/null

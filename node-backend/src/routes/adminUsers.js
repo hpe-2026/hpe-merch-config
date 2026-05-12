@@ -159,6 +159,9 @@ const syncApprovedUserToKeycloak = async (verification) => {
     // Enable the account (idempotent if already enabled)
     await keycloakConfig.setUserEnabled(verification.user_id, true, adminToken);
 
+    // Mark email as verified so Keycloak UI shows "Verified"
+    await keycloakConfig.setUserEmailVerified(verification.user_id, true, adminToken);
+
     // Assign the correct role based on user_type
     await assignRole(verification.user_id, adminToken);
   } catch (err) {
@@ -174,6 +177,7 @@ const syncApprovedUserToKeycloak = async (verification) => {
         verification.user_id = userId;
         await verification.save();
         await keycloakConfig.setUserEnabled(verification.user_id, true, adminToken);
+        await keycloakConfig.setUserEmailVerified(verification.user_id, true, adminToken);
         await assignRole(verification.user_id, adminToken);
       } else {
         throw new Error('Approved user could not be re-linked to Keycloak after stale ID cleared');

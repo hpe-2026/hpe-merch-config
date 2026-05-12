@@ -69,7 +69,7 @@ spec:
         - name: GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH
           value: "email"
         - name: GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH
-          value: "contains(realm_access.roles[*], 'admin-internal') && 'Admin' || contains(realm_access.roles[*], 'internal-user') && 'Editor' || 'Viewer'"
+          value: "contains(realm_access.roles[*], 'admin-internal') && 'Admin' || contains(realm_access.roles[*], 'keycloak-admin') && 'Admin' || contains(realm_access.roles[*], 'internal-user') && 'Editor' || 'Viewer'"
         - name: GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT_MODE
           value: "false"
         - name: GF_AUTH_GENERIC_OAUTH_SKIP_ORG_ROLE_SYNC

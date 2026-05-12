@@ -15,15 +15,33 @@ data:
 
     clients:
       - url: http://loki:3100/loki/api/v1/push
+        tenant_id: default
+        headers:
+          X-Promtail-Api-Key: promtail-loki-secret
 
     scrape_configs:
       - job_name: pod-logs
-        static_configs:
-          - targets:
-              - localhost
-            labels:
-              job: kubernetes
-              __path__: /var/log/pods/nitte_*/*/*.log
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - nitte
+        relabel_configs:
+          - source_labels: ['__meta_kubernetes_pod_label_app']
+            regex: keycloak
+            action: drop
+          - source_labels: ['__meta_kubernetes_pod_node_name']
+            target_label: '__host__'
+          - source_labels: ['__meta_kubernetes_namespace']
+            target_label: namespace
+          - source_labels: ['__meta_kubernetes_pod_name']
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            target_label: container
+          - source_labels: ['__meta_kubernetes_pod_label_app']
+            target_label: service
+          - source_labels: ['__meta_kubernetes_pod_label_app']
+            target_label: job
         pipeline_stages:
           - cri: {}
           - labeldrop:
