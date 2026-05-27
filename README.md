@@ -11,16 +11,62 @@ For a step-by-step demo guide (Windows + Linux), see **[DEMO.md](./DEMO.md)**.
 
 ---
 
-## What's inside (19 services)
+## What's inside (22 services)
 
 | Tier | Services |
-|---|---|
+| --- | --- |
 | **App** | `frontend` (storefront, port 5173) · `admin-dashboard` (admin console, 5174) · `node-backend` (API gateway, 3000) · `python-service` (catalog/orders, 8000) · `notification-service` (Kafka consumer) |
 | **Data / Identity** | `mongodb` (27017) · `keycloak` (8080) |
 | **Streaming** | `zookeeper` (2181) · `kafka` (9092) |
-| **Observability** | `prometheus` · `grafana` (3001) · `loki` (3100) · `promtail` · `jaeger` · `alertmanager` (9093) |
+| **Observability** | `prometheus` · `grafana` (3001) · `loki` (3100) · `promtail` · `promtail-keycloak` · `loki-rbac-proxy` (3200) · `jaeger` · `alertmanager` (9093) |
 | **DevOps / CI/CD** | `jenkins` (8081) · `nexus` (8082) |
 | **Auth Proxies** | `oauth2-proxy-prometheus` (9090) · `oauth2-proxy-jaeger` (16686) |
+
+---
+
+## Keycloak Events & Audit Logs Integration
+
+The stack includes a complete Keycloak security/admin event forwarding and audit log separation system:
+
+### Event Forwarding (Keycloak → Notification Service)
+
+- **Keycloak Event Listener SPI** (`keycloak-event-listener/`) — Java plugin that captures security events (`LOGIN_ERROR`, `UPDATE_PASSWORD`, `REGISTER`) and admin events (`CREATE`, `UPDATE`, `DELETE` on users/roles/clients) and sends them asynchronously to the Notification Service
+- **Notification Service Extensions** — New `POST /api/v1/events` endpoint routes events to:
+  - Slack alerts (with console fallback when webhook URL not configured)
+  - Ticket creation (console or REST provider)
+  - Admin email notifications for critical events
+
+### Audit Log Separation (Keycloak → Loki → Grafana)
+
+- **Dual Promtail Setup** — Two separate log scrapers:
+  - `promtail` — Scrapes all container stdout logs → Loki `default` tenant (general application logs)
+  - `promtail-keycloak` — Tails Keycloak file logs only → Loki `keycloak-admin` tenant (audit logs)
+- **Loki Multi-Tenancy** — `auth_enabled: true` with tenant-based access control
+- **Loki RBAC Proxy** (`loki-rbac-proxy/`, port 3200) — Node.js proxy that:
+  - Validates JWT tokens against Keycloak JWKS
+  - Maps users with `keycloak-admin` role → `keycloak-admin` tenant (can see audit logs)
+  - Maps all other users → `default` tenant (cannot see audit logs)
+  - Allows Promtail push traffic with API key authentication
+- **Grafana Integration** — Loki datasource routes through RBAC proxy; role-based access enforced
+
+### Role Mapping
+
+| Keycloak Role | Grafana Role | Loki Tenant Access |
+| --- | --- | --- |
+| `keycloak-admin` | Admin | `default` + `keycloak-admin` (all logs) |
+| `admin-internal` | Admin | `default` + `keycloak-admin` (all logs) |
+| `internal-user` | Editor | `default` only (no audit logs) |
+| Default | Viewer | `default` only (no audit logs) |
+
+### Demo
+
+```bash
+./scripts/demo-keycloak-events.sh docker   # or 'k8s'
+```
+
+This script verifies the full flow: service health, event listener, notification routing, Loki multi-tenancy, and RBAC proxy enforcement.
+
+**Full documentation:** See **[docs/KEYCLOAK_EVENTS_AND_LOGS.md](./docs/KEYCLOAK_EVENTS_AND_LOGS.md)** for architecture diagrams, environment variables, example payloads, validation steps, and rollback instructions.
 
 ---
 
@@ -146,9 +192,10 @@ realm structure, role map, and copy-pastable token tests.
 ## Documentation
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | **[DEMO.md](./DEMO.md)** | Step-by-step demo runbook (Windows + Linux) |
 | **[keycloak/KEYCLOAK_DEMO.md](./keycloak/KEYCLOAK_DEMO.md)** | Keycloak realm, roles, JWT samples |
+| **[docs/KEYCLOAK_EVENTS_AND_LOGS.md](./docs/KEYCLOAK_EVENTS_AND_LOGS.md)** | Keycloak event forwarding, audit log separation, Loki RBAC |
 | [docs/QUICK_START.md](./docs/QUICK_START.md) | Original quick-start (legacy) |
 | [docs/API_DOCUMENTATION.md](./docs/API_DOCUMENTATION.md) | REST API reference |
 | [docs/RBAC_POLICY_GUIDE.md](./docs/RBAC_POLICY_GUIDE.md) | Role-based access patterns |
