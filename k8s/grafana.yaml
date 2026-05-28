@@ -24,6 +24,10 @@ spec:
         image: busybox:1.35
         imagePullPolicy: IfNotPresent
         command: ['sh', '-c', 'until nc -z loki 3100; do echo "waiting for loki"; sleep 2; done']
+      - name: wait-for-loki-rbac-proxy
+        image: busybox:1.35
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nc -z loki-rbac-proxy 3200; do echo "waiting for loki-rbac-proxy"; sleep 2; done']
       containers:
       - name: grafana
         image: grafana/grafana:10.2.2

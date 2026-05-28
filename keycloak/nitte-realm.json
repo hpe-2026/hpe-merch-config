@@ -50,7 +50,7 @@
   },
   "eventsEnabled": true,
   "eventsExpiration": 86400,
-  "eventsListeners": [ "jboss-logging" ],
+  "eventsListeners": [ "jboss-logging", "nitte-notification-event-listener" ],
   "adminEventsEnabled": true,
   "adminEventsDetailsEnabled": true,
   "clients": [
