@@ -380,9 +380,10 @@ services:
       GF_AUTH_GENERIC_OAUTH_SKIP_ORG_ROLE_SYNC: "false"
       GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP: "true"
       GF_USERS_AUTO_ASSIGN_ORG_ROLE: "Viewer"
-      GF_AUTH_SIGNOUT_REDIRECT_URL: "http://localhost:8080/realms/nitte-realm/protocol/openid-connect/logout?post_logout_redirect_uri=http://localhost:3001"
+      GF_AUTH_SIGNOUT_REDIRECT_URL: "http://localhost:8080/realms/nitte-realm/protocol/openid-connect/logout?client_id=grafana-client&post_logout_redirect_uri=http://localhost:3001"
       GF_UNIFIED_ALERTING_ENABLED: "true"
       GF_ALERTING_ENABLED: "false"
+      GF_DATAPROXY_SEND_USER_HEADER: "true"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana_data:/var/lib/grafana

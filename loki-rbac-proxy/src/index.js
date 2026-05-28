@@ -21,20 +21,22 @@ async function getJWKS() {
 }
 
 async function verifyToken(token) {
-  try {
-    const verifyOptions = {
-      issuer: `http://keycloak:8080/realms/nitte-realm`,
-      clockTolerance: 60,
-    };
-    if (OAUTH_AUDIENCE) {
-      verifyOptions.audience = OAUTH_AUDIENCE;
+  const issuers = [
+    `http://keycloak:8080/realms/nitte-realm`,
+    `http://localhost:8080/realms/nitte-realm`,
+  ];
+  for (const issuer of issuers) {
+    try {
+      const verifyOptions = { issuer, clockTolerance: 60 };
+      if (OAUTH_AUDIENCE) verifyOptions.audience = OAUTH_AUDIENCE;
+      const { payload } = await jwtVerify(token, await getJWKS(), verifyOptions);
+      return payload;
+    } catch (e) {
+      // try next issuer
     }
-    const { payload } = await jwtVerify(token, await getJWKS(), verifyOptions);
-    return payload;
-  } catch (e) {
-    console.error('JWT verification failed:', e.message);
-    return null;
   }
+  console.error('JWT verification failed: no matching issuer');
+  return null;
 }
 
 function getTenantId(payload) {

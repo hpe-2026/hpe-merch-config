@@ -8,7 +8,7 @@ positions:
 
 clients:
   - url: http://loki:3100/loki/api/v1/push
-    tenant_id: keycloak-admin
+    tenant_id: default
     headers:
       X-Promtail-Api-Key: promtail-loki-secret
 
