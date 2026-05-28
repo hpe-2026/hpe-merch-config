@@ -34,10 +34,11 @@ services:
       KC_HOSTNAME_STRICT_HTTPS: "false"
       NOTIFICATION_SERVICE_URL: http://notification-service:9100/api/v1/events
       NOTIFICATION_TIMEOUT_SECONDS: "5"
-      QUARKUS_LOG_FILE_ENABLE: "true"
-      QUARKUS_LOG_FILE_PATH: /opt/keycloak/log/keycloak.log
-      QUARKUS_LOG_FILE_FORMAT: '%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n'
-    command: start-dev --import-realm
+      KC_LOG: console,file
+      KC_LOG_FILE: /opt/keycloak/log/keycloak.log
+      KC_LOG_FILE_FORMAT: '%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n'
+    user: root
+    entrypoint: ["/bin/sh", "-c", "chmod 777 /opt/keycloak/log && exec /opt/keycloak/bin/kc.sh start-dev --import-realm"]
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/realms/master"]
       interval: 10s
