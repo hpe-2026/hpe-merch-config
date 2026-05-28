@@ -1,0 +1,13 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: keycloak-security-alerts
+    receivers:
+      - uid: keycloak-console-receiver
+        type: webhook
+        settings:
+          url: http://notification-service:9100/api/v1/events
+          httpMethod: POST
+          maxAlerts: 10
+        disableResolveMessage: false

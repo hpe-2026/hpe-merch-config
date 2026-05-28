@@ -17,6 +17,7 @@ datasources:
     editable: true
 
   - name: Loki
+    uid: loki-ds
     type: loki
     access: proxy
     url: http://loki-rbac-proxy:3200
