@@ -1,0 +1,228 @@
+{
+  "title": "NITTE — All Logs",
+  "uid": "nitte-logs-all",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "tags": ["logs", "loki", "keycloak", "security"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki-ds" },
+        "query": "label_values(service)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "search",
+        "label": "Search",
+        "type": "textbox",
+        "current": { "text": "", "value": "" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "logs",
+      "title": "All Application Logs (all services)",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki-ds" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki-ds" },
+          "expr": "{project=\"hpe-stuff\", service=~\"$service\"} |~ \"$search\"",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "logs",
+      "title": "Backend API Logs",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki-ds" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki-ds" },
+          "expr": "{service=\"node-backend\"}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "Notification Service Logs",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki-ds" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki-ds" },
+          "expr": "{service=\"notification-service\"}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "logs",
+      "title": "Python Service Logs",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki-ds" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki-ds" },
+          "expr": "{service=\"python-service\"}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "logs",
+      "title": "Keycloak Security & Audit Logs (keycloak-admin role only)",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki-ds" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki-ds" },
+          "expr": "{service=\"keycloak\"}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "Error Logs — All Services",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki-ds" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki-ds" },
+          "expr": "{project=\"hpe-stuff\", service=~\"$service\"} |~ \"(?i)(error|ERROR|exception|EXCEPTION|failed|FAILED|fatal|FATAL)\"",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "Keycloak LOGIN_ERROR Events (Security Incidents)",
+      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki-ds" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki-ds" },
+          "expr": "{service=\"keycloak\"} |~ \"LOGIN_ERROR|INVALID_CREDENTIALS|UPDATE_PASSWORD|REMOVE_TOTP\"",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Log Volume by Service (per minute)",
+      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 7 },
+      "datasource": { "type": "loki", "uid": "loki-ds" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki-ds" },
+          "expr": "sum by (service) (rate({project=\"hpe-stuff\", service=~\"$service\"}[1m]))",
+          "queryType": "range",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    }
+  ]
+}
