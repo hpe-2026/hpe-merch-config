@@ -123,7 +123,14 @@ pull_base_images() {
     return
   fi
 
-  info "Pulling ${#pending[@]} image(s) in parallel (max $parallel concurrent)…"
+  # On Windows/Git Bash, parallel pulls with `wait -n` can be flaky.
+  # Fall back to sequential to avoid race conditions / Bash version issues.
+  if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" || -n "${MSYSTEM:-}" ]]; then
+    parallel=1
+    info "Windows/Git Bash detected — pulling images sequentially."
+  fi
+
+  info "Pulling ${#pending[@]} image(s) (max $parallel concurrent)…"
   info "Tip: set SKIP_PULL=1 to skip, or PULL_PARALLEL=N to tune."
 
   local tmpdir
@@ -136,8 +143,14 @@ pull_base_images() {
   for img in "${pending[@]}"; do
     # Throttle: wait until we have a free slot.
     while (( running >= parallel )); do
-      wait -n 2>/dev/null || true
-      running=$((running-1))
+      if wait -n 2>/dev/null; then
+        running=$((running-1))
+      else
+        # wait -n returned non-zero: job failed or no jobs available.
+        # Give it a brief moment then try again (prevents tight loops on Windows).
+        sleep 0.3
+        running=$((running-1))
+      fi
     done
     (
       if docker pull "$img" >"$tmpdir/$(echo "$img" | tr '/:' '__').log" 2>&1; then
@@ -153,8 +166,12 @@ pull_base_images() {
 
   # Drain remaining jobs.
   while (( running > 0 )); do
-    if ! wait -n; then failed=1; fi
-    running=$((running-1))
+    if wait -n 2>/dev/null; then
+      running=$((running-1))
+    else
+      failed=1
+      running=$((running-1))
+    fi
   done
 
   if (( failed )); then
