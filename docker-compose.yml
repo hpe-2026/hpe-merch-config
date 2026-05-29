@@ -172,12 +172,25 @@ services:
     environment:
       KAFKA_BROKERS: kafka:9092
       NOTIFICATION_EMAIL: notifications@nitte.edu
+      # ── Slack notifications ───────────────────────
+      # Set SLACK_WEBHOOK_URL in .env (see .env.example)
       SLACK_ENABLED: "true"
-      SLACK_WEBHOOK_URL: ""
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      # ── Email notifications ───────────────────────
+      # Set SMTP_USER / SMTP_PASS in .env (see .env.example)
+      EMAIL_ENABLED: "true"
+      EMAIL_PROVIDER: smtp
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: "587"
+      SMTP_SECURE: "false"
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_USER:-noreply@nitte-merch-shop.com}
+      # ── Ticket / escalation ────────────────────────
       TICKET_ENABLED: "true"
       TICKET_PROVIDER: console
       TICKET_ENDPOINT: ""
-      KEYCLOAK_ADMIN_EMAILS: internal-admin@nitte.ac.in
+      KEYCLOAK_ADMIN_EMAILS: ${KEYCLOAK_ADMIN_EMAILS:-internal-admin@nitte.ac.in}
     depends_on:
       - kafka
     networks:
