@@ -1,4 +1,4 @@
-# NITTE Alumni Merchandise Shop — 22 Microservices Reference
+# NITTE Alumni Merchandise Shop — 23 Microservices Reference
 
 > Complete catalog of every containerized service in the NITTE stack.
 > All services are orchestrated via `docker-compose.yml` and can be started with `./docker-setup.sh start`.
@@ -8,7 +8,7 @@
 ## Table of Contents
 
 - [Application Services (5)](#application-services-5)
-- [Data & Identity Services (2)](#data--identity-services-2)
+- [Data & Identity Services (3)](#data--identity-services-3)
 - [Streaming Infrastructure (2)](#streaming-infrastructure-2)
 - [Observability Stack (8)](#observability-stack-8)
 - [DevOps / CI/CD (2)](#devops--cicd-2)
@@ -140,7 +140,7 @@ KEYCLOAK_ADMIN_EMAILS=...
 
 ---
 
-## Data & Identity Services (2)
+## Data & Identity Services (3)
 
 ---
 
@@ -163,7 +163,32 @@ The **primary application database** — stores all business data: products, ord
 
 ---
 
-### 7. `keycloak`
+### 7. `mongo-express`
+
+| Property | Value |
+|---|---|
+| **Container** | `nitte-mongo-express` |
+| **Port** | `8083` |
+| **Image** | `mongo-express:1.0.0` |
+
+The **web-based MongoDB admin interface** — a lightweight Express.js UI for browsing, querying, and managing MongoDB documents without needing external tools.
+
+**Key features:**
+- Browse collections and documents (table/JSON/tree view)
+- Run ad-hoc queries with JSON syntax
+- Insert, update, delete documents
+- View collection statistics and indexes
+- Basic authentication (`admin` / `${MONGO_UI_PASSWORD}`)
+
+**Configuration:**
+- Connects as `app_writer` user to `nitte_merch` database
+- Credentials configured via `.env` `MONGO_UI_PASSWORD`
+
+**Used by:** Developers, administrators (read-write access to MongoDB)
+
+---
+
+### 8. `keycloak`
 
 | Property | Value |
 |---|---|
@@ -518,6 +543,7 @@ A single Docker bridge network that all services share. Enables container-to-con
 | Jenkins | `8081` | `http://localhost:8081` | Keycloak SSO |
 | Nexus | `8082` | `http://localhost:8082` | Keycloak SSO |
 | MongoDB | `27017` | `localhost:27017` | `app_writer` / `app_writer_pass` |
+| MongoDB UI | `8083` | `http://localhost:8083` | Basic auth: `admin` / password |
 | Kafka | `9092` | `localhost:9092` | PLAINTEXT |
 | ZooKeeper | `2181` | `localhost:2181` | None |
 | Loki | `3100` | `localhost:3100` | Internal only |
@@ -546,20 +572,20 @@ A single Docker bridge network that all services share. Enables container-to-con
       ┌───────────┼───────────┐
       │           │           │
       ▼           ▼           ▼
-┌──────────┐ ┌────────┐ ┌─────────────┐
-│ mongodb  │ │  kafka │ │python-service│
-│(27017)   │ │(9092)  │ │  (port 8000) │
-└──────────┘ └────────┘ └─────────────┘
-      │           │
-      │           ▼
-      │    ┌─────────────────────┐
-      │    │ notification-service│
-      │    │    (port 9100)      │
-      │    │  Slack · Email ·    │
-      │    │  Tickets            │
-      │    └─────────────────────┘
-      │
-      ▼
+┌──────────┐ ┌───────────┐ ┌────────┐ ┌─────────────┐
+│ mongodb  │ │mongo-expr │ │  kafka │ │python-service│
+│(27017)   │ │ess (8083) │ │(9092)  │ │  (port 8000) │
+└────┬─────┘ └───────────┘ └────┬───┘ └─────────────┘
+     │                          │
+     │                          ▼
+     │                  ┌─────────────────────┐
+     │                  │ notification-service│
+     │                  │    (port 9100)      │
+     │                  │  Slack · Email ·    │
+     │                  │  Tickets            │
+     │                  └─────────────────────┘
+     │
+     ▼
 ┌─────────────────────────────────────┐
 │            keycloak                 │
 │        (port 8080)                  │
