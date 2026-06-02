@@ -267,6 +267,7 @@ show_status() {
   # name | container | port
   local -a SERVICES=(
     "MongoDB|nitte-mongodb|27017"
+    "MongoDB UI|nitte-mongo-express|8083"
     "Keycloak|nitte-keycloak|8080"
     "Zookeeper|nitte-zookeeper|2181"
     "Kafka|nitte-kafka|9092"
@@ -417,6 +418,7 @@ print_summary() {
   printf '%s\n' "$SEP"
   printf '  %-24s %-32s %s\n' "Storefront"         "http://localhost:5173" "Alumni merch shop (shopping)"
   printf '  %-24s %-32s %s\n' "Admin/Merchant UI"  "http://localhost:5174" "Role-based management console"
+  printf '  %-24s %-32s %s\n' "MongoDB UI"         "http://localhost:8083"  "MongoDB web admin (basic auth)"
   printf '  %-24s %-32s %s\n' "Backend API"        "http://localhost:3000" "REST API + Kafka + JWT auth"
   printf '  %-24s %-32s %s\n' "Keycloak"           "http://localhost:8080" "Identity & access management"
   printf '  %-24s %-32s %s\n' "Jenkins"            "http://localhost:8081" "CI/CD pipelines (DevOps)"

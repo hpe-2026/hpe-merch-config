@@ -458,6 +458,30 @@ services:
       retries: 10
       start_period: 120s
 
+  mongo-express:
+    image: mongo-express:1.0.0
+    container_name: nitte-mongo-express
+    ports:
+      - "8083:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_AUTH_USERNAME: app_writer
+      ME_CONFIG_MONGODB_AUTH_PASSWORD: app_writer_pass
+      ME_CONFIG_MONGODB_AUTH_DATABASE: nitte_merch
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_UI_PASSWORD:-admin123}
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "false"
+    depends_on:
+      - mongodb
+    networks:
+      - nitte-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 networks:
   nitte-network:
     driver: bridge
