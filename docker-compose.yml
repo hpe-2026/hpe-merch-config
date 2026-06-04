@@ -477,7 +477,7 @@ services:
     networks:
       - nitte-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      test: ["CMD", "sh", "-c", "wget -q -O /dev/null http://localhost:8081 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -521,6 +521,35 @@ services:
     networks:
       - nitte-network
     restart: "no"
+
+  mongo-backup:
+    image: minio/mc:latest
+    container_name: nitte-mongo-backup
+    depends_on:
+      - mongodb
+      - minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      BACKUP_INTERVAL: "86400"  # 24 hours in seconds
+      BACKUP_RETENTION_DAYS: "7"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./scripts/backup-mongodb.sh:/backup.sh:ro
+    entrypoint: >
+      sh -c "
+        echo '[backup-service] Starting backup scheduler...'
+        echo '[backup-service] Interval: 24 hours'
+        echo '[backup-service] Retention: 7 days'
+        while true; do
+          echo '[backup-service] Running backup at \$$(date)'
+          /backup.sh \$$BACKUP_RETENTION_DAYS || echo '[backup-service] Backup failed, will retry next cycle'
+          echo '[backup-service] Sleeping for \$$BACKUP_INTERVAL seconds...'
+          sleep \$$BACKUP_INTERVAL
+        done
+      "
+    networks:
+      - nitte-network
 
 networks:
   nitte-network:
