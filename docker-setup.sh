@@ -278,6 +278,7 @@ show_status() {
     "Python Service|nitte-python|—"
     "Jenkins|nitte-jenkins|8081"
     "Nexus Repository|nitte-nexus|8082"
+    "MinIO Object Storage|nitte-minio|9000"
     "Prometheus|nitte-prometheus|—"
     "Alertmanager|nitte-alertmanager|9093"
     "Grafana|nitte-grafana|3001"
@@ -423,6 +424,7 @@ print_summary() {
   printf '  %-24s %-32s %s\n' "Keycloak"           "http://localhost:8080" "Identity & access management"
   printf '  %-24s %-32s %s\n' "Jenkins"            "http://localhost:8081" "CI/CD pipelines (DevOps)"
   printf '  %-24s %-32s %s\n' "Nexus Repository"   "http://localhost:8082" "Artifact & package registry"
+  printf '  %-24s %-32s %s\n' "MinIO S3 Storage"   "http://localhost:9001" "Object storage console (minioadmin/****)"
   printf '  %-24s %-32s %s\n' "Prometheus"         "http://localhost:9090" "Metrics (Keycloak SSO — @nitte.ac.in)"
   printf '  %-24s %-32s %s\n' "Alertmanager"       "http://localhost:9093" "Alert routing & silencing"
   printf '  %-24s %-32s %s\n' "Grafana"            "http://localhost:3001" "Dashboards (Keycloak SSO or admin/admin123)"
@@ -454,6 +456,10 @@ print_summary() {
 
   printf '  %s[ Nexus → http://localhost:8082 ]%s\n' "$YELLOW" "$NC"
   printf '  %-18s %-38s %s\n' "Nexus Admin"       "admin"                            "nexus-admin-123"
+  printf '\n'
+
+  printf '  %s[ MinIO → http://localhost:9001 ]%s\n' "$YELLOW" "$NC"
+  printf '  %-18s %-38s %s\n' "MinIO Root User"   "minioadmin"                       "minioadmin123"
   printf '\n'
 
   printf '  %s[ Grafana \u2192 http://localhost:3001  (Keycloak SSO) ]%s\n' "$YELLOW" "$NC"

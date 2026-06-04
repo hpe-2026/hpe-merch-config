@@ -482,6 +482,46 @@ services:
       timeout: 10s
       retries: 3
 
+  minio:
+    image: minio/minio:latest
+    container_name: nitte-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - nitte-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: nitte-minio-init
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    entrypoint: >
+      sh -c "
+        sleep 5 &&
+        mc alias set local http://minio:9000 minioadmin ${MINIO_ROOT_PASSWORD:-minioadmin123} &&
+        mc mb local/nitte-products local/nitte-users local/nitte-backups || true &&
+        mc anonymous set download local/nitte-products/thumbnails || true &&
+        echo 'MinIO buckets created successfully'
+      "
+    networks:
+      - nitte-network
+    restart: "no"
+
 networks:
   nitte-network:
     driver: bridge
@@ -494,3 +534,4 @@ volumes:
   keycloak_logs:
   jenkins_data:
   nexus_data:
+  minio_data:

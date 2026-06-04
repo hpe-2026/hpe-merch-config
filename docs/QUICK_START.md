@@ -32,6 +32,7 @@ curl http://localhost:8000/health
 - Jaeger Proxy: <http://localhost:16686>
 - Alertmanager: <http://localhost:9093>
 - Loki RBAC Proxy: <http://localhost:3200>
+- MinIO Console: <http://localhost:9001> (login: minioadmin / MINIO_ROOT_PASSWORD)
 
 ## 4. Logs and stop
 

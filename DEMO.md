@@ -155,7 +155,7 @@ After the script finishes, check the status:
 .\docker-setup.ps1 status       # Windows
 ```
 
-You should see **23 services** all running, with names like
+You should see **24 services** all running, with names like
 `nitte-backend`, `nitte-frontend`, `nitte-admin`, `nitte-mongodb`,
 `nitte-keycloak`, `nitte-jenkins`, `nitte-nexus`, `nitte-proxy-prometheus`,
 `nitte-proxy-jaeger`, etc.
@@ -175,6 +175,7 @@ Open these URLs in your browser to sanity-check:
 | <http://localhost:8083> | MongoDB UI — web admin for MongoDB (login: admin / your MONGO_UI_PASSWORD) |
 | <http://localhost:9093> | Alertmanager — alert routing UI |
 | <http://localhost:3200> | Loki RBAC Proxy — log access with Keycloak auth |
+| <http://localhost:9001> | MinIO Console — S3 object storage (minioadmin / your password) |
 
 ---
 
@@ -454,7 +455,7 @@ For frontend / admin-dashboard, also do a hard browser refresh (`Ctrl + Shift + 
    approve there).
 3. **Have a terminal open with notification logs streaming** — it's a great
    "wow" moment when an approval click triggers a log line in real time.
-4. **Use `./docker-setup.sh status` early** to prove all 23 services are up.
+4. **Use `./docker-setup.sh status` early** to prove all 24 services are up.
    Visual confirmation goes a long way.
 
 Good luck with your demo. If anything breaks, the troubleshooting section

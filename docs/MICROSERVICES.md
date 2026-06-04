@@ -1,4 +1,4 @@
-# NITTE Alumni Merchandise Shop — 23 Microservices Reference
+# NITTE Alumni Merchandise Shop — 24 Microservices Reference
 
 > Complete catalog of every containerized service in the NITTE stack.
 > All services are orchestrated via `docker-compose.yml` and can be started with `./docker-setup.sh start`.
@@ -8,7 +8,7 @@
 ## Table of Contents
 
 - [Application Services (5)](#application-services-5)
-- [Data & Identity Services (3)](#data--identity-services-3)
+- [Data & Identity Services (4)](#data--identity-services-4)
 - [Streaming Infrastructure (2)](#streaming-infrastructure-2)
 - [Observability Stack (8)](#observability-stack-8)
 - [DevOps / CI/CD (2)](#devops--cicd-2)
@@ -140,7 +140,7 @@ KEYCLOAK_ADMIN_EMAILS=...
 
 ---
 
-## Data & Identity Services (3)
+## Data & Identity Services (4)
 
 ---
 
@@ -188,7 +188,35 @@ The **web-based MongoDB admin interface** — a lightweight Express.js UI for br
 
 ---
 
-### 8. `keycloak`
+### 8. `minio`
+
+| Property | Value |
+|---|---|
+| **Container** | `nitte-minio` |
+| **Ports** | `9000` (S3 API), `9001` (Web Console) |
+| **Image** | `minio/minio:latest` |
+
+The **S3-compatible object storage** — self-hosted alternative to AWS S3 for storing product images, user uploads, documents, and backups.
+
+**Key features:**
+- S3 API compatible (use AWS SDK with endpoint `http://localhost:9000`)
+- Web-based admin console on port 9001
+- Pre-signed URL support for secure file access
+- Bucket policies and access control
+- Automatic bucket creation via `minio-init` container
+
+**Buckets created:**
+- `nitte-products` — Product images and thumbnails
+- `nitte-users` — User profile photos and documents
+- `nitte-backups` — Database dumps and system backups
+
+**Credentials:** `minioadmin` / `${MINIO_ROOT_PASSWORD}`
+
+**Used by:** Backend for image storage, Python service for image processing
+
+---
+
+### 9. `keycloak`
 
 | Property | Value |
 |---|---|
@@ -542,6 +570,8 @@ A single Docker bridge network that all services share. Enables container-to-con
 | Alertmanager | `9093` | `http://localhost:9093` | None |
 | Jenkins | `8081` | `http://localhost:8081` | Keycloak SSO |
 | Nexus | `8082` | `http://localhost:8082` | Keycloak SSO |
+| MinIO Console | `9001` | `http://localhost:9001` | `minioadmin` / password |
+| MinIO S3 API | `9000` | `localhost:9000` | S3-compatible |
 | MongoDB | `27017` | `localhost:27017` | `app_writer` / `app_writer_pass` |
 | MongoDB UI | `8083` | `http://localhost:8083` | Basic auth: `admin` / password |
 | Kafka | `9092` | `localhost:9092` | PLAINTEXT |
@@ -573,8 +603,8 @@ A single Docker bridge network that all services share. Enables container-to-con
       │           │           │
       ▼           ▼           ▼
 ┌──────────┐ ┌───────────┐ ┌────────┐ ┌─────────────┐
-│ mongodb  │ │mongo-expr │ │  kafka │ │python-service│
-│(27017)   │ │ess (8083) │ │(9092)  │ │  (port 8000) │
+│ mongodb  │ │mongo-expr │ │ minio  │ │python-service│
+│(27017)   │ │ess (8083) │ │(9000¹) │ │  (port 8000) │
 └────┬─────┘ └───────────┘ └────┬───┘ └─────────────┘
      │                          │
      │                          ▼
