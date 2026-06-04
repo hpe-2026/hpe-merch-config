@@ -53,6 +53,10 @@ pids/
 *.pid
 *.seed
 *.pid.lock
+.k8s-pf.pids
+
+# Log files in specific directories
+node-backend/logs/
 
 # Coverage
 coverage/
