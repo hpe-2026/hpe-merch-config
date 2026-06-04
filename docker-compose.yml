@@ -538,63 +538,73 @@ services:
       MONGO_DB: nitte_merch
       MONGO_USER: app_writer
       MONGO_PASS: app_writer_pass
-    entrypoint: >
-      bash -c "
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -e
         echo '[backup-service] Starting backup scheduler...'
         echo '[backup-service] Interval: 24 hours'
         echo '[backup-service] Retention: 7 days'
         
         # Install MinIO client (mc)
         echo '[backup-service] Installing MinIO client...'
-        apt-get update -qq && apt-get install -y -qq wget curl ca-certificates
-        wget -q https://dl.min.io/client/mc/release/linux-amd64/mc -O /usr/local/bin/mc
+        apt-get update -qq 2>/dev/null || true
+        apt-get install -y -qq ca-certificates curl 2>/dev/null || true
+        curl -sL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
         chmod +x /usr/local/bin/mc
         
         # Wait for services
         echo '[backup-service] Waiting for MongoDB...'
-        until mongosh --host \$$MONGO_HOST --port \$$MONGO_PORT --eval 'db.adminCommand({ping:1})' > /dev/null 2>&1; do
+        until mongosh --host mongodb --port 27017 --eval 'db.adminCommand({ping:1})' > /dev/null 2>&1; do
           sleep 2
         done
         echo '[backup-service] MongoDB is ready'
         
+        # Wait for MinIO
+        echo '[backup-service] Waiting for MinIO...'
+        until curl -sf http://minio:9000/minio/health/live > /dev/null 2>&1; do
+          sleep 2
+        done
+        echo '[backup-service] MinIO is ready'
+        
         # Main backup loop
         while true; do
-          echo '[backup-service] Running backup at \$$(date)'
+          echo '[backup-service] Running backup at ' "$(date)"
           
           BACKUP_BUCKET='nitte-backups'
-          DATE=\$$(date +%Y%m%d-%H%M%S)
-          BACKUP_FILE=mongodb-nitte-merch-\$${DATE}.archive
+          DATE=$(date +%Y%m%d-%H%M%S)
+          BACKUP_FILE="mongodb-nitte-merch-${DATE}.archive"
           
           # Create backup
           echo '[backup] Dumping MongoDB...'
           mongodump \
-            --host \$$MONGO_HOST \
-            --port \$$MONGO_PORT \
-            --db \$$MONGO_DB \
-            --username \$$MONGO_USER \
-            --password \$$MONGO_PASS \
-            --authenticationDatabase \$$MONGO_DB \
-            --archive=/tmp/\$${BACKUP_FILE} \
+            --host mongodb \
+            --port 27017 \
+            --db nitte_merch \
+            --username app_writer \
+            --password app_writer_pass \
+            --authenticationDatabase nitte_merch \
+            --archive="/tmp/${BACKUP_FILE}" \
             --gzip
           
           # Upload to MinIO
           echo '[backup] Uploading to MinIO...'
-          mc alias set local http://minio:9000 \$$MINIO_ROOT_USER \$$MINIO_ROOT_PASSWORD
-          mc mb local/\$${BACKUP_BUCKET} || true
-          mc cp /tmp/\$${BACKUP_FILE} local/\$${BACKUP_BUCKET}/
+          mc alias set local http://minio:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+          mc mb local/${BACKUP_BUCKET} || true
+          mc cp "/tmp/${BACKUP_FILE}" local/${BACKUP_BUCKET}/
           
           # Cleanup
-          rm -f /tmp/\$${BACKUP_FILE}
+          rm -f "/tmp/${BACKUP_FILE}"
           
           # Cleanup old backups
           echo '[backup] Cleaning up old backups...'
-          mc find local/\$${BACKUP_BUCKET} --name 'mongodb-*.archive' --older-than \$$BACKUP_RETENTION_DAYS'd' --exec 'mc rm {}' || true
+          mc find local/${BACKUP_BUCKET} --name 'mongodb-*.archive' --older-than "${BACKUP_RETENTION_DAYS}d" --exec 'mc rm {}' || true
           
-          echo '[backup-service] Backup completed: \$${BACKUP_FILE}'
-          echo '[backup-service] Sleeping for \$$BACKUP_INTERVAL seconds...'
-          sleep \$$BACKUP_INTERVAL
+          echo "[backup-service] Backup completed: ${BACKUP_FILE}"
+          echo "[backup-service] Sleeping for ${BACKUP_INTERVAL} seconds..."
+          sleep "${BACKUP_INTERVAL}"
         done
-      "
     networks:
       - nitte-network
 
