@@ -155,7 +155,7 @@ After the script finishes, check the status:
 .\docker-setup.ps1 status       # Windows
 ```
 
-You should see **19 containers** all in **Up** state, with names like
+You should see **23 services** all running, with names like
 `nitte-backend`, `nitte-frontend`, `nitte-admin`, `nitte-mongodb`,
 `nitte-keycloak`, `nitte-jenkins`, `nitte-nexus`, `nitte-proxy-prometheus`,
 `nitte-proxy-jaeger`, etc.
@@ -172,6 +172,9 @@ Open these URLs in your browser to sanity-check:
 | <http://localhost:3001> | Grafana login |
 | <http://localhost:9090> | Prometheus — redirects to Keycloak login (use `internal-admin` or `internal-user`) |
 | <http://localhost:16686> | Jaeger — redirects to Keycloak login (use `internal-admin` or `internal-user`) |
+| <http://localhost:8083> | MongoDB UI — web admin for MongoDB (login: admin / your MONGO_UI_PASSWORD) |
+| <http://localhost:9093> | Alertmanager — alert routing UI |
+| <http://localhost:3200> | Loki RBAC Proxy — log access with Keycloak auth |
 
 ---
 
@@ -451,7 +454,7 @@ For frontend / admin-dashboard, also do a hard browser refresh (`Ctrl + Shift + 
    approve there).
 3. **Have a terminal open with notification logs streaming** — it's a great
    "wow" moment when an approval click triggers a log line in real time.
-4. **Use `./docker-setup.sh status` early** to prove all 19 services are up.
+4. **Use `./docker-setup.sh status` early** to prove all 23 services are up.
    Visual confirmation goes a long way.
 
 Good luck with your demo. If anything breaks, the troubleshooting section

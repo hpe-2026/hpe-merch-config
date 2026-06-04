@@ -22,7 +22,16 @@ curl http://localhost:8000/health
 - Frontend: <http://localhost:5173>
 - Admin dashboard: <http://localhost:5174>
 - API gateway: <http://localhost:3000>
+- Python service: <http://localhost:8000>
 - Keycloak (admin only): <http://localhost:8080>
+- MongoDB UI: <http://localhost:8083> (login: admin / MONGO_UI_PASSWORD)
+- Grafana: <http://localhost:3001>
+- Jenkins: <http://localhost:8081>
+- Nexus: <http://localhost:8082>
+- Prometheus Proxy: <http://localhost:9090>
+- Jaeger Proxy: <http://localhost:16686>
+- Alertmanager: <http://localhost:9093>
+- Loki RBAC Proxy: <http://localhost:3200>
 
 ## 4. Logs and stop
 
