@@ -11,6 +11,8 @@ class Product(BaseModel):
     price: float = Field(..., gt=0)
     stock: int = Field(..., ge=0)
     image_url: Optional[str] = None
+    created_by: Optional[str] = None
+    merchant_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -25,6 +27,8 @@ class Product(BaseModel):
                 "price": 499.99,
                 "stock": 100,
                 "image_url": "https://example.com/tshirt.jpg",
+                "created_by": "user-123",
+                "merchant_id": "merchant-456",
                 "created_at": "2024-01-01T00:00:00",
                 "updated_at": "2024-01-01T00:00:00"
             }
@@ -52,7 +56,8 @@ class ProductBase(BaseModel):
     image_url: Optional[str] = None
 
 class ProductCreate(ProductBase):
-    pass
+    created_by: Optional[str] = None
+    merchant_id: Optional[str] = None
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None

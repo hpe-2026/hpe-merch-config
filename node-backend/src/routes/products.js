@@ -1,7 +1,14 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import pythonServiceClient from '../services/pythonServiceClient.js';
-import { authMiddleware, adminMiddleware } from '../middleware/index.js';
+import {
+  authMiddleware,
+  adminMiddleware,
+  requireProductOwnership,
+  setOwnershipOnCreate,
+  keycloakRequireClientRole,
+  keycloakRequireAnyRole,
+} from '../middleware/index.js';
 import logger from '../config/logger.js';
 import { productsViewed, databaseOperations } from '../metrics.js';
 import tracer, { context } from '../tracing.js';
@@ -144,15 +151,22 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// Create product (admin only)
+// Create product
+// Requires: product:create client role OR platform-admin/merchant-admin realm role
 router.post(
   '/',
   authMiddleware,
-  adminMiddleware,
+  keycloakRequireAnyRole([
+    { type: 'client', role: 'nitte-client:product:create' },
+    'platform-admin',
+    'merchant-admin',
+  ]),
+  setOwnershipOnCreate({ userIdField: 'created_by', merchantIdField: 'merchant_id' }),
   productValidator,
   handleValidationErrors,
   async (req, res, next) => {
     try {
+      // productData now includes created_by and merchant_id from setOwnershipOnCreate middleware
       const productData = {
         name: req.body.name,
         description: req.body.description,
@@ -160,6 +174,8 @@ router.post(
         price: req.body.price,
         stock: req.body.stock,
         image_url: req.body.image_url || null,
+        created_by: req.body.created_by,
+        merchant_id: req.body.merchant_id || null,
       };
 
       const product = await pythonServiceClient.createProduct(productData);
@@ -178,15 +194,25 @@ router.post(
   }
 );
 
-// Update product (admin only)
+// Update product
+// Requires: product:update client role OR ownership OR admin
 router.put(
   '/:id',
   authMiddleware,
-  adminMiddleware,
+  keycloakRequireAnyRole([
+    { type: 'client', role: 'nitte-client:product:update' },
+    'platform-admin',
+    'merchant-admin',
+  ]),
+  requireProductOwnership,
   async (req, res, next) => {
     try {
       const { id } = req.params;
       const productData = req.body;
+
+      // Prevent changing ownership fields
+      delete productData.created_by;
+      delete productData.merchant_id;
 
       const product = await pythonServiceClient.updateProduct(id, productData);
       res.status(200).json({
@@ -204,11 +230,17 @@ router.put(
   }
 );
 
-// Delete product (admin only)
+// Delete product
+// Requires: product:delete client role OR ownership OR admin
 router.delete(
   '/:id',
   authMiddleware,
-  adminMiddleware,
+  keycloakRequireAnyRole([
+    { type: 'client', role: 'nitte-client:product:delete' },
+    'platform-admin',
+    'merchant-admin',
+  ]),
+  requireProductOwnership,
   async (req, res, next) => {
     try {
       const { id } = req.params;

@@ -1,7 +1,13 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import pythonServiceClient from '../services/pythonServiceClient.js';
-import { authMiddleware, adminMiddleware } from '../middleware/index.js';
+import {
+  authMiddleware,
+  adminMiddleware,
+  requireOrderOwnership,
+  filterByOwnership,
+  keycloakRequireAnyRole,
+} from '../middleware/index.js';
 import logger from '../config/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import { ordersCreated, databaseOperations } from '../metrics.js';
@@ -40,10 +46,14 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
-// Get user orders (all orders for admin, user's orders for regular users)
+// Get user orders
+// Platform admin: all orders
+// Merchant admin: orders containing their products (Phase 2 enhancement)
+// Regular user: only their own orders
 router.get(
   '/',
   authMiddleware,
+  filterByOwnership({ filterField: 'user_id' }),
   async (req, res, next) => {
     // Create child span for this service's operation
     const span = tracer.startSpan('mongodb.find', {
@@ -58,19 +68,25 @@ router.get(
     attachIdentityToSpan(span, req);
 
     try {
-      // Admin gets all orders, regular users get only their orders
-      const userId = req.user.role === 'admin' ? null : req.user.userId;
+      // Use ownership filter set by middleware
+      const filter = req.ownershipFilter || { user_id: req.user.userId };
+      const userId = filter.user_id || null;
+
       const orders = await pythonServiceClient.getOrders(userId);
       databaseOperations.inc({ operation: 'list_orders', status: 'success' });
-      
+
       span.setAttributes({
         'db.mongodb.records_returned': orders.length || 0,
         'http.status_code': 200,
+        'ownership.filter': JSON.stringify(filter),
       });
-      
+
       res.status(200).json({
         success: true,
         data: orders,
+        _meta: {
+          ownership: req.ownership || { level: 'user', filter: filter },
+        }
       });
     } catch (error) {
       logger.error('Failed to fetch orders', { error: error.message });
@@ -93,9 +109,10 @@ router.get(
 router.get(
   '/:id',
   authMiddleware,
+  requireOrderOwnership,
   async (req, res, next) => {
     const { id } = req.params;
-    
+
     // Create child span for this service's operation
     const span = tracer.startSpan('mongodb.find_one', {
       attributes: {
@@ -110,26 +127,24 @@ router.get(
     attachIdentityToSpan(span, req);
 
     try {
-      const order = await pythonServiceClient.getOrderById(id);
+      // Order is already attached by requireOrderOwnership middleware
+      const order = req.resource || await pythonServiceClient.getOrderById(id);
 
-      // Verify user owns this order
-      if (order.user_id !== req.user.userId && req.user.role !== 'admin') {
-        span.setAttributes({ 'http.status_code': 403 });
-        span.end();
-        return res.status(403).json({
-          success: false,
-          message: 'Access denied',
-        });
-      }
+      span.setAttributes({
+        'http.status_code': 200,
+        'ownership.level': req.ownership?.level || 'unknown',
+      });
 
-      span.setAttributes({ 'http.status_code': 200 });
       res.status(200).json({
         success: true,
         data: order,
+        _meta: {
+          ownership: req.ownership,
+        }
       });
     } catch (error) {
       if (error.message === 'Order not found') {
-        span.setAttributes({ 
+        span.setAttributes({
           'http.status_code': 404,
           'error': true,
         });
@@ -215,14 +230,19 @@ router.post(
   }
 );
 
-// Update order (admin only)
+// Update order
+// Requires: order:update client role OR ownership OR platform-admin
 router.put(
   '/:id',
   authMiddleware,
-  adminMiddleware,
+  keycloakRequireAnyRole([
+    { type: 'client', role: 'nitte-client:order:update' },
+    'platform-admin',
+  ]),
+  requireOrderOwnership,
   async (req, res, next) => {
     const { id } = req.params;
-    
+
     // Create child span for this service's operation
     const span = tracer.startSpan('mongodb.update', {
       attributes: {
@@ -243,11 +263,17 @@ router.put(
       };
 
       const order = await pythonServiceClient.updateOrder(id, updateData);
-      span.setAttributes({ 'http.status_code': 200 });
+      span.setAttributes({
+        'http.status_code': 200,
+        'ownership.level': req.ownership?.level || 'unknown',
+      });
       res.status(200).json({
         success: true,
         message: 'Order updated successfully',
         data: order,
+        _meta: {
+          ownership: req.ownership,
+        }
       });
     } catch (error) {
       logger.error('Failed to update order', { error: error.message });

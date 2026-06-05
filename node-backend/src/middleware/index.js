@@ -280,3 +280,13 @@ export const requestLogger = (req, res, next) => {
 function generateCorrelationId() {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
+
+// Export ownership middleware (Phase 2: Resource-Level Authorization)
+export {
+  requireOwnership,
+  requireProductOwnership,
+  requireOrderOwnership,
+  filterByOwnership,
+  requirePermissionAndOwnership,
+  setOwnershipOnCreate,
+} from './ownership.js';

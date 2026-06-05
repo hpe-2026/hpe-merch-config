@@ -53,6 +53,11 @@ class MongoDatabase:
                 await products_collection.create_index("name")
                 await products_collection.create_index("category")
                 await products_collection.create_index("price")
+                # Ownership indexes for Phase 2 RBAC
+                span.add_event("creating_index", {"collection": "products", "field": "created_by"})
+                await products_collection.create_index("created_by")
+                span.add_event("creating_index", {"collection": "products", "field": "merchant_id"})
+                await products_collection.create_index("merchant_id")
 
                 # Orders collection
                 orders_collection = self.db["orders"]
