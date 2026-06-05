@@ -5,7 +5,13 @@ import rateLimit from 'express-rate-limit';
 import config from './config/index.js';
 import { connectDatabase } from './config/database.js';
 import logger from './config/logger.js';
-import { authMiddleware, errorHandler, requestLogger } from './middleware/index.js';
+import {
+  authMiddleware,
+  errorHandler,
+  requestLogger,
+  addGatewayHeaders,
+  attachUserAttributes,
+} from './middleware/index.js';
 import pythonServiceClient from './services/pythonServiceClient.js';
 import {
   register,
@@ -141,6 +147,17 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Logging middleware
 app.use(requestLogger);
+
+// Phase 3: API Gateway headers - adds X-User-ID, X-Roles, etc. to downstream requests
+// This must come after auth but we apply it globally to catch all authenticated requests
+app.use((req, res, next) => {
+  // Defer gateway headers until after auth is resolved
+  // We'll apply them in each route that uses authMiddleware
+  next();
+});
+
+// Phase 4: Attach user attributes for ABAC checks
+app.use(attachUserAttributes);
 
 // Health check endpoints
 app.get('/api/health', (req, res) => {

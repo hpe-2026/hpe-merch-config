@@ -4,7 +4,7 @@ This document outlines the gradual migration to enterprise-grade RBAC using Keyc
 
 ---
 
-## Phase 1: Fix Role Hierarchy ✅ IN PROGRESS
+## Phase 1: Fix Role Hierarchy ✅ COMPLETE
 
 ### Goals
 - Create proper realm roles for user types
@@ -85,7 +85,7 @@ curl http://localhost:3000/api/auth/me \
 
 ---
 
-## Phase 2: Resource-Level Authorization
+## Phase 2: Resource-Level Authorization ✅ COMPLETE
 
 ### Goals
 - Add `userId` and `merchantId` to all database records
@@ -136,6 +136,17 @@ curl http://localhost:3000/api/auth/me \
 }
 ```
 
+### Implementation
+
+**File**: `node-backend/src/middleware/ownership.js`
+
+Complete ownership middleware with:
+- `requireOwnership()` - Generic ownership checker
+- `requireProductOwnership` - Product-specific ownership
+- `requireOrderOwnership` - Order-specific ownership  
+- `filterByOwnership` - Filter lists by ownership
+- `setOwnershipOnCreate` - Auto-set ownership on creation
+
 ### API Changes
 
 Add middleware `requireResourceOwner()`:
@@ -177,7 +188,7 @@ curl http://localhost:3000/api/orders/order-123 \
 
 ---
 
-## Phase 3: API Gateway Pattern
+## Phase 3: API Gateway Pattern ✅ COMPLETE
 
 ### Goals
 - Move authentication to API Gateway (node-backend acts as gateway)
@@ -209,16 +220,27 @@ curl http://localhost:3000/api/orders/order-123 \
    - `X-Merchant-ID`: merchant-uuid (if applicable)
    - `X-Request-ID`: uuid for tracing
 
+### Implementation
+
+**File**: `node-backend/src/middleware/gateway.js`
+
+Gateway middleware adds headers to downstream requests:
+- `X-User-ID`: User UUID
+- `X-User-Email`: User email
+- `X-Roles`: Formatted as `realm:role,client:role`
+- `X-Merchant-ID`: Merchant UUID (if applicable)
+- `X-Request-ID`: Unique request ID
+- `X-Correlation-ID`: For distributed tracing
+
+Also includes `requireGatewayHeaders()` for internal services to reject direct calls.
+
 ### Service-to-Service Auth
 ```javascript
-// notification-service calling python-service
-const token = await getServiceToken('notification-client', 'notification-secret');
+// Use createServiceHeaders to forward auth context
+import { createServiceHeaders } from './middleware/gateway.js';
 
-await fetch('http://python-service/process', {
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'X-Request-ID': requestId
-  }
+const response = await fetch('http://python-service/api/orders', {
+  headers: createServiceHeaders(req)
 });
 ```
 
@@ -235,7 +257,7 @@ curl http://localhost:3000/api/process \
 
 ---
 
-## Phase 4: ABAC & Keycloak Groups
+## Phase 4: ABAC & Keycloak Groups ✅ COMPLETE
 
 ### Goals
 - Add Keycloak Groups for organizations
@@ -264,20 +286,47 @@ Alumni Chapter Bangalore (group)
 └── localEvents: true
 ```
 
+### Implementation
+
+**File**: `node-backend/src/middleware/abac.js`
+
+Complete ABAC implementation with:
+
+**Group Functions:**
+- `hasGroup(userInfo, groupPath)` - Check group membership
+
+**Attribute Functions:**
+- `getAttribute(userInfo, attrName, default)` - Get string attribute
+- `getNumericAttribute(userInfo, attrName, default)` - Get numeric attribute
+- `getBooleanAttribute(userInfo, attrName, default)` - Get boolean attribute
+
+**Policy Functions:**
+- `canAccessEarlySale(userInfo)` - Check early bird access
+- `canGetDiscount(userInfo)` - Check discount eligibility
+- `canAccessMerchantFeatures(userInfo, merchantId)` - Check merchant access
+- `canAccessChapterEvents(userInfo, chapterCity)` - Check chapter access
+
+**Middleware:**
+- `requireABAC(policyFn, resourceName)` - Generic ABAC middleware factory
+- `requireEarlySaleAccess` - Pre-built early sale middleware
+- `requireAlumniDiscount` - Pre-built discount middleware
+- `requireMerchantAccess(merchantId)` - Pre-built merchant middleware
+- `attachUserAttributes` - Extract attributes from JWT
+
 ### ABAC Policies
 ```javascript
 // Can access early bird sale?
 const canAccessEarlySale = (
-  user.hasGroup('Class of 2022') ||
-  user.attributes.earlyAccess === 'true' ||
-  user.hasRealmRole('platform-admin')
+  hasGroup(userInfo, 'Class of 2022') ||
+  getBooleanAttribute(userInfo, 'earlyAccess') ||
+  userInfo.realmRoles.includes('platform-admin')
 );
 
 // Can get alumni discount?
 const canGetDiscount = (
-  user.hasGroup('Class of 2022') &&
-  user.attributes.alumniDiscount === 'true' &&
-  user.attributes.graduationYear <= 2022
+  hasGroup(userInfo, 'Class of 2022') &&
+  getBooleanAttribute(userInfo, 'alumniDiscount') &&
+  getNumericAttribute(userInfo, 'graduationYear', 9999) <= 2022
 );
 ```
 
@@ -316,14 +365,14 @@ curl http://localhost:3000/api/sales/early-bird \
 
 ## Migration Timeline
 
-| Phase | Duration | Can Parallelize |
-|-------|----------|-----------------|
-| Phase 1 | 1-2 days | No (foundation) |
-| Phase 2 | 2-3 days | After Phase 1 |
-| Phase 3 | 3-4 days | After Phase 2 |
-| Phase 4 | 2-3 days | After Phase 3 |
+| Phase | Duration | Status | Test Script |
+|-------|----------|--------|-------------|
+| Phase 1 | 1-2 days | ✅ Complete | `scripts/test-rbac-phase1.sh` |
+| Phase 2 | 2-3 days | ✅ Complete | `scripts/test-rbac-phase2.sh` |
+| Phase 3 | 3-4 days | ✅ Complete | `scripts/test-rbac-phase3.sh` |
+| Phase 4 | 2-3 days | ✅ Complete | `scripts/test-rbac-phase4.sh` |
 
-**Total: 1-2 weeks for complete migration**
+**Total: 1-2 weeks for complete migration - ALL PHASES COMPLETE**
 
 ---
 

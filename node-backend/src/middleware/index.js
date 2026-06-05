@@ -290,3 +290,28 @@ export {
   requirePermissionAndOwnership,
   setOwnershipOnCreate,
 } from './ownership.js';
+
+// Export gateway middleware (Phase 3: API Gateway Pattern)
+export {
+  addGatewayHeaders,
+  requireGatewayHeaders,
+  createServiceHeaders,
+  logGatewayPropagation,
+} from './gateway.js';
+
+// Export ABAC middleware (Phase 4: Attribute-Based Access Control)
+export {
+  hasGroup,
+  getAttribute,
+  getNumericAttribute,
+  getBooleanAttribute,
+  canAccessEarlySale,
+  canGetDiscount,
+  canAccessMerchantFeatures,
+  canAccessChapterEvents,
+  requireABAC,
+  requireEarlySaleAccess,
+  requireAlumniDiscount,
+  requireMerchantAccess,
+  attachUserAttributes,
+} from './abac.js';
