@@ -34,18 +34,22 @@
   "accessTokenLifespan": 1800,
   "roles": {
     "realm": [
-      { "name": "admin",              "description": "System administrator with full access" },
+      { "name": "admin",              "description": "System administrator with full access (deprecated - use platform-admin)" },
       { "name": "admin-internal",     "description": "Internal DevOps admin with Jenkins/Nexus/Keycloak Admin access (2FA required)" },
       { "name": "alumni",             "description": "Verified alumni user" },
       { "name": "non_alumni",         "description": "Non-alumni user with limited access" },
-      { "name": "merchant",           "description": "Product merchant and seller" },
+      { "name": "merchant",           "description": "Product merchant and seller (deprecated - use merchant-admin or merchant-staff)" },
       { "name": "merchant-amazon",    "description": "Third-party merchant: Amazon" },
       { "name": "merchant-flipkart",  "description": "Third-party merchant: Flipkart" },
       { "name": "internal-user",      "description": "Internal NITTE staff with limited DevOps access (Jenkins viewer, observability read-only)" },
       { "name": "mongo_writer",       "description": "Internal service role allowed to write to MongoDB" },
       { "name": "nexus-admin",        "description": "Nexus repository administrator" },
       { "name": "nexus-developer",    "description": "Nexus repository developer (read/write)" },
-      { "name": "keycloak-admin",     "description": "Keycloak administrator with access to audit and security logs" }
+      { "name": "keycloak-admin",     "description": "Keycloak administrator with access to audit and security logs" },
+      { "name": "platform-admin",     "description": "[RBAC] Platform administrator with full system access" },
+      { "name": "merchant-admin",     "description": "[RBAC] Merchant administrator - can manage all resources for their merchant" },
+      { "name": "merchant-staff",     "description": "[RBAC] Merchant staff - limited access to merchant resources" },
+      { "name": "alumni-verified",    "description": "[RBAC] Verified alumni with purchasing access" }
     ]
   },
   "eventsEnabled": true,
@@ -76,6 +80,17 @@
       "authorizationServicesEnabled": false,
       "fullScopeAllowed": true,
       "defaultRoles": ["non_alumni"],
+      "clientRoles": [
+        { "name": "product:create",   "description": "[RBAC] Can create new products" },
+        { "name": "product:update",   "description": "[RBAC] Can update own products" },
+        { "name": "product:delete",   "description": "[RBAC] Can delete own products" },
+        { "name": "product:read-all", "description": "[RBAC] Can read all products (admin)" },
+        { "name": "order:create",     "description": "[RBAC] Can create orders" },
+        { "name": "order:update",     "description": "[RBAC] Can update own orders" },
+        { "name": "order:read-own",   "description": "[RBAC] Can read own orders" },
+        { "name": "order:read-all",   "description": "[RBAC] Can read all orders (admin)" },
+        { "name": "user:manage",      "description": "[RBAC] Can manage users" }
+      ],
       "protocolMappers": [
         {
           "name": "realm roles",
@@ -92,6 +107,20 @@
           }
         },
         {
+          "name": "client roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "resource_access.${client_id}.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
           "name": "username",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-property-mapper",
@@ -102,6 +131,20 @@
             "id.token.claim": "true",
             "access.token.claim": "true",
             "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "merchantId attribute",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "merchantId",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "merchant_id",
             "jsonType.label": "String"
           }
         }
@@ -311,6 +354,66 @@
       "lastName": "Merchant",
       "credentials": [{ "type": "password", "value": "Flipkart@123", "temporary": false }],
       "realmRoles": ["merchant-flipkart"]
+    },
+    {
+      "username": "platform-admin@nitte.ac.in",
+      "enabled": true,
+      "email": "platform-admin@nitte.ac.in",
+      "emailVerified": true,
+      "firstName": "Platform",
+      "lastName": "Admin",
+      "credentials": [{ "type": "password", "value": "PlatformAdmin@123", "temporary": false }],
+      "realmRoles": ["platform-admin"],
+      "clientRoles": {
+        "nitte-client": [
+          "product:create",
+          "product:update",
+          "product:delete",
+          "product:read-all",
+          "order:create",
+          "order:update",
+          "order:read-all",
+          "user:manage"
+        ]
+      }
+    },
+    {
+      "username": "merchant-admin@nitte.edu",
+      "enabled": true,
+      "email": "merchant-admin@nitte.edu",
+      "emailVerified": true,
+      "firstName": "Merchant",
+      "lastName": "Admin",
+      "credentials": [{ "type": "password", "value": "MerchantAdmin@123", "temporary": false }],
+      "realmRoles": ["merchant-admin"],
+      "attributes": {
+        "merchantId": ["nitte-official-store"]
+      },
+      "clientRoles": {
+        "nitte-client": [
+          "product:create",
+          "product:update",
+          "product:delete",
+          "order:read-all"
+        ]
+      }
+    },
+    {
+      "username": "alumni-buyer@nitte.edu",
+      "enabled": true,
+      "email": "alumni-buyer@nitte.edu",
+      "emailVerified": true,
+      "firstName": "Alumni",
+      "lastName": "Buyer",
+      "credentials": [{ "type": "password", "value": "AlumniBuyer@123", "temporary": false }],
+      "realmRoles": ["alumni-verified"],
+      "clientRoles": {
+        "nitte-client": [
+          "order:create",
+          "order:update",
+          "order:read-own"
+        ]
+      }
     }
   ]
 }
