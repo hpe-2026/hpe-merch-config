@@ -212,4 +212,86 @@ router.post(
   }
 );
 
+/**
+ * Upload product image
+ * POST /api/upload/product-image
+ */
+router.post(
+  '/product-image',
+  authMiddleware,
+  upload.single('file'),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No file uploaded',
+        });
+      }
+
+      const userId = req.user?.userId || req.user?.id;
+      const merchantId = req.body?.merchantId || req.user?.merchantId;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'User ID not found',
+        });
+      }
+
+      // Use products bucket
+      const productsBucket = process.env.S3_PRODUCTS_BUCKET || 'nitte-products';
+
+      // Generate unique filename
+      const fileExtension = path.extname(req.file.originalname);
+      const timestamp = Date.now();
+      const randomId = uuidv4().split('-')[0];
+      const key = `products/${merchantId || userId}/${timestamp}-${randomId}${fileExtension}`;
+
+      // Upload to MinIO
+      const uploadParams = {
+        Bucket: productsBucket,
+        Key: key,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+        Metadata: {
+          'user-id': userId,
+          'merchant-id': merchantId || '',
+          'upload-type': 'product-image',
+          'original-name': req.file.originalname,
+        },
+      };
+
+      await s3Client.send(new PutObjectCommand(uploadParams));
+
+      // Construct URL
+      const endpoint = process.env.S3_PUBLIC_ENDPOINT || process.env.S3_ENDPOINT || 'http://localhost:9000';
+      const fileUrl = `${endpoint}/${productsBucket}/${key}`;
+
+      logger.info('Product image uploaded', {
+        userId,
+        merchantId,
+        key,
+        size: req.file.size,
+        type: req.file.mimetype,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Product image uploaded successfully',
+        url: fileUrl,
+        key,
+        size: req.file.size,
+      });
+    } catch (error) {
+      logger.error('Failed to upload product image:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to upload image',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
+);
+
 export default router;
