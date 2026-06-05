@@ -539,6 +539,46 @@ services:
       - nitte-network
     restart: "no"
 
+  # Product Seeding Service - uploads images to MinIO and creates products in MongoDB
+  seed-products:
+    build:
+      context: ./node-backend
+      dockerfile: Dockerfile
+    container_name: nitte-seed-products
+    depends_on:
+      mongodb:
+        condition: service_started
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+      node-backend:
+        condition: service_started
+    environment:
+      MONGODB_URL: mongodb://app_writer:app_writer_pass@nitte-mongodb:27017/nitte_merch?authSource=nitte_merch
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      S3_PRODUCTS_BUCKET: nitte-products
+      AWS_REGION: us-east-1
+      NODE_ENV: development
+    volumes:
+      - ./scripts/seed-products.mjs:/app/scripts/seed-products.mjs:ro
+    working_dir: /app
+    entrypoint: >
+      sh -c "
+        echo 'Waiting for services to be ready...' &&
+        sleep 10 &&
+        echo 'Installing dependencies...' &&
+        npm install mongodb @aws-sdk/client-s3 --no-save 2>/dev/null || true &&
+        echo 'Running product seeding...' &&
+        node scripts/seed-products.mjs
+      "
+    networks:
+      - nitte-network
+    restart: "no"
+
   mongo-backup:
     image: mongo:5.0
     container_name: nitte-mongo-backup
