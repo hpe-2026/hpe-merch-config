@@ -273,7 +273,8 @@ show_status() {
     "Kafka|nitte-kafka|9092"
     "Backend API|nitte-backend|3000"
     "Storefront|nitte-frontend|5173"
-    "Admin / Merchant UI|nitte-admin|5174"
+    "Admin Dashboard|nitte-admin|5174"
+    "Merchant Portal|nitte-merchant-portal|5175"
     "Notifications|nitte-notifications|—"
     "Python Service|nitte-python|—"
     "Jenkins|nitte-jenkins|8081"
@@ -290,6 +291,7 @@ show_status() {
     "Promtail|nitte-promtail|—"
     "Promtail Keycloak|nitte-promtail-keycloak|—"
     "Keycloak Setup|nitte-keycloak-setup|—"
+    "Product Seeding|nitte-seed-products|—"
   )
 
   local SEP="  ${CYAN}$(printf '%.0s─' {1..70})${NC}"
@@ -410,7 +412,7 @@ print_summary() {
   printf '%s\n' "$SEP"
   printf '  %-30s → %s\n'  "Alumni / Non-Alumni"          "Storefront           http://localhost:5173"
   printf '  %-30s → %s\n'  "Platform Admin"               "Admin Console        http://localhost:5174"
-  printf '  %-30s → %s\n'  "Amazon / Flipkart Merchant"   "Merchant Portal      http://localhost:5174"
+  printf '  %-30s → %s\n'  "Merchants"                    "Merchant Portal      http://localhost:5175"
   printf '  %-30s → %s\n'  "Internal DevOps (full access)" "Jenkins             http://localhost:8081"
   printf '  %-30s → %s\n'  "Internal DevOps (read-only)"  "Nexus / Grafana / Jaeger"
   printf '\n'
@@ -418,7 +420,8 @@ print_summary() {
   printf '%s  ALL SERVICE URLS%s\n' "$BOLD" "$NC"
   printf '%s\n' "$SEP"
   printf '  %-24s %-32s %s\n' "Storefront"         "http://localhost:5173" "Alumni merch shop (shopping)"
-  printf '  %-24s %-32s %s\n' "Admin/Merchant UI"  "http://localhost:5174" "Role-based management console"
+  printf '  %-24s %-32s %s\n' "Admin Dashboard"    "http://localhost:5174" "Platform admin console"
+  printf '  %-24s %-32s %s\n' "Merchant Portal"    "http://localhost:5175" "Merchant management (products/orders)"
   printf '  %-24s %-32s %s\n' "MongoDB UI"         "http://localhost:8083"  "MongoDB web admin (basic auth)"
   printf '  %-24s %-32s %s\n' "Backend API"        "http://localhost:3000" "REST API + Kafka + JWT auth"
   printf '  %-24s %-32s %s\n' "Keycloak"           "http://localhost:8080" "Identity & access management"
@@ -444,6 +447,10 @@ print_summary() {
 
   printf '  %s[ Admin Console → http://localhost:5174 ]%s\n' "$YELLOW" "$NC"
   printf '  %-18s %-38s %s\n' "Platform Admin"    "admin@nitte.edu"                  "admin@123"
+  printf '\n'
+
+  printf '  %s[ Merchant Portal → http://localhost:5175 ]%s\n' "$YELLOW" "$NC"
+  printf '  %-18s %-38s %s\n' "NITTE Merchant"    "merchant-admin@nitte.edu"         "MerchantAdmin@123"
   printf '  %-18s %-38s %s\n' "Amazon Merchant"   "amazon-merchant@amazon.com"       "Amazon@123"
   printf '  %-18s %-38s %s\n' "Flipkart Merchant" "flipkart-merchant@flipkart.com"   "Flipkart@123"
   printf '\n'
