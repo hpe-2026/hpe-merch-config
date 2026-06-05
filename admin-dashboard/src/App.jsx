@@ -4,6 +4,7 @@ import AdminNavbar from './components/AdminNavbar'
 import AdminLogin from './components/AdminLogin'
 import Dashboard from './components/Dashboard'
 import MerchantDashboard from './components/MerchantDashboard'
+import MerchantProfile from './components/MerchantProfile'
 import Metrics from './components/Metrics'
 import Traces from './components/Traces'
 import Users from './components/Users'
@@ -32,12 +33,14 @@ function App() {
     return () => axios.interceptors.response.eject(id)
   }, [])
 
-  const MERCHANT_ROLES = ['merchant', 'merchant-amazon', 'merchant-flipkart']
+  const MERCHANT_ROLES = ['merchant', 'merchant-amazon', 'merchant-flipkart', 'merchant-admin', 'merchant-staff']
+  const ADMIN_ROLES = ['admin', 'admin-internal', 'platform-admin']
 
   const isAdminUser = (u) =>
     u?.role === 'admin' ||
     u?.roles?.includes('admin') ||
-    u?.roles?.includes('admin-internal')
+    u?.roles?.includes('admin-internal') ||
+    u?.roles?.includes('platform-admin')
 
   const isMerchantUser = (u) =>
     u?.role === 'merchant' ||
@@ -89,6 +92,13 @@ function App() {
           <main className="flex-1">
             {currentPage === 'dashboard' && <Dashboard />}
             {currentPage === 'merchant-dashboard' && <MerchantDashboard user={user} setCurrentPage={setCurrentPage} />}
+            {currentPage === 'merchant-profile' && (
+              <MerchantProfile 
+                user={user} 
+                onLogout={handleLogout}
+                onBack={() => setCurrentPage('merchant-dashboard')}
+              />
+            )}
             {currentPage === 'metrics' && <Metrics />}
             {currentPage === 'traces' && <Traces />}
             {currentPage === 'users' && <Users />}

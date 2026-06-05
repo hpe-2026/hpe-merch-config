@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Package, ShoppingCart, TrendingUp, Store, ArrowRight, AlertCircle } from 'lucide-react'
+import { Package, ShoppingCart, TrendingUp, Store, ArrowRight, AlertCircle, UserCircle } from 'lucide-react'
 import { API_BASE } from '../config/api'
 
 const MERCHANT_ROLE_LABELS = {
   'merchant-amazon': 'Amazon',
   'merchant-flipkart': 'Flipkart',
   'merchant': 'Merchant',
+  'merchant-admin': 'Merchant Admin',
+  'merchant-staff': 'Merchant Staff',
 }
 
 function getMerchantLabel(user) {
@@ -155,6 +157,13 @@ export default function MerchantDashboard({ user, setCurrentPage }) {
           >
             <ShoppingCart className="w-4 h-4" />
             View Orders
+          </button>
+          <button
+            onClick={() => setCurrentPage('merchant-profile')}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition"
+          >
+            <UserCircle className="w-4 h-4" />
+            My Profile
           </button>
         </div>
       </div>
