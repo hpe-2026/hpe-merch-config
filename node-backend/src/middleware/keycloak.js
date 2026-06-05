@@ -57,7 +57,8 @@ export const keycloakAuthMiddleware = async (req, res, next) => {
 
 /**
  * Keycloak authorization middleware
- * Checks if user has required role(s)
+ * Checks if user has required realm role(s)
+ * Backward compatible - uses realm roles by default
  */
 export const keycloakRequireRole = (requiredRoles) => {
   return (req, res, next) => {
@@ -70,16 +71,161 @@ export const keycloakRequireRole = (requiredRoles) => {
 
     const rolesArray = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
 
-    const hasRole = rolesArray.some((role) => req.user.roles.includes(role));
+    // Use realmRoles if available, fall back to roles for backward compatibility
+    const userRoles = req.user.realmRoles || req.user.roles || [];
+    const hasRole = rolesArray.some((role) => userRoles.includes(role));
 
     if (!hasRole) {
       logger.warn(
-        `User ${req.user.email} attempted access without required role(s): ${rolesArray.join(', ')}`
+        `User ${req.user.email} attempted access without required realm role(s): ${rolesArray.join(', ')}`
       );
       return res.status(403).json({
         success: false,
         message: 'Insufficient permissions',
         required_roles: rolesArray,
+        user_roles: userRoles,
+      });
+    }
+
+    next();
+  };
+};
+
+/**
+ * Require specific client role(s)
+ * Usage: keycloakRequireClientRole('nitte-client', ['order:create', 'order:read-own'])
+ */
+export const keycloakRequireClientRole = (clientId, requiredRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authenticated',
+      });
+    }
+
+    const rolesArray = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
+    const clientRoles = req.user.clientRoles?.[clientId] || [];
+
+    const hasRole = rolesArray.some((role) => clientRoles.includes(role));
+
+    if (!hasRole) {
+      logger.warn(
+        `User ${req.user.email} attempted access without required client role(s) for ${clientId}: ${rolesArray.join(', ')}`
+      );
+      return res.status(403).json({
+        success: false,
+        message: 'Insufficient permissions',
+        required_client: clientId,
+        required_roles: rolesArray,
+        user_client_roles: clientRoles,
+      });
+    }
+
+    next();
+  };
+};
+
+/**
+ * Require any of the specified roles (realm or client)
+ * Supports mixed role specifications:
+ * - Simple string (realm role): 'admin'
+ * - Object with type: { type: 'realm', role: 'admin' }
+ * - Object with type and full client role: { type: 'client', role: 'nitte-client:order:create' }
+ */
+export const keycloakRequireAnyRole = (roleSpecifications) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authenticated',
+      });
+    }
+
+    const rolesArray = Array.isArray(roleSpecifications) ? roleSpecifications : [roleSpecifications];
+
+    const hasRole = rolesArray.some((roleSpec) => {
+      if (typeof roleSpec === 'string') {
+        // Simple string - check realm roles
+        return (req.user.realmRoles || []).includes(roleSpec);
+      }
+
+      if (roleSpec.type === 'realm') {
+        return (req.user.realmRoles || []).includes(roleSpec.role);
+      }
+
+      if (roleSpec.type === 'client') {
+        const roleParts = roleSpec.role.split(':');
+        const clientId = roleParts[0];
+        const role = roleParts.slice(1).join(':');
+        const clientRoles = req.user.clientRoles?.[clientId] || [];
+        return clientRoles.includes(role);
+      }
+
+      return false;
+    });
+
+    if (!hasRole) {
+      logger.warn(
+        `User ${req.user.email} attempted access without required role(s)`
+      );
+      return res.status(403).json({
+        success: false,
+        message: 'Insufficient permissions',
+        required_roles: rolesArray,
+        user_realm_roles: req.user.realmRoles || [],
+        user_client_roles: req.user.clientRoles || {},
+      });
+    }
+
+    next();
+  };
+};
+
+/**
+ * Require all of the specified roles (realm or client)
+ */
+export const keycloakRequireAllRoles = (roleSpecifications) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authenticated',
+      });
+    }
+
+    const rolesArray = Array.isArray(roleSpecifications) ? roleSpecifications : [roleSpecifications];
+
+    const missingRoles = rolesArray.filter((roleSpec) => {
+      if (typeof roleSpec === 'string') {
+        return !(req.user.realmRoles || []).includes(roleSpec);
+      }
+
+      if (roleSpec.type === 'realm') {
+        return !(req.user.realmRoles || []).includes(roleSpec.role);
+      }
+
+      if (roleSpec.type === 'client') {
+        const roleParts = roleSpec.role.split(':');
+        const clientId = roleParts[0];
+        const role = roleParts.slice(1).join(':');
+        const clientRoles = req.user.clientRoles?.[clientId] || [];
+        return !clientRoles.includes(role);
+      }
+
+      return true; // Unknown spec type = missing
+    });
+
+    if (missingRoles.length > 0) {
+      logger.warn(
+        `User ${req.user.email} missing required role(s): ${JSON.stringify(missingRoles)}`
+      );
+      return res.status(403).json({
+        success: false,
+        message: 'Insufficient permissions - missing required roles',
+        missing_roles: missingRoles,
+        user_realm_roles: req.user.realmRoles || [],
+        user_client_roles: req.user.clientRoles || {},
       });
     }
 
@@ -126,7 +272,7 @@ export const keycloakOptionalAuth = async (req, res, next) => {
 
 /**
  * Get current user endpoint
- * Returns authenticated user information
+ * Returns authenticated user information including detailed role structure
  */
 export const getCurrentUser = async (req, res) => {
   try {
@@ -143,9 +289,29 @@ export const getCurrentUser = async (req, res) => {
         userId: req.user.userId,
         email: req.user.email,
         name: req.user.name,
+        // Backward compatible roles array
         roles: req.user.roles,
+        // New detailed role structure
+        realmRoles: req.user.realmRoles || [],
+        clientRoles: req.user.clientRoles || {},
+        allClientRoles: req.user.allClientRoles || [],
+        // Custom attributes
+        merchantId: req.user.merchantId || null,
+        groups: req.user.groups || [],
         email_verified: req.user.email_verified,
       },
+      // Debug info for role migration
+      _debug: {
+        hasRealmRoles: (req.user.realmRoles || []).length > 0,
+        hasClientRoles: Object.keys(req.user.clientRoles || {}).length > 0,
+        roleCheck: {
+          // Example: What roles would pass various checks
+          canCreateOrder: (req.user.clientRoles?.['nitte-client'] || []).includes('order:create') ||
+                         (req.user.realmRoles || []).includes('platform-admin'),
+          canReadAllOrders: (req.user.realmRoles || []).includes('platform-admin') ||
+                           (req.user.realmRoles || []).includes('merchant-admin'),
+        }
+      }
     });
   } catch (error) {
     logger.error('Error getting current user:', error);

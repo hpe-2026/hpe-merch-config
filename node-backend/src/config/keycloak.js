@@ -139,15 +139,78 @@ class KeycloakConfig {
 
   /**
    * Extract user information from decoded Keycloak token
+   * Now includes both realm roles and client roles
    */
   extractUserInfo(decodedToken) {
+    // Extract realm roles
+    const realmRoles = decodedToken.realm_access?.roles || [];
+
+    // Extract client roles from resource_access
+    const clientRoles = {};
+    if (decodedToken.resource_access) {
+      for (const [clientId, access] of Object.entries(decodedToken.resource_access)) {
+        if (access.roles && Array.isArray(access.roles)) {
+          clientRoles[clientId] = access.roles;
+        }
+      }
+    }
+
+    // Flatten all client roles for easy checking
+    const allClientRoles = Object.values(clientRoles).flat();
+
     return {
       userId: decodedToken.sub,
       email: decodedToken.email,
       name: decodedToken.name || decodedToken.preferred_username,
-      roles: decodedToken.realm_access?.roles || [],
+      roles: realmRoles,  // Backward compatibility: realm roles only
+      realmRoles: realmRoles,
+      clientRoles: clientRoles,
+      allClientRoles: allClientRoles,
       email_verified: decodedToken.email_verified || false,
+      // Extract custom attributes if present
+      merchantId: decodedToken.merchant_id || decodedToken.attributes?.merchantId?.[0] || null,
+      groups: decodedToken.groups || [],
     };
+  }
+
+  /**
+   * Check if user has specific realm role
+   */
+  hasRealmRole(userInfo, role) {
+    return userInfo.realmRoles?.includes(role) || false;
+  }
+
+  /**
+   * Check if user has specific client role
+   */
+  hasClientRole(userInfo, clientId, role) {
+    const clientRoles = userInfo.clientRoles?.[clientId] || [];
+    return clientRoles.includes(role);
+  }
+
+  /**
+   * Check if user has any of the specified roles (realm or client)
+   * Format: 'realm:admin' or 'client:backend-client:order:create'
+   */
+  hasAnyRole(userInfo, roles) {
+    return roles.some(roleSpec => {
+      if (typeof roleSpec === 'string') {
+        // Simple role check (backward compatible - assumes realm role)
+        return userInfo.realmRoles?.includes(roleSpec);
+      }
+
+      if (roleSpec.type === 'realm') {
+        return userInfo.realmRoles?.includes(roleSpec.role);
+      }
+
+      if (roleSpec.type === 'client') {
+        const [clientId, ...roleParts] = roleSpec.role.split(':');
+        const role = roleParts.join(':');
+        return this.hasClientRole(userInfo, clientId, role);
+      }
+
+      return false;
+    });
   }
 
   /**

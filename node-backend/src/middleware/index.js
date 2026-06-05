@@ -79,8 +79,17 @@ export const authMiddleware = async (req, res, next) => {
         userId: userInfo.userId,
         email: userInfo.email,
         name: userInfo.name,
+        // Backward compatible
         roles: userInfo.roles,
         role: userInfo.roles?.[0] || 'user',
+        // New role structure (Phase 1 RBAC)
+        realmRoles: userInfo.realmRoles || [],
+        clientRoles: userInfo.clientRoles || {},
+        allClientRoles: userInfo.allClientRoles || [],
+        // Custom attributes
+        merchantId: userInfo.merchantId || null,
+        groups: userInfo.groups || [],
+        // Token info
         token: token,
         email_verified: userInfo.email_verified,
       };
