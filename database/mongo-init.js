@@ -27,71 +27,19 @@ db.createCollection('products');
 db.createCollection('orders');
 db.createCollection('user_verifications');
 
-// Seed sample products for demo
-const products = [
-  {
-    _id: ObjectId(),
-    name: 'NITTE Alumni Hoodie',
-    description: 'Premium cotton hoodie with embroidered NITTE Alumni logo. Available in Navy Blue and Black.',
-    category: 'apparel',
-    price: 1299.00,
-    stock: 50,
-    image_url: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600&q=80',
-    exclusive: true,
-    created_at: new Date(),
-    updated_at: new Date()
-  },
-  {
-    _id: ObjectId(),
-    name: 'NITTE Alumni T-Shirt',
-    description: 'Comfortable round-neck t-shirt with NITTE print. Unisex fit.',
-    category: 'apparel',
-    price: 499.00,
-    stock: 100,
-    image_url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&q=80',
-    exclusive: false,
-    created_at: new Date(),
-    updated_at: new Date()
-  },
-  {
-    _id: ObjectId(),
-    name: 'NITTE Coffee Mug',
-    description: 'Ceramic coffee mug with NITTE logo. Microwave safe. 350ml capacity.',
-    category: 'accessories',
-    price: 299.00,
-    stock: 200,
-    image_url: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=600&q=80',
-    exclusive: false,
-    created_at: new Date(),
-    updated_at: new Date()
-  },
-  {
-    _id: ObjectId(),
-    name: 'NITTE Laptop Sticker Pack',
-    description: 'Set of 5 premium vinyl stickers for laptops and water bottles.',
-    category: 'accessories',
-    price: 149.00,
-    stock: 300,
-    image_url: 'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80',
-    exclusive: false,
-    created_at: new Date(),
-    updated_at: new Date()
-  },
-  {
-    _id: ObjectId(),
-    name: 'NITTE Alumni Cap',
-    description: 'Adjustable baseball cap with embroidered NITTE Alumni badge.',
-    category: 'apparel',
-    price: 399.00,
-    stock: 75,
-    image_url: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=600&q=80',
-    exclusive: true,
-    created_at: new Date(),
-    updated_at: new Date()
-  }
-];
+// Note: Products are seeded by scripts/seed-products.js after MinIO is ready
+// This ensures product images are stored in MinIO (not external URLs)
+// with proper merchant ownership (created_by, merchant_id fields)
+// 
+// To seed products manually:
+//   docker compose exec node-backend node scripts/seed-products.js
+//
+// Or wait for the seeding service to run automatically.
 
-db.products.insertMany(products);
+// Create placeholder for products collection
+db.createCollection('products');
+
+print('Products collection ready. Run seed-products.js to seed with MinIO images.');
 
 // Seed admin user in user_verifications for simple auth demo
 const adminUser = {
@@ -129,9 +77,11 @@ db.user_verifications.insertOne(adminUser);
 db.products.createIndex({ name: 1 });
 db.products.createIndex({ category: 1 });
 db.products.createIndex({ price: 1 });
+db.products.createIndex({ merchant_id: 1 });  // For merchant filtering
+db.products.createIndex({ created_by: 1 });  // For ownership queries
 db.orders.createIndex({ user_id: 1 });
 db.orders.createIndex({ order_id: 1 }, { unique: true });
 db.user_verifications.createIndex({ email: 1 });
 db.user_verifications.createIndex({ status: 1 });
 
-print('MongoDB initialization complete: users created, products seeded, indexes built.');
+print('MongoDB initialization complete: users created, indexes built. Products to be seeded via seed-products.js.');
