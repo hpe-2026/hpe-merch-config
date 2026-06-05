@@ -42,9 +42,11 @@ export default function AdminLogin({ onLoginSuccess }) {
         res.user?.roles ||
         [res.data?.role || res.user?.role || 'user']
 
-      const isAdmin = roles.includes('admin') || roles.includes('admin-internal')
+      const isAdmin = roles.includes('admin') ||
+                       roles.includes('admin-internal') ||
+                       roles.includes('platform-admin')
       const isMerchant = roles.some(r =>
-        ['merchant', 'merchant-amazon', 'merchant-flipkart'].includes(r)
+        ['merchant', 'merchant-amazon', 'merchant-flipkart', 'merchant-admin', 'merchant-staff'].includes(r)
       )
 
       if (!token) {
