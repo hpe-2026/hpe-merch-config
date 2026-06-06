@@ -29,6 +29,7 @@ wheels/
 .env.local
 .env.*.local
 .env.production.local
+.env.docker
 !.env.example
 
 # IDE
