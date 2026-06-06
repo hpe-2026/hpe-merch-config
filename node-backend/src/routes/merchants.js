@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { authMiddleware } from '../middleware/index.js';
 import logger from '../config/logger.js';
 import UserVerification from '../schemas/userVerification.js';
@@ -6,20 +7,40 @@ import UserVerification from '../schemas/userVerification.js';
 const router = express.Router();
 
 /**
+ * Helper to find user by various ID formats
+ */
+async function findUserByAuth(req) {
+  const userId = req.user?.userId || req.user?.user_id || req.user?.id;
+  const email = req.user?.email;
+
+  // Try by email first (most reliable)
+  if (email) {
+    const user = await UserVerification.findOne({ email });
+    if (user) return user;
+  }
+
+  // Try by user_id field (Keycloak UUID)
+  if (userId) {
+    const user = await UserVerification.findOne({ user_id: userId });
+    if (user) return user;
+  }
+
+  // Try by _id (MongoDB ObjectId)
+  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+    const user = await UserVerification.findById(userId);
+    if (user) return user;
+  }
+
+  return null;
+}
+
+/**
  * GET /api/v1/merchants/profile
- * Get the current merchant's profile (including profileImage)
+ * Get the current user's profile (including profileImage)
  */
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user?.userId || req.user?.user_id || req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: 'User ID not found' });
-    }
-
-    const user = await UserVerification.findOne({
-      $or: [{ user_id: userId }, { _id: userId }],
-    });
+    const user = await findUserByAuth(req);
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -46,37 +67,28 @@ router.get('/profile', authMiddleware, async (req, res) => {
 
 /**
  * PUT /api/v1/merchants/profile
- * Update merchant profile (name, phone, address, description, profileImage)
+ * Update profile (name, phone, address, description, profileImage)
  */
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user?.userId || req.user?.user_id || req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: 'User ID not found' });
-    }
-
-    const { name, merchantName, phone, address, description, profileImage } = req.body;
-
-    const updateFields = {};
-    if (name !== undefined) updateFields.name = name;
-    if (merchantName !== undefined) updateFields.merchantName = merchantName;
-    if (phone !== undefined) updateFields.phone = phone;
-    if (address !== undefined) updateFields.address = address;
-    if (description !== undefined) updateFields.description = description;
-    if (profileImage !== undefined) updateFields.profileImage = profileImage;
-
-    const user = await UserVerification.findOneAndUpdate(
-      { $or: [{ user_id: userId }, { _id: userId }] },
-      updateFields,
-      { new: true }
-    );
+    const user = await findUserByAuth(req);
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    logger.info('Merchant profile updated', { userId, fields: Object.keys(updateFields) });
+    const { name, merchantName, phone, address, description, profileImage } = req.body;
+
+    if (name !== undefined) user.name = name;
+    if (merchantName !== undefined) user.merchantName = merchantName;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+    if (description !== undefined) user.description = description;
+    if (profileImage !== undefined) user.profileImage = profileImage;
+
+    await user.save();
+
+    logger.info('Profile updated', { userId: user._id, email: user.email });
 
     res.status(200).json({
       success: true,
@@ -93,7 +105,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error('Failed to update merchant profile:', error.message);
+    logger.error('Failed to update profile:', error.message);
     res.status(500).json({ success: false, message: 'Failed to update profile' });
   }
 });

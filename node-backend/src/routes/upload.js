@@ -119,15 +119,30 @@ router.post(
 
       // Persist profileImage URL to user record in DB
       try {
-        const query = merchantId
-          ? { $or: [{ user_id: userId }, { _id: userId }, { merchant_id: merchantId }] }
-          : { $or: [{ user_id: userId }, { _id: userId }] };
-        await UserVerification.findOneAndUpdate(
-          query,
-          { profileImage: imageUrl },
-          { new: true }
-        );
-        logger.info('Profile image URL saved to DB', { userId, imageUrl });
+        // Find user by various ID formats
+        let userRecord = null;
+        const userEmail = req.user?.email;
+        
+        if (userEmail) {
+          userRecord = await UserVerification.findOne({ email: userEmail });
+        }
+        if (!userRecord && userId) {
+          userRecord = await UserVerification.findOne({ user_id: userId });
+        }
+        if (!userRecord && userId && userId.match(/^[0-9a-fA-F]{24}$/)) {
+          userRecord = await UserVerification.findById(userId);
+        }
+        if (!userRecord && merchantId) {
+          userRecord = await UserVerification.findOne({ merchant_id: merchantId });
+        }
+
+        if (userRecord) {
+          userRecord.profileImage = imageUrl;
+          await userRecord.save();
+          logger.info('Profile image URL saved to DB', { userId, imageUrl });
+        } else {
+          logger.warn('Could not find user record to persist profileImage', { userId, merchantId });
+        }
       } catch (dbErr) {
         logger.warn('Failed to persist profileImage to DB (image still uploaded):', dbErr.message);
       }

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
 import { 
   User, 
@@ -34,6 +34,28 @@ export default function MerchantProfile({ user, onLogout }) {
 
   const fileInputRef = useRef(null)
 
+  // Fetch latest profile from backend on mount to ensure profileImage persists across refreshes
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/api/v1/merchants/profile`, auth())
+        if (response.data?.success && response.data?.data) {
+          const data = response.data.data
+          if (data.profileImage) {
+            setProfileImage(data.profileImage)
+          }
+          // Sync localStorage with DB state
+          const storedUser = JSON.parse(localStorage.getItem('merchant_user') || '{}')
+          const updated = { ...storedUser, profileImage: data.profileImage || storedUser.profileImage }
+          localStorage.setItem('merchant_user', JSON.stringify(updated))
+        }
+      } catch (err) {
+        console.debug('Could not fetch merchant profile:', err.message)
+      }
+    }
+    fetchProfile()
+  }, [])
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -64,6 +86,10 @@ export default function MerchantProfile({ user, onLogout }) {
 
       if (response.data?.success && response.data?.url) {
         setProfileImage(response.data.url)
+        // Persist to localStorage immediately so it survives page refresh
+        const storedUser = JSON.parse(localStorage.getItem('merchant_user') || '{}')
+        storedUser.profileImage = response.data.url
+        localStorage.setItem('merchant_user', JSON.stringify(storedUser))
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3000)
       }
