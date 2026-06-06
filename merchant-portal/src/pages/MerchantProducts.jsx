@@ -236,11 +236,11 @@ export default function MerchantProducts({ user }) {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {filteredProducts.map((product) => (
-            <div key={product.id || product._id} className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition">
+            <div key={product.id || product._id} className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition">
               {/* Product Image */}
-              <div className="aspect-[4/3] bg-slate-100 relative">
+              <div className="h-36 bg-slate-100 relative">
                 {product.image_url ? (
                   <img
                     src={product.image_url}
@@ -249,32 +249,32 @@ export default function MerchantProducts({ user }) {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="w-10 h-10 text-slate-300" />
+                    <ImageIcon className="w-8 h-8 text-slate-300" />
                   </div>
                 )}
-                <div className="absolute top-2 right-2 flex gap-1 z-10">
+                <div className="absolute top-1.5 right-1.5 flex gap-1 z-10">
                   <button
                     onClick={() => openModal(product)}
-                    className="p-1.5 bg-white/95 backdrop-blur rounded-lg shadow-md text-slate-600 hover:text-indigo-600 transition border border-slate-200"
+                    className="p-1 bg-white/95 backdrop-blur rounded-md shadow-sm text-slate-600 hover:text-indigo-600 transition border border-slate-200"
                   >
-                    <Pencil className="w-4 h-4" />
+                    <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleDelete(product.id || product._id)}
-                    className="p-1.5 bg-white/95 backdrop-blur rounded-lg shadow-md text-slate-600 hover:text-red-600 transition border border-slate-200"
+                    className="p-1 bg-white/95 backdrop-blur rounded-md shadow-sm text-slate-600 hover:text-red-600 transition border border-slate-200"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
               {/* Product Info */}
-              <div className="p-4">
-                <h3 className="font-medium text-slate-900 truncate">{product.name}</h3>
-                <p className="text-sm text-slate-500 line-clamp-2 mt-1">{product.description}</p>
-                <div className="flex items-center justify-between mt-3">
-                  <span className="text-lg font-bold text-indigo-600">₹{product.price}</span>
-                  <span className={`text-sm px-2 py-0.5 rounded-full ${
+              <div className="p-3">
+                <h3 className="text-sm font-medium text-slate-900 truncate">{product.name}</h3>
+                <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{product.description}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-sm font-bold text-indigo-600">₹{product.price}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                     product.stock > 10 
                       ? 'bg-emerald-50 text-emerald-700' 
                       : product.stock > 0 
@@ -284,7 +284,6 @@ export default function MerchantProducts({ user }) {
                     {product.stock} in stock
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-2">{product.category}</p>
               </div>
             </div>
           ))}
