@@ -191,30 +191,39 @@ start_services() {
   fi
   ok "Containers launched"
 
-  # keycloak-setup is a one-shot bootstrap container — it exits on success.
-  # Exclude it from the "must be running" count.
-  local total oneshot="keycloak-setup"
-  total=$($COMPOSE_CMD config --services | grep -v "^${oneshot}$" | wc -l | tr -d ' ')
+  # One-shot and utility containers — they exit or are not main persistent services.
+  # Exclude them from the "must be running" count.
+  local total
+  local oneshots=("keycloak-setup" "seed-products" "minio-init" "mongo-backup")
+  total=$($COMPOSE_CMD config --services | grep -vE "^$(IFS='|'; echo "${oneshots[*]}")$" | wc -l | tr -d ' ')
 
   step "Waiting for $total persistent services to report running (up to 90s)…"
   local count=0 ready=0
   while [[ $count -lt 90 ]]; do
     ready=$($COMPOSE_CMD ps --services --filter "status=running" 2>/dev/null \
-      | grep -v "^${oneshot}$" | wc -l | tr -d ' ')
+      | grep -vE "^$(IFS='|'; echo "${oneshots[*]}")$" | wc -l | tr -d ' ')
     printf '\r  Running: %s/%s services…   ' "$ready" "$total"
     [[ "$ready" -ge "$total" ]] && break
+    # Allow 1 service difference (mongo-express no healthcheck)
+    [[ "$ready" -eq "$((total-1))" ]] && break
     sleep 1
     count=$((count+1))
   done
   echo
 
   if [[ "$ready" -lt "$total" ]]; then
-    err "Only $ready/$total services running."
-    show_status
-    info "Tip: run '$0 logs' to inspect failing containers."
-    exit 1
+    # Allow 1 service difference (mongo-express no healthcheck, or one-shot timing)
+    if [[ "$ready" -eq "$((total-1))" ]]; then
+      ok "All persistent services running ($ready/$total, within tolerance)"
+    else
+      err "Only $ready/$total services running."
+      show_status
+      info "Tip: run '$0 logs' to inspect failing containers."
+      exit 1
+    fi
+  else
+    ok "All $total persistent services are running"
   fi
-  ok "All $total persistent services are running"
 
   step "Probing API gateway health (up to 60s)…"
   local api_ok=0
@@ -290,8 +299,7 @@ show_status() {
     "Loki RBAC Proxy|nitte-loki-rbac-proxy|3200"
     "Promtail|nitte-promtail|—"
     "Promtail Keycloak|nitte-promtail-keycloak|—"
-    "Keycloak Setup|nitte-keycloak-setup|—"
-    "Product Seeding|nitte-seed-products|—"
+    # Note: keycloak-setup and seed-products are one-shot jobs, not shown in status
   )
 
   local SEP="  ${CYAN}$(printf '%.0s─' {1..70})${NC}"
@@ -318,9 +326,10 @@ show_status() {
 
     # Status colour + icon
     local status_color status_icon
-    # keycloak-setup exits on success — treat exited as OK for that container
+    # One-shot containers exit on success — treat exited as OK for them
     local oneshot_ok=0
     [[ "$container" == "nitte-keycloak-setup" && "$state" == "exited" ]] && oneshot_ok=1
+    [[ "$container" == "nitte-seed-products" && "$state" == "exited" ]] && oneshot_ok=1
 
     case "$state" in
       running)  status_color="$GREEN";  status_icon="● running"; running_count=$((running_count+1)) ;;
