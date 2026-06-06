@@ -60,6 +60,13 @@ const userVerificationSchema = new mongoose.Schema(
       default: 'user',
     },
 
+    // User type: alumni, non_alumni, admin, merchant (Keycloak source tracking)
+    user_type: {
+      type: String,
+      enum: ['alumni', 'non_alumni', 'admin', 'merchant', 'internal'],
+      default: 'alumni',
+    },
+
     // Verification status: pending, approved, rejected
     status: {
       type: String,
@@ -146,6 +153,7 @@ const userVerificationSchema = new mongoose.Schema(
 
 // Indexes for common queries
 userVerificationSchema.index({ email: 1, status: 1 });
+userVerificationSchema.index({ user_type: 1 });
 userVerificationSchema.index({ registration_timestamp: -1 });
 userVerificationSchema.index({ status: 1, registration_timestamp: -1 });
 
