@@ -123,11 +123,11 @@ const CONFIG = {
 const s3Client = new S3Client(CONFIG.minio);
 
 /**
- * Download image from URL and return as buffer
+ * Download image from URL and return as buffer (with timeout)
  */
-async function downloadImage(url) {
+async function downloadImage(url, timeoutMs = 5000) {
   return new Promise((resolve, reject) => {
-    https.get(url, (response) => {
+    const request = https.get(url, { timeout: timeoutMs }, (response) => {
       if (response.statusCode !== 200) {
         reject(new Error(`Failed to download: ${response.statusCode}`));
         return;
@@ -137,18 +137,45 @@ async function downloadImage(url) {
       response.on('data', (chunk) => chunks.push(chunk));
       response.on('end', () => resolve(Buffer.concat(chunks)));
       response.on('error', reject);
-    }).on('error', reject);
+    });
+    
+    request.on('error', reject);
+    request.on('timeout', () => {
+      request.destroy();
+      reject(new Error('Request timeout'));
+    });
+    
+    request.setTimeout(timeoutMs);
   });
 }
 
 /**
- * Generate placeholder image using placehold.co
+ * Generate a simple SVG placeholder locally (fallback when network fails)
+ */
+function generateLocalPlaceholder(text, width = 600, height = 600, bg = '4338ca', fg = 'ffffff') {
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#${bg}"/>
+  <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="32" fill="#${fg}" 
+        text-anchor="middle" dominant-baseline="middle">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>
+</svg>`;
+  return Buffer.from(svg, 'utf-8');
+}
+
+/**
+ * Generate placeholder image using placehold.co (with local fallback)
  */
 async function generatePlaceholderImage(text, width = 600, height = 600, bg = '4338ca', fg = 'ffffff') {
   const encodedText = encodeURIComponent(text);
   const url = `https://placehold.co/${width}x${height}/${bg}/${fg}?text=${encodedText}`;
-  console.log(`    Downloading from: ${url}`);
-  return downloadImage(url);
+  
+  try {
+    console.log(`    Trying to download: ${url}`);
+    return await downloadImage(url, 3000); // 3 second timeout
+  } catch (error) {
+    console.log(`    ⚠ Network failed (${error.message}), using local SVG`);
+    return generateLocalPlaceholder(text, width, height, bg, fg);
+  }
 }
 
 /**
