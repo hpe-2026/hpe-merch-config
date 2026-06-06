@@ -80,6 +80,59 @@ const addNonAlumniRoleToKeycloak = (keycloakUserId, adminToken) =>
   addRoleToKeycloak(keycloakUserId, 'non_alumni', 'Non-alumni user with limited access', adminToken);
 
 /**
+ * Helper: Add client roles to a Keycloak user (for nitte-client)
+ */
+const addClientRolesToKeycloak = async (keycloakUserId, clientId, roleNames, adminToken) => {
+  try {
+    // Get the client UUID first
+    const clientsResponse = await axios.get(
+      `${keycloakConfig.getRealmUrl()}/clients`,
+      {
+        headers: { Authorization: `Bearer ${adminToken}` },
+        params: { clientId },
+      }
+    );
+
+    const client = clientsResponse.data.find(c => c.clientId === clientId);
+    if (!client) {
+      logger.warn(`Client '${clientId}' not found in Keycloak`);
+      return;
+    }
+
+    // Get available client roles
+    const rolesResponse = await axios.get(
+      `${keycloakConfig.getRealmUrl()}/clients/${client.id}/roles`,
+      { headers: { Authorization: `Bearer ${adminToken}` } }
+    );
+
+    const availableRoles = rolesResponse.data || [];
+    const rolesToAssign = availableRoles.filter(r => roleNames.includes(r.name));
+
+    if (rolesToAssign.length === 0) {
+      logger.warn(`No matching client roles found for ${clientId}: ${roleNames.join(', ')}`);
+      return;
+    }
+
+    // Assign client roles to user
+    await axios.post(
+      `${keycloakConfig.getRealmUrl()}/users/${keycloakUserId}/role-mappings/clients/${client.id}`,
+      rolesToAssign,
+      {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    logger.info(`Added client roles [${rolesToAssign.map(r => r.name).join(', ')}] to user`, { keycloakUserId, clientId });
+  } catch (error) {
+    logger.error(`Failed to add client roles to user:`, error.message);
+    // Non-fatal - continue with realm role assignment
+  }
+};
+
+/**
  * Helper: Disable user in Keycloak
  */
 const disableUserInKeycloak = async (keycloakUserId, adminToken) => {
@@ -164,6 +217,18 @@ const syncApprovedUserToKeycloak = async (verification) => {
 
     // Assign the correct role based on user_type
     await assignRole(verification.user_id, adminToken);
+
+    // Assign client-specific roles for permissions
+    const clientRoles = verification.user_type === 'non_alumni'
+      ? ['order:create', 'order:update', 'order:read-own']  // Non-alumni can create orders
+      : ['order:create', 'order:update', 'order:read-own'];  // Alumni can create orders
+
+    await addClientRolesToKeycloak(
+      verification.user_id,
+      'nitte-client',
+      clientRoles,
+      adminToken
+    );
   } catch (err) {
     // If the stored user_id is stale (Keycloak returns 404), clear it and retry.
     if (err.response?.status === 404) {
@@ -179,6 +244,12 @@ const syncApprovedUserToKeycloak = async (verification) => {
         await keycloakConfig.setUserEnabled(verification.user_id, true, adminToken);
         await keycloakConfig.setUserEmailVerified(verification.user_id, true, adminToken);
         await assignRole(verification.user_id, adminToken);
+
+        // Retry client role assignment
+        const clientRoles = verification.user_type === 'non_alumni'
+          ? ['order:create', 'order:update', 'order:read-own']
+          : ['order:create', 'order:update', 'order:read-own'];
+        await addClientRolesToKeycloak(verification.user_id, 'nitte-client', clientRoles, adminToken);
       } else {
         throw new Error('Approved user could not be re-linked to Keycloak after stale ID cleared');
       }
@@ -204,7 +275,12 @@ const requireAdminRole = (req, res, next) => {
     });
   }
 
-  if (!req.user.roles || !req.user.roles.includes('admin')) {
+  const isAdmin = req.user.roles && (
+    req.user.roles.includes('admin') ||
+    req.user.roles.includes('platform-admin') ||
+    req.user.roles.includes('super-admin')
+  );
+  if (!isAdmin) {
     logger.warn(`Unauthorized admin access attempt by ${req.user.email}`);
     return res.status(403).json({
       success: false,
