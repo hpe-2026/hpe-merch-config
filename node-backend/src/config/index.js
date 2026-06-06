@@ -5,6 +5,7 @@ dotenv.config();
 const config = {
   node_env: process.env.NODE_ENV || 'development',
   port: process.env.PORT || 3000,
+  api_base_url: process.env.API_BASE || 'http://localhost:3000',
   python_service_url: process.env.PYTHON_SERVICE_URL || 'http://localhost:8000',
   jwt_secret: process.env.JWT_SECRET || 'dev-secret-key-change-in-production',
   jwt_expiry: process.env.JWT_EXPIRY || '7d',
