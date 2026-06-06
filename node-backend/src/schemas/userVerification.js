@@ -145,6 +145,36 @@ const userVerificationSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Profile image URL (stored in MinIO/S3)
+    profileImage: {
+      type: String,
+      default: null,
+    },
+
+    // Merchant display name
+    merchantName: {
+      type: String,
+      default: null,
+    },
+
+    // Phone number
+    phone: {
+      type: String,
+      default: null,
+    },
+
+    // Address
+    address: {
+      type: String,
+      default: null,
+    },
+
+    // Store/merchant description
+    description: {
+      type: String,
+      default: null,
+    },
+
     // Metadata for future extensions
     metadata: {
       type: Map,

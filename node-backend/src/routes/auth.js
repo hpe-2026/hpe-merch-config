@@ -170,6 +170,12 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
         email: userInfo.email,
         name: userInfo.name,
         roles: userInfo.roles,
+        profileImage: userVerification?.profileImage || null,
+        merchantId: userVerification?.merchant_id || merchantId,
+        merchantName: userVerification?.merchantName || null,
+        phone: userVerification?.phone || null,
+        address: userVerification?.address || null,
+        description: userVerification?.description || null,
       },
       tokens: {
         access_token: loginResponse.data.access_token,

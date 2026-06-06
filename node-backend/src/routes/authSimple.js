@@ -232,6 +232,11 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
             role: userInfo.roles?.[0] || 'user',
             roles: userInfo.roles?.length ? userInfo.roles : ['user'],
             status: user.status,
+            profileImage: user.profileImage || null,
+            merchantName: user.merchantName || null,
+            phone: user.phone || null,
+            address: user.address || null,
+            description: user.description || null,
           },
         });
       } catch (kcErr) {
@@ -290,6 +295,11 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
         role: user.role || 'user',
         roles: [user.role || 'user'],
         status: user.status,
+        profileImage: user.profileImage || null,
+        merchantName: user.merchantName || null,
+        phone: user.phone || null,
+        address: user.address || null,
+        description: user.description || null,
       },
     });
   } catch (error) {
