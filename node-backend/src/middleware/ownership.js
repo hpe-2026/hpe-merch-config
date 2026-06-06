@@ -189,7 +189,7 @@ export const filterByOwnership = (options = {}) => {
     allowMerchantFilter = false,
   } = options;
 
-  return (req, res, next) => {
+  return async (req, res, next) => {
     // Platform admins see all resources
     const isPlatformAdmin = req.user?.realmRoles?.includes('platform-admin');
     if (isPlatformAdmin) {
@@ -198,9 +198,29 @@ export const filterByOwnership = (options = {}) => {
     }
 
     // Merchant admins see their merchant's resources
-    if (allowMerchantFilter && req.user?.realmRoles?.includes('merchant-admin') && req.user?.merchantId) {
-      req.ownershipFilter = { merchant_id: req.user.merchantId };
-      return next();
+    if (allowMerchantFilter && req.user?.realmRoles?.includes('merchant-admin')) {
+      // Try to get merchantId from token, or look up from MongoDB
+      let merchantId = req.user?.merchantId;
+
+      if (!merchantId && req.user?.email) {
+        // Look up merchant_id from user_verifications collection
+        try {
+          const UserVerification = (await import('../schemas/userVerification.js')).default;
+          const userRecord = await UserVerification.findOne({ email: req.user.email.toLowerCase() });
+          if (userRecord && userRecord.merchant_id) {
+            merchantId = userRecord.merchant_id;
+          }
+        } catch (err) {
+          logger.debug('Failed to lookup merchant_id from DB:', err.message);
+        }
+      }
+
+      if (merchantId) {
+        req.ownershipFilter = { merchant_id: merchantId };
+        req.user.merchantId = merchantId; // Set for future use
+        logger.debug('Filter by merchant_id', { merchantId, email: req.user?.email });
+        return next();
+      }
     }
 
     // Regular users see only their own resources
