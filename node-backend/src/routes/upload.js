@@ -1,10 +1,25 @@
 import express from 'express';
 import multer from 'multer';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { authMiddleware } from '../middleware/index.js';
 import logger from '../config/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import config from '../config/index.js';
+
+/**
+ * Transform MinIO image URLs to backend proxy URLs (avoids CORS issues)
+ */
+const transformImageUrl = (url) => {
+  if (!url) return null;
+  if (url.includes('/api/v1/upload/images/')) return url;
+  const minioPattern = /http:\/\/[^:]+:9000\/(.*)/;
+  const match = url.match(minioPattern);
+  if (match) {
+    return `${config.api_base_url || ''}/api/v1/upload/images/${match[1]}`;
+  }
+  return url;
+};
 
 const router = express.Router();
 
@@ -102,7 +117,7 @@ router.post(
       res.status(200).json({
         success: true,
         message: 'Image uploaded successfully',
-        url: fileUrl,
+        url: transformImageUrl(fileUrl),
         key,
         size: req.file.size,
       });
@@ -279,7 +294,7 @@ router.post(
       res.status(200).json({
         success: true,
         message: 'Product image uploaded successfully',
-        url: fileUrl,
+        url: transformImageUrl(fileUrl),
         key,
         size: req.file.size,
       });
@@ -293,5 +308,67 @@ router.post(
     }
   }
 );
+
+/**
+ * GET /api/v1/upload/images/:key
+ * Proxy endpoint to serve MinIO images (avoids CORS issues)
+ */
+router.options('/images/*', (req, res) => {
+  // Handle preflight requests
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.set('Access-Control-Allow-Headers', '*');
+  res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.status(204).send();
+});
+
+router.get('/images/*', async (req, res) => {
+  try {
+    let imageKey = req.params[0];
+    
+    if (!imageKey) {
+      return res.status(400).json({ success: false, message: 'Image key required' });
+    }
+
+    const bucket = process.env.S3_PRODUCTS_BUCKET || 'nitte-products';
+    
+    // Strip bucket name from key if present (URL format is /bucket/path/to/file)
+    if (imageKey.startsWith(bucket + '/')) {
+      imageKey = imageKey.substring(bucket.length + 1);
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: imageKey,
+    });
+
+    const response = await s3Client.send(command);
+
+    // Set CORS and CORP headers BEFORE any other headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', '*');
+    res.set('Timing-Allow-Origin', '*');
+    
+    // Set content type and cache headers
+    res.set('Content-Type', response.ContentType || 'image/png');
+    res.set('Cache-Control', 'public, max-age=86400');
+
+    // Stream the image data
+    const stream = response.Body;
+    stream.pipe(res);
+
+    stream.on('error', (error) => {
+      logger.error('Error streaming image:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Failed to stream image' });
+      }
+    });
+  } catch (error) {
+    logger.error('Failed to retrieve image:', error.message);
+    res.status(404).json({ success: false, message: 'Image not found' });
+  }
+});
 
 export default router;

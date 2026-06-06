@@ -121,12 +121,18 @@ services:
       KEYCLOAK_CLIENT_ID: nitte-client
       KEYCLOAK_CLIENT_SECRET: nitte-client-secret
       KAFKA_BROKERS: kafka:9092
-      API_BASE: http://node-backend:3000
+      API_BASE: http://localhost:3000
       CORS_ORIGINS: http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175
       LOG_LEVEL: info
       REQUEST_TIMEOUT: 30000
       RAZORPAY_KEY_ID: rzp_test_SkyURyeOfwXob0
       RAZORPAY_KEY_SECRET: 5oyFiJoBoScZ3wFDq2wgm4lq
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      S3_PRODUCTS_BUCKET: nitte-products
+      AWS_REGION: us-east-1
     depends_on:
       - mongodb
       - keycloak

@@ -123,7 +123,12 @@ app.use((req, res, next) => {
 // Export tracer for use in other modules
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: false,
+}));
 app.use(cors({
   origin: config.cors_origins,
   credentials: true,
