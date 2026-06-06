@@ -330,11 +330,23 @@ router.get('/images/*', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Image key required' });
     }
 
-    const bucket = process.env.S3_PRODUCTS_BUCKET || 'nitte-products';
+    // Detect bucket from URL path - first segment is the bucket name
+    // URL format: /api/v1/upload/images/bucket-name/path/to/file
+    let bucket = process.env.S3_PRODUCTS_BUCKET || 'nitte-products';
+    const pathParts = imageKey.split('/');
+    const possibleBucket = pathParts[0];
     
-    // Strip bucket name from key if present (URL format is /bucket/path/to/file)
-    if (imageKey.startsWith(bucket + '/')) {
-      imageKey = imageKey.substring(bucket.length + 1);
+    // Check if first segment is a known bucket
+    const knownBuckets = [
+      process.env.S3_PRODUCTS_BUCKET,
+      process.env.S3_BUCKET_NAME,
+      'nitte-products',
+      'nitte-users'
+    ].filter(Boolean);
+    
+    if (knownBuckets.includes(possibleBucket)) {
+      bucket = possibleBucket;
+      imageKey = pathParts.slice(1).join('/');
     }
 
     const command = new GetObjectCommand({
