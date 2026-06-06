@@ -24,4 +24,12 @@ export const disconnectDatabase = async () => {
   }
 };
 
+/**
+ * Get the native MongoDB client from Mongoose connection
+ * Used for direct collection queries
+ */
+export const getMongoClient = () => {
+  return mongoose.connection.getClient();
+};
+
 export default mongoose;

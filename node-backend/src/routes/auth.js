@@ -129,6 +129,15 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
 
     // Sync Keycloak user to MongoDB (create record if doesn't exist)
     let userVerification = await UserVerification.findOne({ email });
+
+    // Determine merchant_id from email domain for merchant users
+    let merchantId = null;
+    if (isMerchantUser(userInfo.roles)) {
+      if (email.includes('amazon')) merchantId = 'amazon-store';
+      else if (email.includes('flipkart')) merchantId = 'flipkart-store';
+      else if (email.includes('nitte')) merchantId = 'nitte-official-store';
+    }
+
     if (!userVerification) {
       // Create MongoDB record for Keycloak user
       userVerification = new UserVerification({
@@ -137,11 +146,17 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
         name: userInfo.name || email.split('@')[0],
         status: 'approved', // Keycloak users are pre-approved
         user_type: isAdminUser(userInfo.roles) ? 'admin' : 'merchant',
+        merchant_id: merchantId,
         approved_by: 'keycloak-sync',
         approval_timestamp: new Date(),
       });
       await userVerification.save();
-      logger.info('Created MongoDB record for Keycloak user', { email, userId: userInfo.userId });
+      logger.info('Created MongoDB record for Keycloak user', { email, userId: userInfo.userId, merchantId });
+    } else if (merchantId && !userVerification.merchant_id) {
+      // Update existing record with merchant_id if missing
+      userVerification.merchant_id = merchantId;
+      await userVerification.save();
+      logger.info('Updated merchant_id for existing user', { email, merchantId });
     }
 
     logger.info('User logged in successfully', { email });

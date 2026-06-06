@@ -67,6 +67,13 @@ const userVerificationSchema = new mongoose.Schema(
       default: 'alumni',
     },
 
+    // Merchant ID for merchant users (links to products)
+    merchant_id: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
     // Verification status: pending, approved, rejected
     status: {
       type: String,
