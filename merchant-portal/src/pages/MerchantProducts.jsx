@@ -44,16 +44,9 @@ export default function MerchantProducts({ user }) {
     try {
       setLoading(true)
       const res = await axios.get(`${API_URL}/products`, auth())
-      // Filter products by merchant (only show own products unless admin)
-      const allProducts = res.data.data || res.data || []
-      const merchantId = user?.merchantId || user?.merchant?.id
-      const isAdmin = user?.roles?.includes('platform-admin') || user?.roles?.includes('admin')
-      
-      const filtered = isAdmin 
-        ? allProducts 
-        : allProducts.filter(p => p.merchant_id === merchantId || p.created_by === user?.userId)
-      
-      setProducts(filtered)
+      // Backend already filters by merchant_id for merchant users
+      const products = res.data.data || res.data || []
+      setProducts(products)
       setError(null)
     } catch (err) {
       setError('Failed to load products')
@@ -318,7 +311,7 @@ export default function MerchantProducts({ user }) {
                   Product Image
                 </label>
                 <div className="flex items-center gap-4">
-                  <div 
+                  <div
                     className="w-32 h-32 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden"
                     style={formData.image_url ? { backgroundImage: `url(${formData.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                   >
