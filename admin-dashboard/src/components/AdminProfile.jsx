@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { API_BASE, auth, authUpload } from '../config/api'
 
-export default function AdminProfile({ user, onLogout }) {
+export default function AdminProfile({ user, onLogout, onUpdateUser }) {
   const [userData, setUserData] = useState(user)
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({ name: user?.name || '' })
@@ -60,10 +60,11 @@ export default function AdminProfile({ user, onLogout }) {
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3000)
         
-        // Update localStorage
-        const updated = { ...userData, profileImage: response.data.url }
-        localStorage.setItem('user', JSON.stringify(updated))
-        setUserData(updated)
+        // Update parent state and localStorage
+        if (onUpdateUser) {
+          onUpdateUser({ profileImage: response.data.url })
+        }
+        setUserData({ ...userData, profileImage: response.data.url })
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to upload image')
@@ -74,7 +75,9 @@ export default function AdminProfile({ user, onLogout }) {
 
   const handleSave = () => {
     const updated = { ...userData, name: formData.name }
-    localStorage.setItem('user', JSON.stringify(updated))
+    if (onUpdateUser) {
+      onUpdateUser({ name: formData.name })
+    }
     setUserData(updated)
     setEditing(false)
   }

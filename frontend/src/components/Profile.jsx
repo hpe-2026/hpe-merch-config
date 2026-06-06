@@ -17,6 +17,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { API_BASE, auth, authUpload } from '../config/api'
+import { useAuthStore } from '../features/auth/store/authStore'
 
 export default function Profile({ user, onLogout }) {
   const [userData, setUserData] = useState(user)
@@ -27,6 +28,7 @@ export default function Profile({ user, onLogout }) {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
   
+  const updateUser = useAuthStore((state) => state.updateUser)
   const fileInputRef = useRef(null)
 
   const handleImageUpload = async (e) => {
@@ -61,10 +63,9 @@ export default function Profile({ user, onLogout }) {
         setSuccess(true)
         setTimeout(() => setSuccess(false), 3000)
         
-        // Update localStorage
-        const updated = { ...userData, profileImage: response.data.url }
-        localStorage.setItem('user', JSON.stringify(updated))
-        setUserData(updated)
+        // Update Zustand store (persists to localStorage)
+        updateUser({ profileImage: response.data.url })
+        setUserData({ ...userData, profileImage: response.data.url })
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to upload image')
@@ -75,7 +76,7 @@ export default function Profile({ user, onLogout }) {
 
   const handleSave = () => {
     const updated = { ...userData, name: formData.name }
-    localStorage.setItem('user', JSON.stringify(updated))
+    updateUser({ name: formData.name })
     setUserData(updated)
     setEditing(false)
   }
