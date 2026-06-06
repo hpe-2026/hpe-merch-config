@@ -79,8 +79,63 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
-// Get all products - filtered by merchant for merchant users
-router.get('/', authMiddleware, filterByOwnership({ allowMerchantFilter: true }), async (req, res, next) => {
+// Optional auth middleware - allows both authenticated and anonymous access
+const optionalAuthMiddleware = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    // If no auth header, allow anonymous access (for storefront)
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      req.user = null; // Mark as anonymous
+      return next();
+    }
+    
+    // Otherwise, validate the token
+    const token = authHeader.substring(7);
+    
+    // Try simple JWT verification first
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key-change-in-production');
+      req.user = {
+        ...decoded,
+        roles: decoded.roles || (decoded.role ? [decoded.role] : ['user']),
+        userId: decoded.user_id || decoded.id || decoded.sub,
+      };
+      return next();
+    } catch (jwtErr) {
+      // Not a simple JWT, try Keycloak
+    }
+    
+    // Try Keycloak token verification
+    try {
+      const decodedToken = await keycloakConfig.verifyAccessToken(token);
+      const userInfo = keycloakConfig.extractUserInfo(decodedToken);
+      req.user = {
+        userId: userInfo.userId,
+        email: userInfo.email,
+        name: userInfo.name,
+        roles: userInfo.roles,
+        role: userInfo.roles?.[0] || 'user',
+        realmRoles: userInfo.realmRoles || [],
+        clientRoles: userInfo.clientRoles || {},
+        merchantId: userInfo.merchantId || null,
+        token: token,
+      };
+      return next();
+    } catch (kcErr) {
+      // Invalid token - still allow anonymous access
+      req.user = null;
+      return next();
+    }
+  } catch (error) {
+    // Any error - allow anonymous access
+    req.user = null;
+    return next();
+  }
+};
+
+// Get all products - public for storefront, filtered for merchant users
+router.get('/', optionalAuthMiddleware, async (req, res, next) => {
   // Create child span for this service's operation
   const span = tracer.startSpan('mongodb.find', {
     attributes: {
@@ -94,11 +149,44 @@ router.get('/', authMiddleware, filterByOwnership({ allowMerchantFilter: true })
   attachIdentityToSpan(span, req);
 
   try {
-    // Query MongoDB directly with ownership filter
+    // Build filter based on authentication status
     const db = getMongoClient().db();
-    const filter = req.ownershipFilter || {};
+    let filter = {};
     
-    logger.info('Fetching products with filter', { filter, userId: req.user?.userId, merchantId: req.user?.merchantId });
+    // If authenticated, apply ownership filtering
+    if (req.user) {
+      const isPlatformAdmin = req.user.realmRoles?.includes('platform-admin');
+      const isMerchantAdmin = req.user.realmRoles?.includes('merchant-admin');
+      
+      if (isPlatformAdmin) {
+        // Platform admin sees all products
+        filter = {};
+      } else if (isMerchantAdmin) {
+        // Merchant admin sees only their merchant's products
+        let merchantId = req.user.merchantId;
+        
+        // If no merchantId in token, look up from database
+        if (!merchantId && req.user.email) {
+          try {
+            const UserVerification = (await import('../schemas/userVerification.js')).default;
+            const userRecord = await UserVerification.findOne({ email: req.user.email.toLowerCase() });
+            if (userRecord?.merchant_id) {
+              merchantId = userRecord.merchant_id;
+            }
+          } catch (err) {
+            logger.debug('Failed to lookup merchant_id:', err.message);
+          }
+        }
+        
+        if (merchantId) {
+          filter = { merchant_id: merchantId };
+        }
+      }
+      // Regular users see all products (public storefront)
+    }
+    // Anonymous users see all products (public storefront)
+    
+    logger.info('Fetching products with filter', { filter, userId: req.user?.userId, merchantId: req.user?.merchantId, anonymous: !req.user });
     
     const products = await db.collection('products').find(filter).toArray();
     
