@@ -42,23 +42,32 @@ export default function AdminLogin({ onLoginSuccess }) {
                        roles.includes('admin-internal') ||
                        roles.includes('platform-admin')
 
+      const MERCHANT_ROLES = ['merchant', 'merchant-amazon', 'merchant-flipkart', 'merchant-admin', 'merchant-staff']
+      const isMerchant = roles.some(r => MERCHANT_ROLES.includes(r))
+
       if (!token) {
         setError('Login failed. No token received.')
         return
       }
-      if (!isAdmin) {
-        setError('Access denied. Admin account required.')
+      if (!isAdmin && !isMerchant) {
+        setError('Access denied. Admin or Merchant account required.')
         return
       }
 
       const userData = {
-        userId: res.data?.user_id || res.user?.user_id || res.data?.id,
+        userId: res.data?.user_id || res.user?.user_id || res.data?.userId || res.data?.id,
         email: res.data?.email || res.user?.email,
-        name: res.data?.name || res.user?.name || 'Administrator',
-        role: 'admin',
+        name: res.data?.name || res.user?.name || (isAdmin ? 'Administrator' : 'Merchant'),
+        role: isAdmin ? 'admin' : 'merchant',
         roles,
         isAdmin,
-        isMerchant: false,
+        isMerchant,
+        profileImage: res.data?.profileImage || null,
+        merchantId: res.data?.merchantId || res.data?.merchant_id || null,
+        merchantName: res.data?.merchantName || null,
+        phone: res.data?.phone || null,
+        address: res.data?.address || null,
+        description: res.data?.description || null,
       }
 
       localStorage.setItem('token', token)

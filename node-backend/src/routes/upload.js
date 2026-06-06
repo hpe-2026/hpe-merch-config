@@ -6,6 +6,7 @@ import logger from '../config/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import config from '../config/index.js';
+import UserVerification from '../schemas/userVerification.js';
 
 /**
  * Transform MinIO image URLs to backend proxy URLs (avoids CORS issues)
@@ -114,10 +115,27 @@ router.post(
         type: req.file.mimetype,
       });
 
+      const imageUrl = transformImageUrl(fileUrl);
+
+      // Persist profileImage URL to user record in DB
+      try {
+        const query = merchantId
+          ? { $or: [{ user_id: userId }, { _id: userId }, { merchant_id: merchantId }] }
+          : { $or: [{ user_id: userId }, { _id: userId }] };
+        await UserVerification.findOneAndUpdate(
+          query,
+          { profileImage: imageUrl },
+          { new: true }
+        );
+        logger.info('Profile image URL saved to DB', { userId, imageUrl });
+      } catch (dbErr) {
+        logger.warn('Failed to persist profileImage to DB (image still uploaded):', dbErr.message);
+      }
+
       res.status(200).json({
         success: true,
         message: 'Image uploaded successfully',
-        url: transformImageUrl(fileUrl),
+        url: imageUrl,
         key,
         size: req.file.size,
       });

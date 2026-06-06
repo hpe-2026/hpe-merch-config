@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
 import {
   User as UserIcon,
@@ -38,6 +38,29 @@ export default function MerchantProfile({ user, onLogout, onBack }) {
   const auth = () => ({
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
   })
+
+  // Fetch latest profile from backend on mount (ensures profileImage persists after refresh)
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/api/v1/merchants/profile`, auth())
+        if (response.data?.success && response.data?.data) {
+          const data = response.data.data
+          if (data.profileImage) {
+            setProfileImage(data.profileImage)
+          }
+          // Sync localStorage with DB state
+          const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+          const updated = { ...storedUser, profileImage: data.profileImage || storedUser.profileImage }
+          localStorage.setItem('user', JSON.stringify(updated))
+        }
+      } catch (err) {
+        // Non-critical: fall back to localStorage/prop value
+        console.debug('Could not fetch merchant profile:', err.message)
+      }
+    }
+    fetchProfile()
+  }, [])
 
   const handleSave = async () => {
     try {
@@ -115,6 +138,10 @@ export default function MerchantProfile({ user, onLogout, onBack }) {
 
       if (response.data?.success && response.data?.url) {
         setProfileImage(response.data.url)
+        // Persist to localStorage immediately so it survives page refresh
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+        storedUser.profileImage = response.data.url
+        localStorage.setItem('user', JSON.stringify(storedUser))
         setSaveSuccess(true)
         setTimeout(() => setSaveSuccess(false), 3000)
       }
