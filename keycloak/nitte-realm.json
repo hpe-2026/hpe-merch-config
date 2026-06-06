@@ -80,17 +80,6 @@
       "authorizationServicesEnabled": false,
       "fullScopeAllowed": true,
       "defaultRoles": ["non_alumni"],
-      "clientRoles": [
-        { "name": "product:create",   "description": "[RBAC] Can create new products" },
-        { "name": "product:update",   "description": "[RBAC] Can update own products" },
-        { "name": "product:delete",   "description": "[RBAC] Can delete own products" },
-        { "name": "product:read-all", "description": "[RBAC] Can read all products (admin)" },
-        { "name": "order:create",     "description": "[RBAC] Can create orders" },
-        { "name": "order:update",     "description": "[RBAC] Can update own orders" },
-        { "name": "order:read-own",   "description": "[RBAC] Can read own orders" },
-        { "name": "order:read-all",   "description": "[RBAC] Can read all orders (admin)" },
-        { "name": "user:manage",      "description": "[RBAC] Can manage users" }
-      ],
       "protocolMappers": [
         {
           "name": "realm roles",
@@ -149,6 +138,19 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "nitte-backend",
+      "name": "NITTE Backend Service",
+      "description": "Internal client for backend-to-backend communication",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "nitte-backend-secret",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "authorizationServicesEnabled": false
     },
     {
       "clientId": "jenkins-client",
@@ -225,7 +227,19 @@
       "firstName": "Admin",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "admin@123",    "temporary": false }],
-      "realmRoles": ["admin"]
+      "realmRoles": ["platform-admin"],
+      "clientRoles": {
+        "nitte-client": [
+          "product:create",
+          "product:update",
+          "product:delete",
+          "product:read-all",
+          "order:create",
+          "order:update",
+          "order:read-all",
+          "user:manage"
+        ]
+      }
     },
     {
       "username": "alumni@nitte.edu",
@@ -235,37 +249,14 @@
       "firstName": "Alumni",
       "lastName": "User",
       "credentials": [{ "type": "password", "value": "alumni@123",   "temporary": false }],
-      "realmRoles": ["alumni"]
-    },
-    {
-      "username": "merchant@nitte.edu",
-      "enabled": true,
-      "email": "merchant@nitte.edu",
-      "emailVerified": true,
-      "firstName": "Merchant",
-      "lastName": "User",
-      "credentials": [{ "type": "password", "value": "merchant@123", "temporary": false }],
-      "realmRoles": ["merchant"]
-    },
-    {
-      "username": "admin_user",
-      "enabled": true,
-      "email": "admin_user@alumni-shop.local",
-      "emailVerified": true,
-      "firstName": "Admin",
-      "lastName": "Demo",
-      "credentials": [{ "type": "password", "value": "Admin@123",    "temporary": false }],
-      "realmRoles": ["admin"]
-    },
-    {
-      "username": "alumni_user",
-      "enabled": true,
-      "email": "alumni_user@alumni-shop.local",
-      "emailVerified": true,
-      "firstName": "Alumni",
-      "lastName": "Demo",
-      "credentials": [{ "type": "password", "value": "Alumni@123",   "temporary": false }],
-      "realmRoles": ["alumni"]
+      "realmRoles": ["alumni-verified"],
+      "clientRoles": {
+        "nitte-client": [
+          "order:create",
+          "order:update",
+          "order:read-own"
+        ]
+      }
     },
     {
       "username": "guest_user",
@@ -276,16 +267,6 @@
       "lastName": "Demo",
       "credentials": [{ "type": "password", "value": "Guest@123",    "temporary": false }],
       "realmRoles": ["non_alumni"]
-    },
-    {
-      "username": "merchant_user",
-      "enabled": true,
-      "email": "merchant_user@alumni-shop.local",
-      "emailVerified": true,
-      "firstName": "Merchant",
-      "lastName": "Demo",
-      "credentials": [{ "type": "password", "value": "Merchant@123", "temporary": false }],
-      "realmRoles": ["merchant"]
     },
     {
       "username": "service-account-nitte-client",
@@ -343,7 +324,18 @@
       "firstName": "Amazon",
       "lastName": "Merchant",
       "credentials": [{ "type": "password", "value": "Amazon@123", "temporary": false }],
-      "realmRoles": ["merchant-amazon"]
+      "realmRoles": ["merchant-admin"],
+      "attributes": {
+        "merchantId": ["amazon-store"]
+      },
+      "clientRoles": {
+        "nitte-client": [
+          "product:create",
+          "product:update",
+          "product:delete",
+          "order:read-all"
+        ]
+      }
     },
     {
       "username": "flipkart-merchant@flipkart.com",
@@ -353,27 +345,16 @@
       "firstName": "Flipkart",
       "lastName": "Merchant",
       "credentials": [{ "type": "password", "value": "Flipkart@123", "temporary": false }],
-      "realmRoles": ["merchant-flipkart"]
-    },
-    {
-      "username": "platform-admin@nitte.ac.in",
-      "enabled": true,
-      "email": "platform-admin@nitte.ac.in",
-      "emailVerified": true,
-      "firstName": "Platform",
-      "lastName": "Admin",
-      "credentials": [{ "type": "password", "value": "PlatformAdmin@123", "temporary": false }],
-      "realmRoles": ["platform-admin"],
+      "realmRoles": ["merchant-admin"],
+      "attributes": {
+        "merchantId": ["flipkart-store"]
+      },
       "clientRoles": {
         "nitte-client": [
           "product:create",
           "product:update",
           "product:delete",
-          "product:read-all",
-          "order:create",
-          "order:update",
-          "order:read-all",
-          "user:manage"
+          "order:read-all"
         ]
       }
     },
@@ -395,23 +376,6 @@
           "product:update",
           "product:delete",
           "order:read-all"
-        ]
-      }
-    },
-    {
-      "username": "alumni-buyer@nitte.edu",
-      "enabled": true,
-      "email": "alumni-buyer@nitte.edu",
-      "emailVerified": true,
-      "firstName": "Alumni",
-      "lastName": "Buyer",
-      "credentials": [{ "type": "password", "value": "AlumniBuyer@123", "temporary": false }],
-      "realmRoles": ["alumni-verified"],
-      "clientRoles": {
-        "nitte-client": [
-          "order:create",
-          "order:update",
-          "order:read-own"
         ]
       }
     }
