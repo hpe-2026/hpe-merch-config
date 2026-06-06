@@ -77,9 +77,17 @@ export default function Navbar({ cartCount, currentPage, setCurrentPage, apiStat
                   }`}
                   title="Profile"
                 >
-                  <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold">
-                    {(user.name || user.email || '?').charAt(0).toUpperCase()}
-                  </div>
+                  {user.profileImage || user.avatar ? (
+                    <img
+                      src={user.profileImage || user.avatar}
+                      alt="Profile"
+                      className="w-7 h-7 rounded-full object-cover border border-slate-200"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold">
+                      {(user.name || user.email || '?').charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span className="hidden lg:inline font-medium">
                     {user.name?.split(' ')[0] || user.email}
                   </span>
