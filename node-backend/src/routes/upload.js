@@ -344,19 +344,65 @@ router.get('/images/*', async (req, res) => {
 
     const response = await s3Client.send(command);
 
-    // Set CORS and CORP headers BEFORE any other headers
+    // Determine content type - ALWAYS sniff content (MinIO may have wrong content type)
+    const getContentType = async (stream, key) => {
+      // Sniff first few bytes to detect actual file type
+      const chunks = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+        if (Buffer.concat(chunks).length >= 100) break;
+      }
+      const header = Buffer.concat(chunks).toString('utf8', 0, 100).trim().toLowerCase();
+      
+      // Check for SVG signature
+      if (header.includes('<?xml') || header.includes('<svg')) {
+        return 'image/svg+xml';
+      }
+      // Check for PNG signature
+      if (header.startsWith('\x89PNG')) {
+        return 'image/png';
+      }
+      // Check for JPEG
+      if (header.startsWith('\xff\xd8')) {
+        return 'image/jpeg';
+      }
+      
+      // Fallback to extension-based detection
+      const ext = key.split('.').pop()?.toLowerCase();
+      const mimeTypes = {
+        'svg': 'image/svg+xml',
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+      };
+      return mimeTypes[ext] || 'application/octet-stream';
+    };
+
+    // Get the stream and determine content type (consumes first part of stream)
+    const originalStream = response.Body;
+    const contentType = await getContentType(originalStream, imageKey);
+    res.set('Content-Type', contentType);
+    
+    // Set CORS and CORP headers
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.set('Access-Control-Allow-Headers', '*');
     res.set('Timing-Allow-Origin', '*');
     
-    // Set content type and cache headers
-    res.set('Content-Type', response.ContentType || 'image/png');
+    // Cache headers
     res.set('Cache-Control', 'public, max-age=86400');
 
-    // Stream the image data
-    const stream = response.Body;
+    // Stream the image data (originalStream was partially consumed by getContentType)
+    // We need to refetch since the stream was consumed
+    const freshCommand = new GetObjectCommand({
+      Bucket: bucket,
+      Key: imageKey,
+    });
+    const freshResponse = await s3Client.send(freshCommand);
+    const stream = freshResponse.Body;
     stream.pipe(res);
 
     stream.on('error', (error) => {
