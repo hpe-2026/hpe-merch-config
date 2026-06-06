@@ -149,6 +149,14 @@ export const useAuthStore = create(
         }
       },
 
+      updateUser: (updates) => {
+        const currentUser = get().user
+        if (!currentUser) return
+        const updated = { ...currentUser, ...updates }
+        localStorage.setItem('user', JSON.stringify(updated))
+        set({ user: updated })
+      },
+
       restoreSession: async () => {
         const currentToken = get().token
         const currentUser = get().user

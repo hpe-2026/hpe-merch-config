@@ -76,6 +76,12 @@ function App() {
     setCurrentPage('dashboard')
   }
 
+  const handleUpdateUser = (updates) => {
+    const updated = { ...user, ...updates }
+    localStorage.setItem('user', JSON.stringify(updated))
+    setUser(updated)
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {!user ? (
@@ -104,7 +110,7 @@ function App() {
             {currentPage === 'users' && <Users />}
             {currentPage === 'products' && <Products user={user} />}
             {currentPage === 'orders' && <Orders user={user} />}
-            {currentPage === 'profile' && <AdminProfile user={user} onLogout={handleLogout} />}
+            {currentPage === 'profile' && <AdminProfile user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />}
           </main>
 
           <footer className="border-t border-slate-200 bg-white">
