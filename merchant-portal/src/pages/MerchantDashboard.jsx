@@ -25,16 +25,9 @@ export default function MerchantDashboard({ user }) {
     try {
       setLoading(true)
       
-      // Fetch products
+      // Fetch products - backend filters by merchant_id
       const productsRes = await axios.get(`${API_BASE}/api/v1/products`, auth())
-      const allProducts = productsRes.data.data || productsRes.data || []
-      
-      // Filter by merchant
-      const merchantId = user?.merchantId || user?.merchant?.id
-      const isAdmin = user?.roles?.includes('platform-admin')
-      const myProducts = isAdmin 
-        ? allProducts 
-        : allProducts.filter(p => p.merchant_id === merchantId || p.created_by === user?.userId)
+      const myProducts = productsRes.data.data || productsRes.data || []
 
       // Fetch orders
       const ordersRes = await axios.get(`${API_BASE}/api/v1/orders`, auth())
