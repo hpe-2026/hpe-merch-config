@@ -29,11 +29,7 @@ export default function AdminLogin({ onLoginSuccess }) {
     setError('')
     let response = null
     try {
-      try {
-        response = await axios.post(`${API_BASE}/api/v1/admin/auth/login`, formData)
-      } catch (kcErr) {
-        response = await axios.post(`${API_BASE}/api/v1/auth/login`, formData)
-      }
+      response = await axios.post(`${API_BASE}/api/v1/admin/auth/login`, formData)
 
       const res = response.data
       const token = res.tokens?.access_token || res.token
@@ -45,27 +41,24 @@ export default function AdminLogin({ onLoginSuccess }) {
       const isAdmin = roles.includes('admin') ||
                        roles.includes('admin-internal') ||
                        roles.includes('platform-admin')
-      const isMerchant = roles.some(r =>
-        ['merchant', 'merchant-amazon', 'merchant-flipkart', 'merchant-admin', 'merchant-staff'].includes(r)
-      )
 
       if (!token) {
         setError('Login failed. No token received.')
         return
       }
-      if (!isAdmin && !isMerchant) {
-        setError('Access denied. Admin or Merchant account required.')
+      if (!isAdmin) {
+        setError('Access denied. Admin account required.')
         return
       }
 
       const userData = {
         userId: res.data?.user_id || res.user?.user_id || res.data?.id,
         email: res.data?.email || res.user?.email,
-        name: res.data?.name || res.user?.name || (isMerchant ? 'Merchant' : 'Administrator'),
-        role: isAdmin ? 'admin' : 'merchant',
+        name: res.data?.name || res.user?.name || 'Administrator',
+        role: 'admin',
         roles,
         isAdmin,
-        isMerchant,
+        isMerchant: false,
       }
 
       localStorage.setItem('token', token)
@@ -113,7 +106,7 @@ export default function AdminLogin({ onLoginSuccess }) {
               Sign in to Dashboard
             </h1>
             <p className="mt-1.5 text-sm text-slate-500">
-              Admin · Merchant portal. Manage products, orders, and verifications.
+              Platform administration console. Manage users, products, and system settings.
             </p>
           </div>
 
@@ -137,7 +130,7 @@ export default function AdminLogin({ onLoginSuccess }) {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="admin@nitte.edu or merchant@amazon.com"
+                    placeholder="admin@nitte.edu"
                     required
                     disabled={loading}
                     className={inputClass}

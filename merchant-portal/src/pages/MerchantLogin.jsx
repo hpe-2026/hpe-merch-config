@@ -6,9 +6,11 @@ import {
   Lock, 
   AlertCircle, 
   Loader2,
-  ArrowRight
+  ArrowRight,
+  Shield
 } from 'lucide-react'
 import { API_BASE } from '../config/api'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function MerchantLogin({ onLogin }) {
   const [email, setEmail] = useState('')
@@ -22,8 +24,7 @@ export default function MerchantLogin({ onLogin }) {
     setError('')
 
     try {
-      // Try merchant login endpoint
-      const response = await axios.post(`${API_BASE}/api/v1/auth/login`, {
+      const response = await axios.post(`${API_BASE}/api/v1/admin/auth/login`, {
         email,
         password,
       })
@@ -37,7 +38,6 @@ export default function MerchantLogin({ onLogin }) {
         return
       }
 
-      // Check if user has merchant role
       const roles = userData?.roles || (userData?.role ? [userData.role] : [])
       const hasMerchantRole = roles.some(r => 
         ['merchant', 'merchant-admin', 'merchant-staff', 'merchant-amazon', 'merchant-flipkart'].includes(r)
@@ -59,94 +59,123 @@ export default function MerchantLogin({ onLogin }) {
     }
   }
 
+  const inputClass =
+    'w-full pl-10 pr-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition'
+
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="mb-8 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <Store className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-slate-50 dark:bg-black flex flex-col">
+      {/* Top bar */}
+      <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center">
+              <Store className="w-4 h-4 text-white" strokeWidth={2.5} />
+            </div>
+            <div className="leading-tight">
+              <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-slate-100">NITTE Merchant</p>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Vendor Portal</p>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Merchant Portal</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage your products and orders</p>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+              <Shield className="w-3.5 h-3.5" />
+              Secure Access
+            </span>
+            <ThemeToggle />
+          </div>
         </div>
+      </header>
 
-        {/* Login form */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-          {error && (
-            <div className="mb-4 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-700">{error}</p>
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-6">
+            <div className="inline-flex w-12 h-12 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm mb-4">
+              <Store className="w-6 h-6" />
             </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="merchant@example.com"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  Sign in
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-4 pt-4 border-t border-slate-200">
-            <p className="text-xs text-slate-500 text-center">
-              Demo accounts:<br />
-              merchant-admin@nitte.edu / MerchantAdmin@123<br />
-              platform-admin@nitte.ac.in / PlatformAdmin@123
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+              Merchant Sign In
+            </h1>
+            <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+              Manage products, orders, and your store profile
             </p>
           </div>
-        </div>
 
-        <p className="mt-6 text-center text-xs text-slate-400">
-          © {new Date().getFullYear()} NITTE Alumni Merchandise. All rights reserved.
-        </p>
-      </div>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 sm:p-7">
+            {error && (
+              <div className="mb-4 flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Email address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                    className={inputClass}
+                    placeholder="merchant@example.com"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    className={inputClass}
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Signing in…
+                  </>
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                Authenticated via Keycloak. Contact your administrator for access.
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
+            © {new Date().getFullYear()} NITTE Alumni Merchandise · Merchant Portal
+          </p>
+        </div>
+      </main>
     </div>
   )
 }
