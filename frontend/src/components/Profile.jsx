@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import axios from 'axios'
 import {
   User as UserIcon,
   Mail,
@@ -11,12 +12,66 @@ import {
   Check,
   X,
   Lock,
+  Camera,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react'
+import { API_BASE, auth, authUpload } from '../config/api'
 
 export default function Profile({ user, onLogout }) {
   const [userData, setUserData] = useState(user)
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({ name: user?.name || '' })
+  const [profileImage, setProfileImage] = useState(user?.profileImage || user?.avatar || null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(false)
+  
+  const fileInputRef = useRef(null)
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size should be less than 5MB')
+      return
+    }
+
+    setUploadingImage(true)
+    setError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('type', 'user-profile')
+
+      const response = await axios.post(
+        `${API_BASE}/api/v1/upload/profile-image`,
+        formData,
+        authUpload()
+      )
+
+      if (response.data?.success && response.data?.url) {
+        setProfileImage(response.data.url)
+        setSuccess(true)
+        setTimeout(() => setSuccess(false), 3000)
+        
+        // Update localStorage
+        const updated = { ...userData, profileImage: response.data.url }
+        localStorage.setItem('user', JSON.stringify(updated))
+        setUserData(updated)
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to upload image')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
 
   const handleSave = () => {
     const updated = { ...userData, name: formData.name }
@@ -47,14 +102,56 @@ export default function Profile({ user, onLogout }) {
         </p>
       </div>
 
+      {success && (
+        <div className="mb-4 flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          <p className="text-sm text-emerald-700">Profile updated successfully!</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: identity card */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 lg:sticky lg:top-20 self-start">
           <div className="flex flex-col items-center text-center">
-            <div className="w-20 h-20 rounded-full bg-indigo-600 text-white flex items-center justify-center text-2xl font-bold mb-3">
-              {initial}
+            {/* Profile Image */}
+            <div className="relative">
+              <div
+                onClick={() => !uploadingImage && fileInputRef.current?.click()}
+                className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold cursor-pointer overflow-hidden transition ${
+                  profileImage
+                    ? 'bg-cover bg-center'
+                    : 'bg-indigo-600 text-white'
+                }`}
+                style={profileImage ? { backgroundImage: `url(${profileImage})` } : {}}
+              >
+                {!profileImage && initial}
+                {uploadingImage && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  </div>
+                )}
+                {!uploadingImage && (
+                  <div className="absolute inset-0 bg-black/0 hover:bg-black/30 transition flex items-center justify-center opacity-0 hover:opacity-100">
+                    <Camera className="w-6 h-6 text-white" />
+                  </div>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
             </div>
-            <p className="font-semibold text-slate-900">{userData?.name || 'Alumni member'}</p>
+            <p className="font-semibold text-slate-900 mt-3">{userData?.name || 'Alumni member'}</p>
             <p className="text-xs text-slate-500 mt-0.5">{userData?.email}</p>
             <span className="mt-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 capitalize">
               <ShieldCheck className="w-3 h-3" />
