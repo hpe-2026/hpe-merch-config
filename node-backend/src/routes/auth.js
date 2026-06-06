@@ -45,14 +45,14 @@ const isAdminUser = (roles = []) => {
   if (!Array.isArray(roles)) {
     return false;
   }
-  return roles.includes('admin') || roles.includes('super-admin');
+  return roles.includes('admin') || roles.includes('super-admin') || roles.includes('platform-admin');
 };
 
 const isMerchantUser = (roles = []) => {
   if (!Array.isArray(roles)) {
     return false;
   }
-  return roles.some(r => ['merchant', 'merchant-amazon', 'merchant-flipkart'].includes(r));
+  return roles.some(r => ['merchant', 'merchant-admin', 'merchant-staff', 'merchant-amazon', 'merchant-flipkart'].includes(r));
 };
 
 /**
@@ -127,18 +127,21 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
       });
     }
 
-    // Check user verification status in MongoDB
-    const userVerification = await UserVerification.findOne({ email });
-    if (userVerification && userVerification.status !== 'approved') {
-      logger.warn('User login blocked - verification pending', {
-        email,
-        status: userVerification.status,
+    // Sync Keycloak user to MongoDB (create record if doesn't exist)
+    let userVerification = await UserVerification.findOne({ email });
+    if (!userVerification) {
+      // Create MongoDB record for Keycloak user
+      userVerification = new UserVerification({
+        user_id: userInfo.userId,
+        email: userInfo.email,
+        name: userInfo.name || email.split('@')[0],
+        status: 'approved', // Keycloak users are pre-approved
+        user_type: isAdminUser(userInfo.roles) ? 'admin' : 'merchant',
+        approved_by: 'keycloak-sync',
+        approval_timestamp: new Date(),
       });
-      authAttempts.inc({ type: 'login', success: 'blocked' });
-      return res.status(403).json({
-        success: false,
-        message: `Account not approved yet. Status: ${userVerification.status || 'pending'}. Please wait for admin approval.`,
-      });
+      await userVerification.save();
+      logger.info('Created MongoDB record for Keycloak user', { email, userId: userInfo.userId });
     }
 
     logger.info('User logged in successfully', { email });

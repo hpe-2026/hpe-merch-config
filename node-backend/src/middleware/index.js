@@ -116,7 +116,12 @@ export const authMiddleware = async (req, res, next) => {
 export const adminMiddleware = (req, res, next) => {
   const isAdmin = req.user && (
     req.user.role === 'admin' ||
-    (req.user.roles && req.user.roles.includes('admin'))
+    req.user.role === 'platform-admin' ||
+    (req.user.roles && (
+      req.user.roles.includes('admin') ||
+      req.user.roles.includes('platform-admin') ||
+      req.user.roles.includes('super-admin')
+    ))
   );
   if (!isAdmin) {
     return res.status(403).json({
@@ -141,8 +146,8 @@ export const requireRoles = (...roles) => {
   };
 };
 
-export const alumniMiddleware = requireRoles('alumni', 'admin', 'admin-internal');
-export const merchantMiddleware = requireRoles('merchant', 'merchant-amazon', 'merchant-flipkart', 'admin', 'admin-internal');
+export const alumniMiddleware = requireRoles('alumni', 'alumni-verified', 'admin', 'platform-admin', 'admin-internal');
+export const merchantMiddleware = requireRoles('merchant', 'merchant-admin', 'merchant-staff', 'merchant-amazon', 'merchant-flipkart', 'admin', 'platform-admin', 'admin-internal');
 
 /**
  * Internal Admin Middleware - requires admin-internal role (full DevOps access: Jenkins, Nexus, Keycloak Admin)
@@ -280,6 +285,21 @@ export const requestLogger = (req, res, next) => {
 function generateCorrelationId() {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
+
+// Export Keycloak role middleware (Phase 1: RBAC)
+export {
+  keycloakAuthMiddleware,
+  keycloakRequireClientRole,
+  keycloakRequireAnyRole,
+  keycloakRequireRole,
+  keycloakRequireAllRoles,
+  keycloakOptionalAuth,
+  getCurrentUser,
+  login,
+  register,
+  logout,
+  refreshTokenEndpoint,
+} from './keycloak.js';
 
 // Export ownership middleware (Phase 2: Resource-Level Authorization)
 export {
