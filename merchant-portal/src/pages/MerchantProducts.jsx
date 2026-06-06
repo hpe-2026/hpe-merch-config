@@ -252,16 +252,16 @@ export default function MerchantProducts({ user }) {
                     <ImageIcon className="w-12 h-12 text-slate-300" />
                   </div>
                 )}
-                <div className="absolute top-2 right-2 flex gap-1">
+                <div className="absolute top-2 right-2 flex gap-1 z-10">
                   <button
                     onClick={() => openModal(product)}
-                    className="p-1.5 bg-white rounded-lg shadow-sm text-slate-600 hover:text-indigo-600 transition"
+                    className="p-1.5 bg-white/95 backdrop-blur rounded-lg shadow-md text-slate-600 hover:text-indigo-600 transition border border-slate-200"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(product.id || product._id)}
-                    className="p-1.5 bg-white rounded-lg shadow-sm text-slate-600 hover:text-red-600 transition"
+                    className="p-1.5 bg-white/95 backdrop-blur rounded-lg shadow-md text-slate-600 hover:text-red-600 transition border border-slate-200"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
