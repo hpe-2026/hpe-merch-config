@@ -27,4 +27,19 @@ function getAPIBase() {
 
 export const API_BASE = getAPIBase()
 
+// Helper to get auth headers
+export const auth = () => ({
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
+  },
+})
+
+// Helper to get auth headers with content type for uploads
+export const authUpload = () => ({
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
+    'Content-Type': 'multipart/form-data',
+  },
+})
+
 export default API_BASE
