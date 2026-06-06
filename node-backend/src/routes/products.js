@@ -8,10 +8,42 @@ import {
   setOwnershipOnCreate,
   keycloakRequireClientRole,
   keycloakRequireAnyRole,
+  filterByOwnership,
 } from '../middleware/index.js';
+import { getMongoClient } from '../config/database.js';
 import logger from '../config/logger.js';
 import { productsViewed, databaseOperations } from '../metrics.js';
 import tracer, { context } from '../tracing.js';
+import config from '../config/index.js';
+
+/**
+ * Transform MinIO image URLs to backend proxy URLs (avoids CORS issues)
+ * Converts: http://localhost:9000/bucket/path/image.png
+ * To: /api/v1/upload/images/bucket/path/image.png
+ */
+const transformImageUrl = (url) => {
+  if (!url) return null;
+  // If already a proxy URL, return as-is
+  if (url.includes('/api/v1/upload/images/')) return url;
+  // Convert MinIO URL to proxy URL
+  const minioPattern = /http:\/\/[^:]+:9000\/(.*)/;
+  const match = url.match(minioPattern);
+  if (match) {
+    return `${config.api_base_url || ''}/api/v1/upload/images/${match[1]}`;
+  }
+  return url;
+};
+
+/**
+ * Transform all image URLs in a product object
+ */
+const transformProductImages = (product) => {
+  if (!product) return product;
+  return {
+    ...product,
+    image_url: transformImageUrl(product.image_url),
+  };
+};
 
 /**
  * Enrich a span with persistent identity attributes when a user is present.
@@ -47,8 +79,8 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
-// Get all products
-router.get('/', async (req, res, next) => {
+// Get all products - filtered by merchant for merchant users
+router.get('/', authMiddleware, filterByOwnership({ allowMerchantFilter: true }), async (req, res, next) => {
   // Create child span for this service's operation
   const span = tracer.startSpan('mongodb.find', {
     attributes: {
@@ -62,7 +94,17 @@ router.get('/', async (req, res, next) => {
   attachIdentityToSpan(span, req);
 
   try {
-    const products = await pythonServiceClient.getProducts();
+    // Query MongoDB directly with ownership filter
+    const db = getMongoClient().db();
+    const filter = req.ownershipFilter || {};
+    
+    logger.info('Fetching products with filter', { filter, userId: req.user?.userId, merchantId: req.user?.merchantId });
+    
+    const products = await db.collection('products').find(filter).toArray();
+    
+    // Transform image URLs to avoid CORS issues
+    const transformedProducts = products.map(transformProductImages);
+    
     productsViewed.inc();
     databaseOperations.inc({ operation: 'list_products', status: 'success' });
     
@@ -73,7 +115,7 @@ router.get('/', async (req, res, next) => {
     
     res.status(200).json({
       success: true,
-      data: products,
+      data: transformedProducts,
     });
   } catch (error) {
     logger.error('Failed to fetch products', { error: error.message });
@@ -118,9 +160,12 @@ router.get('/:id', async (req, res, next) => {
       span.setAttribute('status.code', 'OK');
     }
     
+    // Transform image URL to avoid CORS issues
+    const transformedProduct = transformProductImages(product);
+    
     res.status(200).json({
       success: true,
-      data: product,
+      data: transformedProduct,
     });
   } catch (error) {
     if (error.message === 'Product not found') {
@@ -182,7 +227,7 @@ router.post(
       res.status(201).json({
         success: true,
         message: 'Product created successfully',
-        data: product,
+        data: transformProductImages(product),
       });
     } catch (error) {
       logger.error('Failed to create product', { error: error.message });
@@ -218,7 +263,7 @@ router.put(
       res.status(200).json({
         success: true,
         message: 'Product updated successfully',
-        data: product,
+        data: transformProductImages(product),
       });
     } catch (error) {
       logger.error('Failed to update product', { error: error.message });
