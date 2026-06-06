@@ -240,7 +240,7 @@ export default function MerchantProducts({ user }) {
           {filteredProducts.map((product) => (
             <div key={product.id || product._id} className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition">
               {/* Product Image */}
-              <div className="aspect-square bg-slate-100 relative">
+              <div className="aspect-[4/3] bg-slate-100 relative">
                 {product.image_url ? (
                   <img
                     src={product.image_url}
@@ -249,7 +249,7 @@ export default function MerchantProducts({ user }) {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="w-12 h-12 text-slate-300" />
+                    <ImageIcon className="w-10 h-10 text-slate-300" />
                   </div>
                 )}
                 <div className="absolute top-2 right-2 flex gap-1 z-10">
