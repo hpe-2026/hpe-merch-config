@@ -1,12 +1,5 @@
-oic-auth
-configuration-as-code
-matrix-auth
-workflow-aggregator
-pipeline-stage-view
-git
-nodejs
-credentials-binding
-plain-credentials
-nexus-artifact-uploader
-ws-cleanup
-build-timeout
+# Vanilla Jenkins - no custom plugins
+# Add plugins manually via UI after first login
+# Or uncomment below to add specific plugins:
+# git
+# matrix-auth
