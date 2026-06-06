@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
 import {
   User as UserIcon,
@@ -30,6 +30,27 @@ export default function Profile({ user, onLogout }) {
   
   const updateUser = useAuthStore((state) => state.updateUser)
   const fileInputRef = useRef(null)
+
+  // Fetch latest profile from backend on mount to ensure profileImage persists
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/api/v1/merchants/profile`, auth())
+        if (response.data?.success && response.data?.data) {
+          const data = response.data.data
+          if (data.profileImage) {
+            setProfileImage(data.profileImage)
+            updateUser({ profileImage: data.profileImage })
+            setUserData((prev) => ({ ...prev, profileImage: data.profileImage }))
+          }
+        }
+      } catch (err) {
+        // Non-critical: fall back to stored value
+        console.debug('Could not fetch profile:', err.message)
+      }
+    }
+    fetchProfile()
+  }, [])
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0]

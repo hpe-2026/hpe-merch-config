@@ -89,7 +89,10 @@ export const useAuthStore = create(
             email: data.email,
             name: data.name,
             role: data.role || data.roles?.[0] || 'user',
-            roles: data.roles || (data.role ? [data.role] : ['user'])
+            roles: data.roles || (data.role ? [data.role] : ['user']),
+            profileImage: data.profileImage || null,
+            phone: data.phone || null,
+            address: data.address || null,
           }
 
           // Persist to localStorage for admin-dashboard compatibility
