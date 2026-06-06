@@ -40,7 +40,7 @@ COMPOSE_CMD=""
 # Base images that must be pulled before docker compose builds local images.
 # We pull these sequentially to avoid registry timeouts on slow networks.
 BASE_IMAGES=(
-  "mongo:5.0"
+  "mongo:6.0"
   "confluentinc/cp-zookeeper:7.3.0"
   "confluentinc/cp-kafka:7.3.0"
   "quay.io/keycloak/keycloak:20.0.0"

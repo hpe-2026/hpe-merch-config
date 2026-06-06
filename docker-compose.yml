@@ -1,6 +1,6 @@
 services:
   mongodb:
-    image: mongo:5.0
+    image: mongo:6.0
     container_name: nitte-mongodb
     ports:
       - "27017:27017"
@@ -580,7 +580,7 @@ services:
     restart: "no"
 
   mongo-backup:
-    image: mongo:5.0
+    image: mongo:6.0
     container_name: nitte-mongo-backup
     depends_on:
       - mongodb
