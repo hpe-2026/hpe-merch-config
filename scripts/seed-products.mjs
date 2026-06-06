@@ -13,6 +13,28 @@
 import { S3Client, PutObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { MongoClient, ObjectId } from 'mongodb';
 import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Product images folder
+const PRODUCT_IMAGES_DIR = path.join(__dirname, '..', 'product-images');
+
+// Map product names to image files
+const PRODUCT_IMAGE_MAP = {
+  'NITTE Alumni Hoodie': 'nitte-hoodie.png',
+  'NITTE Alumni T-Shirt': 'nitte-tshirt.png',
+  'NITTE Coffee Mug': 'nitte-mug.png',
+  'NITTE Laptop Sticker Pack': 'nitte-laptopStickers.png',
+  'NITTE Alumni Cap': 'nitte-cap.png',
+  'NITTE Notebook': 'nitte-notebook.png',
+  'NITTE Water Bottle': 'nitte-waterbottle.png',
+  'NITTE Hoodie Premium': 'nitte-premium_hoodie.png',
+};
 
 // Configuration
 const CONFIG = {
@@ -150,16 +172,30 @@ async function downloadImage(url, timeoutMs = 5000) {
 }
 
 /**
- * Generate a simple SVG placeholder locally (fallback when network fails)
+ * Read local product image file
  */
-function generateLocalPlaceholder(text, width = 600, height = 600, bg = '4338ca', fg = 'ffffff') {
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <rect width="100%" height="100%" fill="#${bg}"/>
-  <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="32" fill="#${fg}" 
-        text-anchor="middle" dominant-baseline="middle">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>
-</svg>`;
-  return Buffer.from(svg, 'utf-8');
+function readLocalImage(productName) {
+  const imageFile = PRODUCT_IMAGE_MAP[productName];
+  if (!imageFile) {
+    console.log(`    ⚠ No local image found for: ${productName}`);
+    return null;
+  }
+  
+  const imagePath = path.join(PRODUCT_IMAGES_DIR, imageFile);
+  
+  if (!fs.existsSync(imagePath)) {
+    console.log(`    ⚠ Image file not found: ${imagePath}`);
+    return null;
+  }
+  
+  try {
+    const buffer = fs.readFileSync(imagePath);
+    console.log(`    ✓ Loaded local image: ${imageFile} (${(buffer.length / 1024).toFixed(1)} KB)`);
+    return { buffer, fileName: imageFile };
+  } catch (error) {
+    console.log(`    ⚠ Error reading image: ${error.message}`);
+    return null;
+  }
 }
 
 /**
@@ -202,11 +238,22 @@ async function uploadImageToMinIO(imageBuffer, productId, fileName) {
   const timestamp = Date.now();
   const key = `seeded/${CONFIG.merchant.id}/${productId}/${timestamp}-${fileName}`;
   
+  // Detect content type from file extension
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  const contentTypeMap = {
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+  };
+  const contentType = contentTypeMap[ext] || 'image/png';
+  
   await s3Client.send(new PutObjectCommand({
     Bucket: CONFIG.bucket,
     Key: key,
     Body: imageBuffer,
-    ContentType: 'image/png',
+    ContentType: contentType,
     Metadata: {
       'product-id': productId,
       'merchant-id': CONFIG.merchant.id,
@@ -306,16 +353,27 @@ async function seedProducts() {
       const product = CONFIG.products[i];
       console.log(`[${i + 1}/${CONFIG.products.length}] ${product.name}`);
       
-      // Generate image
-      console.log(`  → Generating product image...`);
-      const imageBuffer = await generatePlaceholderImage(product.imageText);
+      // Load local image or generate placeholder
+      console.log(`  → Loading product image...`);
+      let imageBuffer, imageFileName;
+      const localImage = readLocalImage(product.name);
+      
+      if (localImage) {
+        imageBuffer = localImage.buffer;
+        imageFileName = localImage.fileName;
+      } else {
+        // Fallback to placeholder
+        console.log(`    → Using placeholder...`);
+        imageBuffer = await generatePlaceholderImage(product.imageText);
+        imageFileName = 'product.png';
+      }
       
       // Create product ID
       const productId = new ObjectId().toString();
       
       // Upload to MinIO
       console.log(`  → Uploading to MinIO...`);
-      const imageUrl = await uploadImageToMinIO(imageBuffer, productId, 'product.png');
+      const imageUrl = await uploadImageToMinIO(imageBuffer, productId, imageFileName);
       console.log(`  → Stored at: ${imageUrl.split('/').pop()}`);
       
       // Prepare product document
