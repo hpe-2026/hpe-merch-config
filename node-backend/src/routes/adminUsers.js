@@ -250,17 +250,15 @@ const syncApprovedUserToKeycloak = async (verification) => {
     // Assign the correct role based on user_type
     await assignRole(verification.user_id, adminToken);
 
-    // Assign client-specific roles for permissions
-    const clientRoles = verification.user_type === 'non_alumni'
-      ? ['order:create', 'order:update', 'order:read-own']  // Non-alumni can create orders
-      : ['order:create', 'order:update', 'order:read-own'];  // Alumni can create orders
-
-    await addClientRolesToKeycloak(
-      verification.user_id,
-      'nitte-client',
-      clientRoles,
-      adminToken
-    );
+    // Assign order permission roles (as realm roles since service account can manage those)
+    const permissionRoles = ['order:create', 'order:update', 'order:read-own'];
+    for (const roleName of permissionRoles) {
+      try {
+        await addRoleToKeycloak(verification.user_id, roleName, `Permission: ${roleName}`, adminToken);
+      } catch (roleErr) {
+        logger.warn(`Failed to assign realm role '${roleName}':`, roleErr.message);
+      }
+    }
   } catch (err) {
     // If the stored user_id is stale (Keycloak returns 404), clear it and retry.
     if (err.response?.status === 404) {
@@ -277,11 +275,13 @@ const syncApprovedUserToKeycloak = async (verification) => {
         await keycloakConfig.setUserEmailVerified(verification.user_id, true, adminToken);
         await assignRole(verification.user_id, adminToken);
 
-        // Retry client role assignment
-        const clientRoles = verification.user_type === 'non_alumni'
-          ? ['order:create', 'order:update', 'order:read-own']
-          : ['order:create', 'order:update', 'order:read-own'];
-        await addClientRolesToKeycloak(verification.user_id, 'nitte-client', clientRoles, adminToken);
+        // Retry realm role assignment for permissions
+        const permRoles = ['order:create', 'order:update', 'order:read-own'];
+        for (const roleName of permRoles) {
+          try {
+            await addRoleToKeycloak(verification.user_id, roleName, `Permission: ${roleName}`, adminToken);
+          } catch (e) { /* ignore */ }
+        }
       } else {
         throw new Error('Approved user could not be re-linked to Keycloak after stale ID cleared');
       }
