@@ -182,7 +182,7 @@ function ProductCard({ product, onAddToCart }) {
           </div>
         )}
         {product.category && (
-          <div className="absolute top-3 right-3 px-2 py-1 text-[10px] font-medium uppercase tracking-wider bg-white/90 backdrop-blur text-slate-700 rounded">
+          <div className="absolute top-3 right-3 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide bg-white shadow-sm text-slate-700 rounded-md">
             {product.category}
           </div>
         )}

@@ -185,12 +185,12 @@ export default function Products() {
                       </div>
                     )}
                     {p.category && (
-                      <div className="absolute top-2.5 left-2.5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-white/90 backdrop-blur text-slate-700 rounded">
+                      <div className="absolute top-2.5 left-2.5 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide bg-white shadow-sm text-slate-700 rounded-md">
                         {p.category}
                       </div>
                     )}
                     {!inStock && (
-                      <div className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-slate-900/90 text-white rounded">
+                      <div className="absolute top-2.5 right-2.5 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide bg-slate-900 text-white rounded-md">
                         Sold out
                       </div>
                     )}
