@@ -197,8 +197,14 @@ export const filterByOwnership = (options = {}) => {
       return next();
     }
 
-    // Merchant admins see their merchant's resources
-    if (allowMerchantFilter && req.user?.realmRoles?.includes('merchant-admin')) {
+    // Merchants see their merchant's resources
+    const MERCHANT_ROLES = ['merchant', 'merchant-admin', 'merchant-staff', 'merchant-amazon', 'merchant-flipkart'];
+    const isMerchantUser = allowMerchantFilter && (
+      req.user?.realmRoles?.some(r => MERCHANT_ROLES.includes(r)) ||
+      req.user?.roles?.some(r => MERCHANT_ROLES.includes(r))
+    );
+    
+    if (isMerchantUser) {
       // Try to get merchantId from token, or look up from MongoDB
       let merchantId = req.user?.merchantId;
 

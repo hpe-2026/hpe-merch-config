@@ -87,6 +87,8 @@ class OrderCreate(BaseModel):
     notes: Optional[str] = ""
     status: str = "pending"
     payment: Optional[PaymentInfo] = None
+    merchant_id: Optional[str] = None
+    merchant_ids: Optional[List[str]] = None
 
 class OrderUpdate(BaseModel):
     status: Optional[str] = None
@@ -102,6 +104,8 @@ class Order(BaseModel):
     notes: str
     status: str
     payment: Optional[PaymentInfo] = None
+    merchant_id: Optional[str] = None
+    merchant_ids: Optional[List[str]] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
