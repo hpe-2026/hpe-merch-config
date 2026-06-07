@@ -281,13 +281,18 @@ router.post(
 );
 
 // Update order
-// Requires: order:update client role OR ownership OR platform-admin
+// Update order
+// Requires: order:update client role OR ownership OR platform-admin OR merchant roles
 router.put(
   '/:id',
   authMiddleware,
   keycloakRequireAnyRole([
     { type: 'client', role: 'nitte-client:order:update' },
     'platform-admin',
+    'merchant-admin',
+    'merchant',
+    'merchant-amazon',
+    'merchant-flipkart',
   ]),
   requireOrderOwnership,
   async (req, res, next) => {
