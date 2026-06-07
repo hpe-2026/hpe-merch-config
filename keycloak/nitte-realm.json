@@ -216,6 +216,37 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
       "fullScopeAllowed": true
+    },
+    {
+      "clientId": "minio-client",
+      "name": "MinIO Object Storage",
+      "description": "Client for MinIO OIDC login",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "minio-client-secret",
+      "redirectUris": ["http://localhost:9001/oauth_callback"],
+      "webOrigins": ["http://localhost:9001"],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "minio-policy-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "policy",
+            "claim.value": "consoleAdmin",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [
