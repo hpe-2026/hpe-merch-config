@@ -59,12 +59,12 @@ export default function Orders() {
   }
 
   const statusMeta = {
-    pending:    { label: 'Pending',    Icon: Clock,        cls: 'bg-amber-600 text-white border-amber-700' },
-    confirmed:  { label: 'Confirmed',  Icon: CheckCircle2, cls: 'bg-indigo-600 text-white border-indigo-700' },
-    processing: { label: 'Processing', Icon: RefreshCw,    cls: 'bg-violet-600 text-white border-violet-700' },
-    shipped:    { label: 'Shipped',    Icon: Truck,        cls: 'bg-sky-600 text-white border-sky-700' },
-    delivered:  { label: 'Delivered',  Icon: CheckCircle2, cls: 'bg-emerald-600 text-white border-emerald-700' },
-    cancelled:  { label: 'Cancelled',  Icon: XCircle,      cls: 'bg-red-600 text-white border-red-700' },
+    pending:    { label: 'Pending',    Icon: Clock,        cls: 'bg-slate-900 text-amber-400 border-slate-700' },
+    confirmed:  { label: 'Confirmed',  Icon: CheckCircle2, cls: 'bg-slate-900 text-indigo-400 border-slate-700' },
+    processing: { label: 'Processing', Icon: RefreshCw,    cls: 'bg-slate-900 text-violet-400 border-slate-700' },
+    shipped:    { label: 'Shipped',    Icon: Truck,        cls: 'bg-slate-900 text-sky-400 border-slate-700' },
+    delivered:  { label: 'Delivered',  Icon: CheckCircle2, cls: 'bg-slate-900 text-emerald-400 border-slate-700' },
+    cancelled:  { label: 'Cancelled',  Icon: XCircle,      cls: 'bg-slate-900 text-red-400 border-slate-700' },
   }
   const getStatus = (status) => statusMeta[status] || statusMeta.pending
 
