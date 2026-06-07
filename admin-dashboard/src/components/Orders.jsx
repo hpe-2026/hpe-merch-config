@@ -125,8 +125,8 @@ export default function Orders() {
       const okStatus = filter === 'all' || status === filter
       const okQ = !q
         || o._id?.toLowerCase().includes(q)
-        || o.customerName?.toLowerCase().includes(q)
-        || o.customerEmail?.toLowerCase().includes(q)
+        || o.order_id?.toLowerCase().includes(q)
+        || o.user_email?.toLowerCase().includes(q)
       return okStatus && okQ
     })
   }, [orders, filter, query])
@@ -226,25 +226,17 @@ export default function Orders() {
                 const status = (o.status || 'pending').toLowerCase()
                 return (
                   <tr key={o._id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors align-top">
-                    <td className="px-5 py-3.5 font-mono text-xs text-slate-700">
-                      {o._id?.slice(-8).toUpperCase()}
+                    <td className="px-5 py-3.5">
+                      <p className="font-medium text-slate-900">{o.order_id || o._id?.slice(-8).toUpperCase()}</p>
                     </td>
                     <td className="px-5 py-3.5">
-                      <p className="font-medium text-slate-900">{o.customerName || '—'}</p>
-                      <p className="text-xs text-slate-500">{o.customerEmail || ''}</p>
+                      <p className="font-medium text-slate-900">{o.user_email?.split('@')[0] || '—'}</p>
+                      <p className="text-xs text-slate-500">{o.user_email || ''}</p>
                     </td>
                     <td className="px-5 py-3.5 text-slate-700">
                       <p className="text-xs text-slate-600">
                         {o.items?.length || 0} item{(o.items?.length || 0) !== 1 ? 's' : ''}
                       </p>
-                      {o.items?.slice(0, 2).map((i, idx) => (
-                        <p key={idx} className="text-xs text-slate-500 line-clamp-1">
-                          · {i.productName} × {i.quantity}
-                        </p>
-                      ))}
-                      {(o.items?.length || 0) > 2 && (
-                        <p className="text-xs text-slate-400">+ {o.items.length - 2} more</p>
-                      )}
                     </td>
                     <td className="px-5 py-3.5 text-right font-semibold text-slate-900">
                       {fmtINR(orderTotal(o))}
@@ -269,8 +261,8 @@ export default function Orders() {
                       />
                     </td>
                     <td className="px-5 py-3.5 text-right text-xs text-slate-500">
-                      {o.createdAt
-                        ? new Date(o.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                      {(o.created_at || o.createdAt)
+                        ? new Date(o.created_at || o.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                         : '—'}
                     </td>
                   </tr>
