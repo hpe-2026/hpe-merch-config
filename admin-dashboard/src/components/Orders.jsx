@@ -7,6 +7,7 @@ const API_BASE_URL = `${API_BASE}/api/v1`
 
 const STATUS_META = {
   pending:    { label: 'Pending',    dot: 'bg-amber-500',   text: 'text-amber-700',   ring: 'ring-amber-200' },
+  confirmed:  { label: 'Confirmed',  dot: 'bg-blue-500',    text: 'text-blue-700',    ring: 'ring-blue-200' },
   processing: { label: 'Processing', dot: 'bg-indigo-500',  text: 'text-indigo-700',  ring: 'ring-indigo-200' },
   shipped:    { label: 'Shipped',    dot: 'bg-sky-500',     text: 'text-sky-700',     ring: 'ring-sky-200' },
   delivered:  { label: 'Delivered',  dot: 'bg-emerald-500', text: 'text-emerald-700', ring: 'ring-emerald-200' },
