@@ -30,8 +30,14 @@ err()  { printf '%s[ERROR]%s %s\n'   "$RED"    "$NC" "$1" >&2; }
 
 # ---------- helpers -----------------------------------------------------------
 now_iso()    { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
-future_iso() { date -u -d "+${1:-15} minutes" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null \
-               || date -u -v+${1:-15}M +"%Y-%m-%dT%H:%M:%SZ"; }   # macOS fallback
+future_iso() {
+  # GNU date (Linux/Git Bash MSYS2)
+  date -u -d "+${1:-15} minutes" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null && return
+  # macOS BSD date
+  date -u -v+${1:-15}M +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null && return
+  # Fallback: just use current time (alerts will expire immediately but still fire)
+  date -u +"%Y-%m-%dT%H:%M:%SZ"
+}
 
 check_deps() {
   command -v curl &>/dev/null || { err "Required: curl"; exit 1; }
@@ -67,8 +73,10 @@ post_alerts() {
 resolve_alerts() {
   step "Resolving all synthetic alerts…"
 
-  local PAST; PAST=$(date -u -d "-1 minute" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null \
-                    || date -u -v-1M +"%Y-%m-%dT%H:%M:%SZ")
+  local PAST
+  PAST=$(date -u -d "-1 minute" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null \
+    || date -u -v-1M +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null \
+    || date -u +"%Y-%m-%dT%H:%M:%SZ")
 
   # Build resolve payload in pure Bash (no jq needed)
   local JSON

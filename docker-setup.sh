@@ -94,8 +94,7 @@ check_prereqs() {
 }
 
 # ---------- Image pre-pull --------------------------------------------------
-# Pulls base images in parallel (default 4 at a time). Override with PULL_PARALLEL=N.
-# Skip entirely with SKIP_PULL=1 (compose will lazily pull on `up`).
+# Pulls base images sequentially. Skip entirely with SKIP_PULL=1.
 pull_base_images() {
   if [[ "${SKIP_PULL:-0}" == "1" ]]; then
     info "SKIP_PULL=1 set — skipping pre-pull (compose will fetch on demand)."
@@ -104,65 +103,24 @@ pull_base_images() {
 
   header "Pulling Base Images"
   local total=${#BASE_IMAGES[@]}
-  local parallel="${PULL_PARALLEL:-4}"
-
-  # Filter out images already cached so we don't waste a slot on them.
-  local pending=()
   local idx=0
+
   for img in "${BASE_IMAGES[@]}"; do
     idx=$((idx+1))
     if docker image inspect "$img" &>/dev/null; then
       ok "[$idx/$total] cached: $img"
     else
-      pending+=("$img")
+      step "[$idx/$total] pulling: $img"
+      if docker pull "$img" >/dev/null 2>&1; then
+        ok "[$idx/$total] pulled: $img"
+      else
+        err "[$idx/$total] failed: $img"
+        info "Continuing — compose will retry on 'up'."
+      fi
     fi
   done
 
-  if [[ ${#pending[@]} -eq 0 ]]; then
-    ok "All base images already cached."
-    return
-  fi
-
-  info "Pulling ${#pending[@]} image(s) in parallel (max $parallel concurrent)…"
-  info "Tip: set SKIP_PULL=1 to skip, or PULL_PARALLEL=N to tune."
-
-  local tmpdir
-  tmpdir=$(mktemp -d)
-  # Expand $tmpdir now so the trap doesn't reference a local var after return.
-  trap "rm -rf '$tmpdir'" RETURN
-
-  local running=0
-  local failed=0
-  for img in "${pending[@]}"; do
-    # Throttle: wait until we have a free slot.
-    while (( running >= parallel )); do
-      wait -n 2>/dev/null || true
-      running=$((running-1))
-    done
-    (
-      if docker pull "$img" >"$tmpdir/$(echo "$img" | tr '/:' '__').log" 2>&1; then
-        printf '%s[OK]%s    pulled: %s\n' "$GREEN" "$NC" "$img"
-      else
-        printf '%s[ERROR]%s failed: %s\n' "$RED" "$NC" "$img" >&2
-        exit 1
-      fi
-    ) &
-    running=$((running+1))
-    step "queued: $img"
-  done
-
-  # Drain remaining jobs.
-  while (( running > 0 )); do
-    if ! wait -n; then failed=1; fi
-    running=$((running-1))
-  done
-
-  if (( failed )); then
-    err "One or more image pulls failed. See logs in $tmpdir"
-    info "Check network / Docker Hub access. Re-run to resume (cached images are skipped)."
-    exit 1
-  fi
-  ok "All base images present."
+  ok "Base image pull complete."
 }
 
 # ---------- Lifecycle -------------------------------------------------------
