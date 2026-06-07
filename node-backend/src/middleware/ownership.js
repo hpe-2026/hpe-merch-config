@@ -45,7 +45,9 @@ export const requireOwnership = (options = {}) => {
       }
 
       // Platform admins have full access (if enabled)
-      const isPlatformAdmin = req.user.realmRoles?.includes('platform-admin');
+      const isPlatformAdmin = req.user.realmRoles?.includes('platform-admin') ||
+        req.user.roles?.includes('admin') ||
+        req.user.roles?.includes('platform-admin');
       if (allowPlatformAdmin && isPlatformAdmin) {
         logger.debug(`Platform admin ${req.user.email} granted access to ${resourceType}`);
         req.ownership = { isAdmin: true, level: 'platform' };
@@ -95,10 +97,27 @@ export const requireOwnership = (options = {}) => {
 
       // Check merchant-level access
       let isMerchantAdmin = false;
-      if (allowMerchantAdmin && req.user.merchantId && resource.merchant_id) {
-        const isSameMerchant = resource.merchant_id === req.user.merchantId;
-        const hasMerchantAdminRole = req.user.realmRoles?.includes('merchant-admin');
-        isMerchantAdmin = isSameMerchant && hasMerchantAdminRole;
+      if (allowMerchantAdmin && resource.merchant_id) {
+        // Get merchantId from token or look up from DB
+        let userMerchantId = req.user.merchantId;
+        if (!userMerchantId && req.user.email) {
+          try {
+            const UserVerification = (await import('../schemas/userVerification.js')).default;
+            const userRecord = await UserVerification.findOne({ email: req.user.email.toLowerCase() });
+            if (userRecord?.merchant_id) {
+              userMerchantId = userRecord.merchant_id;
+              req.user.merchantId = userMerchantId;
+            }
+          } catch (err) {
+            logger.debug('Failed to lookup merchant_id for ownership check:', err.message);
+          }
+        }
+
+        const MERCHANT_ROLES = ['merchant', 'merchant-admin', 'merchant-staff', 'merchant-amazon', 'merchant-flipkart'];
+        const hasMerchantRole = req.user.realmRoles?.some(r => MERCHANT_ROLES.includes(r)) ||
+          req.user.roles?.some(r => MERCHANT_ROLES.includes(r));
+        const isSameMerchant = userMerchantId && resource.merchant_id === userMerchantId;
+        isMerchantAdmin = isSameMerchant && hasMerchantRole;
       }
 
       // For read operations, allow if user has any access
@@ -165,13 +184,13 @@ export const requireProductOwnership = requireOwnership({
 /**
  * Require ownership of an order
  * - Order owner (user_id) can view/manage their orders
- * - Merchant admin can view orders containing their products
+ * - Merchant admin can view/update orders containing their products
  * - Platform admin has full access
  */
 export const requireOrderOwnership = requireOwnership({
   resourceType: 'order',
   ownershipField: 'user_id',
-  allowMerchantAdmin: false, // Orders are customer-owned
+  allowMerchantAdmin: true,
   allowPlatformAdmin: true,
 });
 
