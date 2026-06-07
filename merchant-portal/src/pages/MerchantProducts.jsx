@@ -236,57 +236,75 @@ export default function MerchantProducts({ user }) {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {filteredProducts.map((product) => (
-            <div key={product.id || product._id} className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition">
-              {/* Product Image */}
-              <div className="h-36 bg-slate-100 relative">
-                {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-slate-300" />
-                  </div>
-                )}
-                <div className="absolute top-1.5 right-1.5 flex gap-1 z-10">
-                  <button
-                    onClick={() => openModal(product)}
-                    className="p-1 bg-white/95 backdrop-blur rounded-md shadow-sm text-slate-600 hover:text-indigo-600 transition border border-slate-200"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(product.id || product._id)}
-                    className="p-1 bg-white/95 backdrop-blur rounded-md shadow-sm text-slate-600 hover:text-red-600 transition border border-slate-200"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {filteredProducts.map((product) => {
+            const inStock = product.stock > 0
+            const initial = product.name?.charAt(0).toUpperCase() || '?'
+            return (
+              <div key={product.id || product._id} className="group bg-white rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-lg overflow-hidden transition-all flex flex-col">
+                {/* Image */}
+                <div className="relative aspect-square bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-5xl font-bold text-indigo-300">{initial}</span>
+                    </div>
+                  )}
+                  {product.category && (
+                    <div className="absolute top-2.5 left-2.5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-white/90 backdrop-blur text-slate-700 rounded">
+                      {product.category}
+                    </div>
+                  )}
+                  {!inStock && (
+                    <div className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-slate-900/90 text-white rounded">
+                      Sold out
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* Product Info */}
-              <div className="p-3">
-                <h3 className="text-sm font-medium text-slate-900 truncate">{product.name}</h3>
-                <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{product.description}</p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-sm font-bold text-indigo-600">₹{product.price}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    product.stock > 10 
-                      ? 'bg-emerald-50 text-emerald-700' 
-                      : product.stock > 0 
-                        ? 'bg-amber-50 text-amber-700' 
-                        : 'bg-red-50 text-red-700'
-                  }`}>
-                    {product.stock} in stock
-                  </span>
+                {/* Info */}
+                <div className="p-4 flex-1 flex flex-col">
+                  <h3 className="font-semibold text-slate-900 leading-snug line-clamp-1">{product.name}</h3>
+                  <p className="mt-1 text-sm text-slate-500 line-clamp-2 min-h-[2.5rem]">
+                    {product.description || 'No description'}
+                  </p>
+
+                  <div className="mt-3 flex items-end justify-between">
+                    <div>
+                      <p className="text-xs text-slate-400">Price</p>
+                      <p className="text-lg font-bold text-slate-900">₹{Number(product.price || 0).toLocaleString('en-IN')}</p>
+                    </div>
+                    <p className={`text-xs font-medium ${inStock ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {inStock ? `${product.stock} left` : 'Unavailable'}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
+                    <button
+                      onClick={() => openModal(product)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(product.id || product._id)}
+                      className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
