@@ -191,7 +191,9 @@ export const filterByOwnership = (options = {}) => {
 
   return async (req, res, next) => {
     // Platform admins see all resources
-    const isPlatformAdmin = req.user?.realmRoles?.includes('platform-admin');
+    const isPlatformAdmin = req.user?.realmRoles?.includes('platform-admin') ||
+      req.user?.roles?.includes('admin') ||
+      req.user?.roles?.includes('platform-admin');
     if (isPlatformAdmin) {
       req.ownershipFilter = {}; // No filter - see all
       return next();
