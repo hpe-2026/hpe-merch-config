@@ -1,4 +1,4 @@
-# NITTE Alumni Merchandise Shop — 24 Microservices Reference
+# NITTE Alumni Merchandise Shop — Microservices Reference
 
 > Complete catalog of every containerized service in the NITTE stack.
 > All services are orchestrated via `docker-compose.yml` and can be started with `./docker-setup.sh start`.
@@ -7,7 +7,7 @@
 
 ## Table of Contents
 
-- [Application Services (5)](#application-services-5)
+- [Application Services (6)](#application-services-6)
 - [Data & Identity Services (4)](#data--identity-services-4)
 - [Streaming Infrastructure (2)](#streaming-infrastructure-2)
 - [Observability Stack (8)](#observability-stack-8)
@@ -18,7 +18,7 @@
 
 ---
 
-## Application Services (5)
+## Application Services (6)
 
 These are the user-facing and business-logic services that power the alumni merchandise platform.
 
@@ -55,10 +55,30 @@ The **public storefront** — the alumni-facing React SPA where users browse mer
 The **internal admin console** — a separate React SPA for shop administrators to manage products, inventory, orders, and user approvals. Also communicates with `node-backend` (port 3000) but requires elevated roles (`admin-internal`).
 
 **Key features:**
-- Product CRUD (create, read, update, delete)
-- Order management and fulfillment
+- Product CRUD with card-based grid layout
+- Order management and status updates
 - Alumni registration approval/rejection
-- Sales analytics dashboard
+- Sales analytics dashboard with charts
+
+---
+
+### 2b. `merchant-portal`
+
+| Property | Value |
+|---|---|
+| **Container** | `nitte-merchant-portal` |
+| **Port** | `5175` |
+| **Tech** | React (Vite) + Recharts |
+| **Build** | `merchant-portal/Dockerfile` |
+
+The **merchant seller portal** — a dedicated React SPA where merchants manage their products, fulfill orders, and track revenue. Merchants only see their own data (filtered by `merchant_id`).
+
+**Key features:**
+- Revenue dashboard with 7-day charts and KPIs
+- Product management (CRUD with MinIO image upload)
+- Order fulfillment (status: pending → confirmed → shipped → delivered)
+- Profile management with profile picture upload
+- Low stock alerts and category breakdown
 
 ---
 
@@ -561,6 +581,7 @@ A single Docker bridge network that all services share. Enables container-to-con
 |---|---|---|---|
 | Frontend (storefront) | `5173` | `http://localhost:5173` | Keycloak OIDC |
 | Admin Dashboard | `5174` | `http://localhost:5174` | Keycloak OIDC + `admin-internal` |
+| Merchant Portal | `5175` | `http://localhost:5175` | Keycloak OIDC + `merchant-*` |
 | Node Backend API | `3000` | `http://localhost:3000` | JWT (Keycloak-derived) |
 | Python Service | `8000` | `http://localhost:8000` | Internal only |
 | Keycloak | `8080` | `http://localhost:8080` | Admin: `admin` / `admin` |
@@ -585,19 +606,19 @@ A single Docker bridge network that all services share. Enables container-to-con
 ## Architecture Diagram (Logical)
 
 ```
-┌─────────────────┐  ┌─────────────────┐
-│   frontend      │  │ admin-dashboard │
-│   (port 5173)   │  │   (port 5174)   │
-└────────┬────────┘  └────────┬────────┘
-         │                    │
-         └────────┬───────────┘
-                  │ HTTP / REST
-                  ▼
-        ┌─────────────────────┐
-        │    node-backend     │
-        │     (port 3000)     │
-        │  API Gateway + Auth │
-        └─────────┬───────────┘
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   frontend      │  │ admin-dashboard │  │ merchant-portal │
+│   (port 5173)   │  │   (port 5174)   │  │   (port 5175)   │
+└────────┬────────┘  └────────┬────────┘  └────────┬────────┘
+         │                    │                    │
+         └────────────────────┼────────────────────┘
+                              │ HTTP / REST
+                              ▼
+                    ┌─────────────────────┐
+                    │    node-backend     │
+                    │     (port 3000)     │
+                    │  API Gateway + Auth │
+                    └─────────┬───────────┘
                   │
       ┌───────────┼───────────┐
       │           │           │

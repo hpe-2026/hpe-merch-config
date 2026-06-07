@@ -3,20 +3,19 @@
 A full-stack alumni e-commerce platform with full observability, identity, and
 event-driven architecture — runnable end-to-end with **one command**.
 
-> **Custom Keycloak theme** — all login pages (including TOTP setup, OTP verify, and the Keycloak admin console) use the branded `nitte` dark theme.
+> **One-command setup:** `./docker-setup.sh` (Linux / macOS / Windows Git Bash)
 
-> **One-command setup:** `./docker-setup.sh` (Linux/macOS) or `.\docker-setup.ps1` (Windows)
-
-For a step-by-step demo guide (Windows + Linux), see **[DEMO.md](./DEMO.md)**.
+For a step-by-step demo guide, see **[DEMO.md](./DEMO.md)**.
 
 ---
 
-## What's inside (22 services)
+## What's inside (24+ services)
 
 | Tier | Services |
 | --- | --- |
-| **App** | `frontend` (storefront, port 5173) · `admin-dashboard` (admin console, 5174) · `node-backend` (API gateway, 3000) · `python-service` (catalog/orders, 8000) · `notification-service` (Kafka consumer) |
-| **Data / Identity** | `mongodb` (27017) · `keycloak` (8080) |
+| **App** | `frontend` (storefront, 5173) · `admin-dashboard` (admin, 5174) · `merchant-portal` (merchant, 5175) · `node-backend` (API gateway, 3000) · `python-service` (catalog/orders, 8000) · `notification-service` (Kafka consumer) |
+| **Data / Storage** | `mongodb` (27017) · `minio` (9000/9001) |
+| **Identity** | `keycloak` (8080) |
 | **Streaming** | `zookeeper` (2181) · `kafka` (9092) |
 | **Observability** | `prometheus` · `grafana` (3001) · `loki` (3100) · `promtail` · `promtail-keycloak` · `loki-rbac-proxy` (3200) · `jaeger` · `alertmanager` (9093) |
 | **DevOps / CI/CD** | `jenkins` (8081) · `nexus` (8082) |
@@ -83,27 +82,19 @@ That's it — every other dependency runs in containers.
 
 ## Quick start
 
-### Linux / macOS / WSL / Git Bash
-
 ```bash
 chmod +x docker-setup.sh
 ./docker-setup.sh
 ```
 
-### Windows PowerShell
-
-```powershell
-.\docker-setup.ps1
-```
-
 The script will:
 1. Verify Docker is installed and running
-2. Pull base images sequentially (slow-network friendly)
-3. Build and start all 19 services
-4. Wait for every container to be running and probe the API health endpoint
+2. Pull base images sequentially
+3. Build and start all services
+4. Wait for containers to be healthy
 5. Print all access URLs and demo credentials
 
-First run takes ~5–10 minutes. Subsequent runs (cached layers): ~30 seconds.
+First run takes ~8–12 minutes. Subsequent runs: ~45 seconds.
 
 ---
 
@@ -121,8 +112,7 @@ First run takes ~5–10 minutes. Subsequent runs (cached layers): ~30 seconds.
 | `help` | Show usage |
 
 ```bash
-./docker-setup.sh status        # Linux / macOS / WSL
-.\docker-setup.ps1 status       # Windows
+./docker-setup.sh status
 ```
 
 ---
@@ -133,29 +123,30 @@ First run takes ~5–10 minutes. Subsequent runs (cached layers): ~30 seconds.
 |---|---|---|
 | Storefront (alumni) | <http://localhost:5173> | Browse products, cart, orders |
 | Admin Console | <http://localhost:5174> | User mgmt, metrics, traces |
+| Merchant Portal | <http://localhost:5175> | Merchant dashboard, products, orders |
 | API Gateway | <http://localhost:3000> | REST API entry point |
-| Python Service | <http://localhost:8000> | Catalog & order microservice |
+| API Docs (Swagger) | <http://localhost:3000/api/docs> | Interactive API documentation |
+| MinIO Console | <http://localhost:9001> | S3 object storage (minioadmin) |
 | Keycloak | <http://localhost:8080> | Identity provider |
-| Jenkins | <http://localhost:8081> | CI/CD server (admin / admin123) |
-| Nexus | <http://localhost:8082> | Artifact repository (admin / nexus-admin-123) |
-| Prometheus | <http://localhost:9090> | Metrics — **Keycloak SSO required** (`@nitte.ac.in`) |
+| Jenkins | <http://localhost:8081> | CI/CD server |
+| Nexus | <http://localhost:8082> | Artifact repository |
+| Prometheus | <http://localhost:9090> | Metrics — Keycloak SSO (`@nitte.ac.in`) |
 | Grafana | <http://localhost:3001> | Dashboards — Keycloak SSO or `admin / admin123` |
 | Alertmanager | <http://localhost:9093> | Alert routing UI |
-| Loki | <http://localhost:3100> | Log aggregation API |
-| Jaeger | <http://localhost:16686> | Tracing — **Keycloak SSO required** (`@nitte.ac.in`) |
+| Jaeger | <http://localhost:16686> | Tracing — Keycloak SSO (`@nitte.ac.in`) |
 
 ---
 
 ## Demo credentials
 
-### External Users (Alumni/Admin Portal)
-| Role | Username | Password |
-|---|---|---|
-| Site Admin | `admin@nitte.edu` | `admin@123` |
-| Alumni | `alumni@nitte.edu` | `alumni@123` |
-| Merchant | `merchant@nitte.edu` | `merchant@123` |
-| Amazon Merchant | `amazon-merchant@amazon.com` | `Amazon@123` |
-| Flipkart Merchant | `flipkart-merchant@flipkart.com` | `Flipkart@123` |
+### Storefront / Admin / Merchant
+| Role | Username | Password | Portal |
+|---|---|---|---|
+| Platform Admin | `admin@nitte.edu` | `admin@123` | Admin (5174) |
+| Verified Alumni | `alumni@nitte.edu` | `alumni@123` | Storefront (5173) |
+| NITTE Merchant | `merchant-admin@nitte.edu` | `MerchantAdmin@123` | Merchant (5175) |
+| Amazon Merchant | `amazon-merchant@amazon.com` | `Amazon@123` | Merchant (5175) |
+| Flipkart Merchant | `flipkart-merchant@flipkart.com` | `Flipkart@123` | Merchant (5175) |
 
 ### Internal Users (nitte.ac.in Domain)
 | Role | Username | Password | Access |
@@ -193,13 +184,10 @@ realm structure, role map, and copy-pastable token tests.
 
 | File | Purpose |
 | --- | --- |
-| **[DEMO.md](./DEMO.md)** | Step-by-step demo runbook (Windows + Linux) |
-| **[keycloak/KEYCLOAK_DEMO.md](./keycloak/KEYCLOAK_DEMO.md)** | Keycloak realm, roles, JWT samples |
-| **[docs/KEYCLOAK_EVENTS_AND_LOGS.md](./docs/KEYCLOAK_EVENTS_AND_LOGS.md)** | Keycloak event forwarding, audit log separation, Loki RBAC |
-| [docs/QUICK_START.md](./docs/QUICK_START.md) | Original quick-start (legacy) |
-| [docs/API_DOCUMENTATION.md](./docs/API_DOCUMENTATION.md) | REST API reference |
-| [docs/RBAC_POLICY_GUIDE.md](./docs/RBAC_POLICY_GUIDE.md) | Role-based access patterns |
-| [docs/WORKFLOWS.md](./docs/WORKFLOWS.md) | End-to-end user flows |
+| **[DEMO.md](./DEMO.md)** | Step-by-step demo runbook |
+| **[docs/MICROSERVICES.md](./docs/MICROSERVICES.md)** | All 24 services — architecture reference |
+| **[docs/USER_ROLES.md](./docs/USER_ROLES.md)** | Roles, credentials, RBAC features |
+| **[docs/LLM_CODEBASE_GUIDE.md](./docs/LLM_CODEBASE_GUIDE.md)** | Machine-readable project map |
 
 ---
 
