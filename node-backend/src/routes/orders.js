@@ -53,7 +53,7 @@ const handleValidationErrors = (req, res, next) => {
 router.get(
   '/',
   authMiddleware,
-  filterByOwnership({ filterField: 'user_id' }),
+  filterByOwnership({ filterField: 'user_id', allowMerchantFilter: true }),
   async (req, res, next) => {
     // Create child span for this service's operation
     const span = tracer.startSpan('mongodb.find', {
@@ -70,8 +70,37 @@ router.get(
     try {
       // Use ownership filter set by middleware
       const filter = req.ownershipFilter || { user_id: req.user.userId };
-      const userId = filter.user_id || null;
+      
+      // If filtering by merchant_id, query MongoDB directly
+      // (Python service only supports user_id filtering)
+      if (filter.merchant_id) {
+        const { getMongoClient } = await import('../config/database.js');
+        const db = getMongoClient().db();
+        const orders = await db.collection('orders')
+          .find({ $or: [{ merchant_id: filter.merchant_id }, { merchant_ids: filter.merchant_id }] })
+          .sort({ created_at: -1 })
+          .toArray();
+        
+        // Normalize _id to string
+        const normalized = orders.map(o => ({ ...o, _id: o._id.toString() }));
+        
+        databaseOperations.inc({ operation: 'list_orders', status: 'success' });
+        span.setAttributes({
+          'db.mongodb.records_returned': normalized.length || 0,
+          'http.status_code': 200,
+          'ownership.filter': JSON.stringify(filter),
+        });
 
+        return res.status(200).json({
+          success: true,
+          data: normalized,
+          _meta: {
+            ownership: req.ownership || { level: 'merchant', filter: filter },
+          }
+        });
+      }
+
+      const userId = filter.user_id || null;
       const orders = await pythonServiceClient.getOrders(userId);
       databaseOperations.inc({ operation: 'list_orders', status: 'success' });
 
@@ -190,6 +219,25 @@ router.post(
     attachIdentityToSpan(span, req);
 
     try {
+      // Look up merchant_ids from items' products
+      const { getMongoClient } = await import('../config/database.js');
+      const db = getMongoClient().db();
+      const productIds = req.body.items.map(item => item.product_id);
+      
+      let merchantIds = [];
+      try {
+        const { ObjectId } = await import('mongodb');
+        const products = await db.collection('products').find({
+          $or: [
+            { _id: { $in: productIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id)) } },
+            { _id: { $in: productIds } },
+          ]
+        }).project({ merchant_id: 1 }).toArray();
+        merchantIds = [...new Set(products.map(p => p.merchant_id).filter(Boolean))];
+      } catch (lookupErr) {
+        logger.debug('Could not look up merchant_ids for order:', lookupErr.message);
+      }
+
       const orderData = {
         order_id: `ORD-${uuidv4()}`,
         user_id: req.user.userId,
@@ -198,6 +246,8 @@ router.post(
         shipping_address: req.body.shipping_address,
         notes: req.body.notes || '',
         status: 'pending',
+        merchant_ids: merchantIds,
+        merchant_id: merchantIds[0] || null,
         created_at: new Date(),
       };
 

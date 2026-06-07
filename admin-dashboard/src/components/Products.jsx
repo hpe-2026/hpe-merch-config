@@ -202,7 +202,14 @@ export default function Products() {
                       {p.description || '—'}
                     </p>
 
-                    <div className="mt-3 flex items-end justify-between">
+                    {(p.merchant_name || p.merchant_id) && (
+                      <p className="mt-2 text-xs text-slate-400 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block" />
+                        {p.merchant_name || p.merchant_id}
+                      </p>
+                    )}
+
+                    <div className="mt-auto pt-3 flex items-end justify-between">
                       <div>
                         <p className="text-xs text-slate-400">Price</p>
                         <p className="text-lg font-bold text-slate-900">₹{Number(p.price || 0).toLocaleString('en-IN')}</p>
