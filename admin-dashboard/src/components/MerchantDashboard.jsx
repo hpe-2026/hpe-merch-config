@@ -45,7 +45,12 @@ export default function MerchantDashboard({ user, setCurrentPage }) {
           ? (ordersRes.value.data?.data || ordersRes.value.data || [])
           : []
 
-        const revenue = orders.reduce((sum, o) => sum + (o.total_amount || o.totalAmount || 0), 0)
+        const revenue = orders.reduce((sum, o) => {
+          if (o.total_amount) return sum + o.total_amount
+          if (o.totalAmount) return sum + o.totalAmount
+          if (o.items?.length) return sum + o.items.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0)
+          return sum
+        }, 0)
 
         setStats({ products: products.length, orders: orders.length, revenue })
         setError(null)
