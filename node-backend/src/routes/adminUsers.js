@@ -81,6 +81,7 @@ const addNonAlumniRoleToKeycloak = (keycloakUserId, adminToken) =>
 
 /**
  * Helper: Add client roles to a Keycloak user (for nitte-client)
+ * Creates roles if they don't exist yet.
  */
 const addClientRolesToKeycloak = async (keycloakUserId, clientId, roleNames, adminToken) => {
   try {
@@ -106,10 +107,41 @@ const addClientRolesToKeycloak = async (keycloakUserId, clientId, roleNames, adm
     );
 
     const availableRoles = rolesResponse.data || [];
-    const rolesToAssign = availableRoles.filter(r => roleNames.includes(r.name));
+
+    // Create any missing client roles
+    for (const roleName of roleNames) {
+      if (!availableRoles.some(r => r.name === roleName)) {
+        try {
+          await axios.post(
+            `${keycloakConfig.getRealmUrl()}/clients/${client.id}/roles`,
+            { name: roleName, description: `Auto-created: ${roleName}` },
+            {
+              headers: {
+                Authorization: `Bearer ${adminToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          logger.info(`Created client role '${roleName}' in ${clientId}`);
+        } catch (createErr) {
+          if (createErr.response?.status !== 409) {
+            logger.warn(`Failed to create client role '${roleName}':`, createErr.message);
+          }
+        }
+      }
+    }
+
+    // Re-fetch roles after creation
+    const updatedRolesResponse = await axios.get(
+      `${keycloakConfig.getRealmUrl()}/clients/${client.id}/roles`,
+      { headers: { Authorization: `Bearer ${adminToken}` } }
+    );
+
+    const updatedRoles = updatedRolesResponse.data || [];
+    const rolesToAssign = updatedRoles.filter(r => roleNames.includes(r.name));
 
     if (rolesToAssign.length === 0) {
-      logger.warn(`No matching client roles found for ${clientId}: ${roleNames.join(', ')}`);
+      logger.warn(`Still no matching client roles for ${clientId}: ${roleNames.join(', ')}`);
       return;
     }
 
