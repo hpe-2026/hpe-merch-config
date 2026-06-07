@@ -511,18 +511,9 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
-      MINIO_IDENTITY_OPENID_CONFIG_URL_KEYCLOAK: http://keycloak:8080/realms/nitte-realm/.well-known/openid-configuration
-      MINIO_IDENTITY_OPENID_CLIENT_ID_KEYCLOAK: minio-client
-      MINIO_IDENTITY_OPENID_CLIENT_SECRET_KEYCLOAK: minio-client-secret
-      MINIO_IDENTITY_OPENID_CLAIM_NAME_KEYCLOAK: policy
-      MINIO_IDENTITY_OPENID_SCOPES_KEYCLOAK: openid,profile,email
-      MINIO_IDENTITY_OPENID_REDIRECT_URI_KEYCLOAK: http://localhost:9001/oauth_callback
-      MINIO_IDENTITY_OPENID_DISPLAY_NAME_KEYCLOAK: Login with Keycloak
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
-    depends_on:
-      - keycloak
     networks:
       - nitte-network
     healthcheck:
