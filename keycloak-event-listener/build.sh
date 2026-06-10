@@ -8,6 +8,9 @@ OUTPUT_JAR="target/keycloak-event-listener-1.0.0.jar"
 
 echo "Building Keycloak Event Listener SPI..."
 
+# Disable Git Bash path conversion (Windows Git Bash mangles /paths)
+export MSYS_NO_PATHCONV=1
+
 # Use Maven Docker image to build since Maven may not be installed locally
 docker run --rm \
   -v "$SCRIPT_DIR:/src" \
