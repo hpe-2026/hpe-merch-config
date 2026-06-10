@@ -345,7 +345,7 @@ services:
       - nitte-network
 
   promtail:
-    image: grafana/promtail:2.9.4
+    image: grafana/promtail:3.1.0
     container_name: nitte-promtail
     command: -config.file=/etc/promtail/config.yml
     volumes:
@@ -357,7 +357,7 @@ services:
       - nitte-network
 
   promtail-keycloak:
-    image: grafana/promtail:2.9.4
+    image: grafana/promtail:3.1.0
     container_name: nitte-promtail-keycloak
     command: -config.file=/etc/promtail/config.yml
     volumes:
