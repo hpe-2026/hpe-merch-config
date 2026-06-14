@@ -271,7 +271,8 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
       {
         user_id: user._id,
         email: user.email,
-        role: user.role || 'user',
+        role: user.role || user.user_type || 'user',
+        roles: [user.role || user.user_type || 'user'],
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRY }
