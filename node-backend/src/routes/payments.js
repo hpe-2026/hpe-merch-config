@@ -71,6 +71,7 @@ router.post('/verify', authMiddleware, async (req, res) => {
       razorpay_signature,
       items,
       shipping_address,
+      region,
       notes,
     } = req.body;
 
@@ -95,6 +96,7 @@ router.post('/verify', authMiddleware, async (req, res) => {
       user_email: req.user.email,
       items,
       shipping_address: shipping_address || 'Not provided',
+      region: region || 'south',
       notes: notes || '',
       status: 'confirmed',
       payment: {

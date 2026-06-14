@@ -89,6 +89,7 @@ class OrderCreate(BaseModel):
     payment: Optional[PaymentInfo] = None
     merchant_id: Optional[str] = None
     merchant_ids: Optional[List[str]] = None
+    region: Optional[str] = "south"
 
 class OrderUpdate(BaseModel):
     status: Optional[str] = None
@@ -106,6 +107,7 @@ class Order(BaseModel):
     payment: Optional[PaymentInfo] = None
     merchant_id: Optional[str] = None
     merchant_ids: Optional[List[str]] = None
+    region: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
