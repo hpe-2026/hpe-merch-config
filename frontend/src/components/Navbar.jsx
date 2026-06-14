@@ -1,7 +1,7 @@
 import { ShoppingCart, Home, Package, User, LogOut, CircleDot, GraduationCap } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 
-export default function Navbar({ cartCount, currentPage, setCurrentPage, apiStatus, user, onLogout }) {
+export default function Navbar({ cartCount, currentPage, setCurrentPage, apiStatus, user, onLogout, isAuthenticated }) {
   const navItem = (key, label, Icon) => {
     const active = currentPage === key
     return (
@@ -46,8 +46,8 @@ export default function Navbar({ cartCount, currentPage, setCurrentPage, apiStat
           {/* Center nav */}
           <div className="flex items-center gap-1">
             {navItem('products', 'Shop', Home)}
-            {navItem('cart', 'Cart', ShoppingCart)}
-            {navItem('orders', 'Orders', Package)}
+            {isAuthenticated && navItem('cart', 'Cart', ShoppingCart)}
+            {isAuthenticated && navItem('orders', 'Orders', Package)}
           </div>
 
           {/* Right cluster */}
@@ -102,6 +102,16 @@ export default function Navbar({ cartCount, currentPage, setCurrentPage, apiStat
                   <span className="hidden sm:inline">Logout</span>
                 </button>
               </>
+            )}
+
+            {!user && (
+              <button
+                onClick={() => setCurrentPage('login')}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition"
+              >
+                <User className="w-4 h-4" />
+                Sign in
+              </button>
             )}
           </div>
         </div>

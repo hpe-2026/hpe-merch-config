@@ -132,8 +132,8 @@ function App() {
         </div>
       ) : (
         <>
-          {!isAuthenticated ? (
-            <Landing onLoginSuccess={() => {}} />
+          {!isAuthenticated && currentPage === 'login' ? (
+            <Landing onLoginSuccess={() => setCurrentPage('products')} />
           ) : (
             <>
               <Navbar 
@@ -143,6 +143,7 @@ function App() {
                 apiStatus={apiStatus}
                 user={user}
                 onLogout={handleLogout}
+                isAuthenticated={isAuthenticated}
               />
 
               <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
