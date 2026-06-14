@@ -568,6 +568,7 @@ services:
       NODE_ENV: development
     volumes:
       - ./scripts/seed-products.mjs:/app/scripts/seed-products.mjs:ro
+      - ./product-images:/app/product-images:ro
     working_dir: /app
     entrypoint: >
       sh -c "
