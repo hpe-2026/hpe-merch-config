@@ -4,7 +4,7 @@ import axios from 'axios';
 import keycloakConfig from '../config/keycloak.js';
 import logger from '../config/logger.js';
 import { authAttempts } from '../metrics.js';
-import UserVerification from '../schemas/userVerification.js';
+import User from '../schemas/user.js';
 import {
   keycloakAuthMiddleware,
 } from '../middleware/keycloak.js';
@@ -128,7 +128,7 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
     }
 
     // Sync Keycloak user to MongoDB (create record if doesn't exist)
-    let userVerification = await UserVerification.findOne({ email });
+    let userRecord = await User.findOne({ email });
 
     // Determine merchant_id from email domain for merchant users
     let merchantId = null;
@@ -138,9 +138,9 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
       else if (email.includes('nitte')) merchantId = 'nitte-official-store';
     }
 
-    if (!userVerification) {
+    if (!userRecord) {
       // Create MongoDB record for Keycloak user
-      userVerification = new UserVerification({
+      userRecord = new User({
         user_id: userInfo.userId,
         email: userInfo.email,
         name: userInfo.name || email.split('@')[0],
@@ -150,12 +150,12 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
         approved_by: 'keycloak-sync',
         approval_timestamp: new Date(),
       });
-      await userVerification.save();
+      await userRecord.save();
       logger.info('Created MongoDB record for Keycloak user', { email, userId: userInfo.userId, merchantId });
-    } else if (merchantId && !userVerification.merchant_id) {
+    } else if (merchantId && !userRecord.merchant_id) {
       // Update existing record with merchant_id if missing
-      userVerification.merchant_id = merchantId;
-      await userVerification.save();
+      userRecord.merchant_id = merchantId;
+      await userRecord.save();
       logger.info('Updated merchant_id for existing user', { email, merchantId });
     }
 
@@ -170,12 +170,12 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
         email: userInfo.email,
         name: userInfo.name,
         roles: userInfo.roles,
-        profileImage: userVerification?.profileImage || null,
-        merchantId: userVerification?.merchant_id || merchantId,
-        merchantName: userVerification?.merchantName || null,
-        phone: userVerification?.phone || null,
-        address: userVerification?.address || null,
-        description: userVerification?.description || null,
+        profileImage: userRecord?.profileImage || null,
+        merchantId: userRecord?.merchant_id || merchantId,
+        merchantName: userRecord?.merchantName || null,
+        phone: userRecord?.phone || null,
+        address: userRecord?.address || null,
+        description: userRecord?.description || null,
       },
       tokens: {
         access_token: loginResponse.data.access_token,

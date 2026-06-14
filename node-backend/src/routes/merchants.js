@@ -2,7 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { authMiddleware } from '../middleware/index.js';
 import logger from '../config/logger.js';
-import UserVerification from '../schemas/userVerification.js';
+import User from '../schemas/user.js';
 
 const router = express.Router();
 
@@ -15,19 +15,19 @@ async function findUserByAuth(req) {
 
   // Try by email first (most reliable)
   if (email) {
-    const user = await UserVerification.findOne({ email });
+    const user = await User.findOne({ email });
     if (user) return user;
   }
 
   // Try by user_id field (Keycloak UUID)
   if (userId) {
-    const user = await UserVerification.findOne({ user_id: userId });
+    const user = await User.findOne({ user_id: userId });
     if (user) return user;
   }
 
   // Try by _id (MongoDB ObjectId)
   if (userId && mongoose.Types.ObjectId.isValid(userId)) {
-    const user = await UserVerification.findById(userId);
+    const user = await User.findById(userId);
     if (user) return user;
   }
 
