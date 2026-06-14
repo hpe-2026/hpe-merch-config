@@ -237,6 +237,7 @@ show_status() {
     "Mongo Config|nitte-mongo-config|—"
     "Mongo Shard 1|nitte-mongo-shard1|—"
     "Mongo Shard 2|nitte-mongo-shard2|—"
+    "Mongo Backup|nitte-mongo-backup|—"
     "MongoDB UI|nitte-mongo-express|8083"
     "Keycloak|nitte-keycloak|8080"
     "Zookeeper|nitte-zookeeper|2181"
