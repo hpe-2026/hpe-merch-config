@@ -14,21 +14,35 @@ const KEYCLOAK_ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin';
 
 /**
  * Get admin token from Keycloak
+ * Tries service account first (nitte-client), then master admin
  */
 async function getAdminToken() {
-  const response = await axios.post(
-    `${KEYCLOAK_SERVER}/realms/master/protocol/openid-connect/token`,
-    new URLSearchParams({
-      grant_type: 'password',
-      client_id: 'admin-cli',
-      username: KEYCLOAK_ADMIN,
-      password: KEYCLOAK_ADMIN_PASSWORD,
-    }),
-    {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    }
-  );
-  return response.data.access_token;
+  // Try service account (works without master admin password)
+  try {
+    const response = await axios.post(
+      `${KEYCLOAK_SERVER}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
+      new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: process.env.KEYCLOAK_CLIENT_ID || 'nitte-client',
+        client_secret: process.env.KEYCLOAK_CLIENT_SECRET || 'nitte-client-secret',
+      }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    return response.data.access_token;
+  } catch (e) {
+    // Fallback to master admin
+    const response = await axios.post(
+      `${KEYCLOAK_SERVER}/realms/master/protocol/openid-connect/token`,
+      new URLSearchParams({
+        grant_type: 'password',
+        client_id: 'admin-cli',
+        username: KEYCLOAK_ADMIN,
+        password: KEYCLOAK_ADMIN_PASSWORD,
+      }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    return response.data.access_token;
+  }
 }
 
 /**
@@ -120,6 +134,14 @@ async function syncKeycloakUsers() {
       let existing = await UserVerification.findOne({ email: email.toLowerCase() });
 
       if (!existing) {
+        // Determine merchant_id from email/roles
+        let merchantId = null;
+        if (userType === 'merchant') {
+          if (email.includes('amazon')) merchantId = 'amazon-store';
+          else if (email.includes('flipkart')) merchantId = 'flipkart-store';
+          else if (email.includes('nitte')) merchantId = 'nitte-official-store';
+        }
+
         // Create new record
         const newUser = new UserVerification({
           user_id: user.id,
@@ -127,18 +149,26 @@ async function syncKeycloakUsers() {
           name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || email.split('@')[0],
           status: 'approved',
           user_type: userType,
+          merchant_id: merchantId,
           approved_by: 'keycloak-sync-script',
           approval_timestamp: new Date(),
           registration_timestamp: new Date(user.createdTimestamp || Date.now()),
         });
         await newUser.save();
         created++;
-        logger.info(`Created MongoDB record for ${email} (${userType})`);
+        logger.info(`Created MongoDB record for ${email} (${userType}${merchantId ? ', merchant: ' + merchantId : ''})`);
       } else {
-        // Update existing record with Keycloak ID if missing
-        if (!existing.user_id) {
-          existing.user_id = user.id;
-          existing.user_type = userType;
+        // Update existing record with Keycloak ID and merchant_id if missing
+        let changed = false;
+        if (!existing.user_id) { existing.user_id = user.id; changed = true; }
+        if (!existing.user_type || existing.user_type === 'alumni') { existing.user_type = userType; changed = true; }
+        if (!existing.merchant_id && userType === 'merchant') {
+          if (email.includes('amazon')) existing.merchant_id = 'amazon-store';
+          else if (email.includes('flipkart')) existing.merchant_id = 'flipkart-store';
+          else if (email.includes('nitte')) existing.merchant_id = 'nitte-official-store';
+          changed = true;
+        }
+        if (changed) {
           await existing.save();
           updated++;
           logger.info(`Updated MongoDB record for ${email}`);

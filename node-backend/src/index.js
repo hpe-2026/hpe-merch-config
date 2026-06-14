@@ -423,6 +423,16 @@ const startServer = async () => {
       // Continue without Kafka - non-critical for operation
     }
 
+    // Sync Keycloak users to MongoDB (non-blocking, retry after delay for Keycloak startup)
+    setTimeout(async () => {
+      try {
+        const syncKeycloakUsers = (await import('./scripts/syncKeycloakUsers.js')).default;
+        await syncKeycloakUsers();
+      } catch (syncErr) {
+        logger.warn('Keycloak user sync failed (will retry on next restart):', syncErr.message);
+      }
+    }, 15000); // Wait 15s for Keycloak to be ready
+
     // Register 404 handler AFTER all routes are mounted (including policy routes)
     app.use((req, res) => {
       res.status(404).json({
