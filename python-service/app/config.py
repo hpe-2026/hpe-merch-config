@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
 
     # Database
-    MONGODB_URL: str = "mongodb://admin:password@mongodb:27017/nitte_merch_shop"
-    DATABASE_NAME: str = "nitte_merch_shop"
+    MONGODB_URL: str = "mongodb://mongodb:27017/nitte_merch"
+    DATABASE_NAME: str = "nitte_merch"
 
     # Logging
     LOG_LEVEL: str = "info"

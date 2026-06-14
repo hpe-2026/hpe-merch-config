@@ -9,7 +9,7 @@ const config = {
   python_service_url: process.env.PYTHON_SERVICE_URL || 'http://localhost:8000',
   jwt_secret: process.env.JWT_SECRET || 'dev-secret-key-change-in-production',
   jwt_expiry: process.env.JWT_EXPIRY || '7d',
-  mongodb_url: process.env.MONGODB_URL || 'mongodb://localhost:27017/nitte_merch_shop',
+  mongodb_url: process.env.MONGODB_URL || 'mongodb://localhost:27017/nitte_merch',
   log_level: process.env.LOG_LEVEL || 'info',
   cors_origins: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [
     'http://localhost:3000',
