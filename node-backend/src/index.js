@@ -26,11 +26,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Policy system imports
-import PolicyEngine from './policies/policyEngine.js';
-import PolicyRepository from './policies/policyRepository.js';
-import defaultPolicies from './policies/defaultPolicies.js';
-import { createAdminPolicyRoutes } from './routes/adminPolicies.js';
+// Policy system imports (removed - using Keycloak RBAC directly)
 
 // Kafka event bus
 import kafkaProducer from './services/kafkaProducer.js';
@@ -347,38 +343,9 @@ app.use('/api/v1/payments', paymentsRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 app.use('/api/v1/merchants', merchantRoutes);
 
-// ============================ POLICY SYSTEM ============================
-// Initialize RBAC policy engine
-let policyEngine = null;
-let policyRepository = null;
-
-const initializePolicies = async () => {
-  try {
-    // Create policy repository
-    policyRepository = new PolicyRepository();
-
-    // Create policy engine
-    policyEngine = new PolicyEngine(policyRepository);
-
-    // Seed default policies on first run
-    await policyRepository.seedDefaultPolicies(defaultPolicies);
-
-    logger.info('RBAC policy system initialized successfully');
-
-    // Mount admin policy routes
-    const adminPolicyRoutes = createAdminPolicyRoutes(policyEngine, policyRepository);
-    app.use('/api/v1/admin/policies', adminPolicyRoutes);
-
-    logger.info('Admin policy endpoints mounted at /api/v1/admin/policies');
-
-    return true;
-  } catch (error) {
-    logger.error(`Failed to initialize policy system: ${error.message}`);
-    return false;
-  }
-};
-
-// This will be called after database connection
+// ============================ RBAC ============================
+// Role-based access control is handled by Keycloak roles + middleware
+// (ownership.js, keycloak.js) — no separate policy engine needed
 
 // Health check endpoint under v1
 app.get('/api/v1/health', (req, res) => {
@@ -408,8 +375,7 @@ const startServer = async () => {
     // Connect to MongoDB
     await connectDatabase();
 
-    // Initialize RBAC policy system
-    await initializePolicies();
+    // Initialize RBAC (handled by Keycloak + middleware directly)
 
     // Initialize Kafka producer for event bus
     try {
