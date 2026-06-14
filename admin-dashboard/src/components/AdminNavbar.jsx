@@ -8,6 +8,7 @@ import {
   LogOut,
   ShieldCheck,
   Store,
+  Database,
 } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 
@@ -37,6 +38,7 @@ export default function AdminNavbar({ currentPage, setCurrentPage, user, onLogou
     { id: 'users', label: 'Users', icon: Users },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
+    { id: 'database', label: 'Database', icon: Database },
     { id: 'metrics', label: 'Metrics', icon: Activity },
     { id: 'traces', label: 'Traces', icon: Zap },
   ]

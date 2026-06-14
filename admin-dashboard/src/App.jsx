@@ -11,6 +11,7 @@ import Users from './components/Users'
 import Products from './components/Products'
 import Orders from './components/Orders'
 import AdminProfile from './components/AdminProfile'
+import Database from './components/Database'
 import { ShieldCheck } from 'lucide-react'
 
 function App() {
@@ -110,6 +111,7 @@ function App() {
             {currentPage === 'users' && <Users />}
             {currentPage === 'products' && <Products user={user} />}
             {currentPage === 'orders' && <Orders user={user} />}
+            {currentPage === 'database' && <Database />}
             {currentPage === 'profile' && <AdminProfile user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />}
           </main>
 

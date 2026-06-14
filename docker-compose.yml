@@ -572,22 +572,6 @@ services:
       retries: 10
       start_period: 120s
 
-  mongo-express:
-    image: mongo-express:1.0.0
-    container_name: nitte-mongo-express
-    ports:
-      - "8083:8081"
-    environment:
-      ME_CONFIG_MONGODB_SERVER: mongodb
-      ME_CONFIG_MONGODB_PORT: 27017
-      ME_CONFIG_BASICAUTH_USERNAME: admin
-      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_UI_PASSWORD:-admin123}
-      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
-    depends_on:
-      - mongodb
-    networks:
-      - nitte-network
-
   minio:
     image: minio/minio:latest
     container_name: nitte-minio
