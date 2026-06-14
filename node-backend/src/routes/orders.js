@@ -244,6 +244,7 @@ router.post(
         user_email: req.user.email,
         items: req.body.items,
         shipping_address: req.body.shipping_address,
+        region: req.body.region || 'south',
         notes: req.body.notes || '',
         status: 'pending',
         merchant_ids: merchantIds,

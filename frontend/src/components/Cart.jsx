@@ -21,6 +21,9 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [orderPlaced, setOrderPlaced] = useState(false)
+  const [shippingAddress, setShippingAddress] = useState('')
+  const [shippingCity, setShippingCity] = useState('')
+  const [shippingRegion, setShippingRegion] = useState('south')
   const token = useAuthStore(state => state.token)
   const user = useAuthStore(state => state.user)
   const clearCart = useCartStore((s) => s.clearCart)
@@ -36,6 +39,8 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
   const handleCheckout = async () => {
     if (cartItems.length === 0) { setError('Your cart is empty'); return }
     if (!token) { setError('Please log in first to place an order'); return }
+    if (!shippingAddress.trim()) { setError('Please enter a shipping address'); return }
+    if (!shippingCity.trim()) { setError('Please enter your city'); return }
 
     try {
       setLoading(true)
@@ -81,7 +86,8 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
                     quantity: item.quantity,
                     price: item.price,
                   })),
-                  shipping_address: 'Demo Address, City, State 12345',
+                  shipping_address: `${shippingAddress}, ${shippingCity}`,
+                  region: shippingRegion,
                   notes: 'Paid via Razorpay',
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -268,6 +274,35 @@ export default function Cart({ cartItems, onRemove, onUpdateQuantity, setCart, s
             <div className="mt-4 pt-4 border-t border-slate-200 flex justify-between items-baseline">
               <span className="text-sm font-medium text-slate-900">Total</span>
               <span className="text-xl font-bold text-slate-900">{fmt(total)}</span>
+            </div>
+
+            {/* Shipping Address */}
+            <div className="mt-5 pt-4 border-t border-slate-200 space-y-3">
+              <h4 className="text-sm font-semibold text-slate-900">Shipping details</h4>
+              <input
+                type="text"
+                placeholder="Address (street, apartment, etc.)"
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <input
+                type="text"
+                placeholder="City"
+                value={shippingCity}
+                onChange={(e) => setShippingCity(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <select
+                value={shippingRegion}
+                onChange={(e) => setShippingRegion(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              >
+                <option value="south">South India (Bangalore, Chennai, Mangalore, Kochi)</option>
+                <option value="north">North India (Delhi, Lucknow, Jaipur)</option>
+                <option value="west">West India (Mumbai, Pune, Ahmedabad)</option>
+                <option value="east">East India (Kolkata, Bhubaneswar, Guwahati)</option>
+              </select>
             </div>
 
             <button
