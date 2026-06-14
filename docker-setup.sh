@@ -233,7 +233,10 @@ show_status() {
 
   # name | container | port
   local -a SERVICES=(
-    "MongoDB|nitte-mongodb|27017"
+    "Mongo Router|nitte-mongodb|27017"
+    "Mongo Config|nitte-mongo-config|—"
+    "Mongo Shard 1|nitte-mongo-shard1|—"
+    "Mongo Shard 2|nitte-mongo-shard2|—"
     "MongoDB UI|nitte-mongo-express|8083"
     "Keycloak|nitte-keycloak|8080"
     "Zookeeper|nitte-zookeeper|2181"
@@ -257,7 +260,6 @@ show_status() {
     "Loki RBAC Proxy|nitte-loki-rbac-proxy|3200"
     "Promtail|nitte-promtail|—"
     "Promtail Keycloak|nitte-promtail-keycloak|—"
-    # Note: keycloak-setup and seed-products are one-shot jobs, not shown in status
   )
 
   local SEP="  ${CYAN}$(printf '%.0s─' {1..70})${NC}"
