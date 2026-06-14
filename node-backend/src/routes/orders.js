@@ -289,6 +289,7 @@ router.put(
   keycloakRequireAnyRole([
     { type: 'client', role: 'nitte-client:order:update' },
     'platform-admin',
+    'admin',
     'merchant-admin',
     'merchant',
     'merchant-amazon',

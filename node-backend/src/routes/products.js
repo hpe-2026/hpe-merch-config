@@ -293,6 +293,7 @@ router.post(
     { type: 'client', role: 'nitte-client:product:create' },
     'platform-admin',
     'merchant-admin',
+    'admin',
   ]),
   setOwnershipOnCreate({ userIdField: 'created_by', merchantIdField: 'merchant_id' }),
   productValidator,
@@ -336,6 +337,7 @@ router.put(
     { type: 'client', role: 'nitte-client:product:update' },
     'platform-admin',
     'merchant-admin',
+    'admin',
   ]),
   requireProductOwnership,
   async (req, res, next) => {
@@ -372,6 +374,7 @@ router.delete(
     { type: 'client', role: 'nitte-client:product:delete' },
     'platform-admin',
     'merchant-admin',
+    'admin',
   ]),
   requireProductOwnership,
   async (req, res, next) => {

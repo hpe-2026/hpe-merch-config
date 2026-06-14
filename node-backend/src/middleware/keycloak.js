@@ -144,14 +144,20 @@ export const keycloakRequireAnyRole = (roleSpecifications) => {
 
     const rolesArray = Array.isArray(roleSpecifications) ? roleSpecifications : [roleSpecifications];
 
+    // Collect all roles from different sources
+    const allRealmRoles = [
+      ...(req.user.realmRoles || []),
+      ...(req.user.roles || []),
+    ];
+
     const hasRole = rolesArray.some((roleSpec) => {
       if (typeof roleSpec === 'string') {
-        // Simple string - check realm roles
-        return (req.user.realmRoles || []).includes(roleSpec);
+        // Simple string - check realm roles and general roles
+        return allRealmRoles.includes(roleSpec);
       }
 
       if (roleSpec.type === 'realm') {
-        return (req.user.realmRoles || []).includes(roleSpec.role);
+        return allRealmRoles.includes(roleSpec.role);
       }
 
       if (roleSpec.type === 'client') {
@@ -159,7 +165,9 @@ export const keycloakRequireAnyRole = (roleSpecifications) => {
         const clientId = roleParts[0];
         const role = roleParts.slice(1).join(':');
         const clientRoles = req.user.clientRoles?.[clientId] || [];
-        return clientRoles.includes(role);
+        // Also check allClientRoles array (flattened)
+        const flatClientRoles = req.user.allClientRoles || [];
+        return clientRoles.includes(role) || flatClientRoles.includes(role) || allRealmRoles.includes(role);
       }
 
       return false;
@@ -173,7 +181,7 @@ export const keycloakRequireAnyRole = (roleSpecifications) => {
         success: false,
         message: 'Insufficient permissions',
         required_roles: rolesArray,
-        user_realm_roles: req.user.realmRoles || [],
+        user_realm_roles: allRealmRoles,
         user_client_roles: req.user.clientRoles || {},
       });
     }
