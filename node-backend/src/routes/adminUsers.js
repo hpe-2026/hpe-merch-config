@@ -9,7 +9,7 @@ import { body, param, validationResult } from 'express-validator';
 import keycloakConfig from '../config/keycloak.js';
 import logger from '../config/logger.js';
 import { authMiddleware } from '../middleware/index.js';
-import UserVerification from '../schemas/userVerification.js';
+import User from '../schemas/user.js';
 
 const router = express.Router();
 
@@ -332,7 +332,7 @@ const requireAdminRole = (req, res, next) => {
  */
 router.get('/stats/verification', authMiddleware, requireAdminRole, async (req, res) => {
   try {
-    const stats = await UserVerification.getStats();
+    const stats = await User.getStats();
     res.status(200).json({ success: true, data: stats });
   } catch (error) {
     logger.error('Failed to get verification stats:', error.message);
@@ -363,8 +363,8 @@ router.get(
       const validLimit = Math.min(Math.max(limit, 1), maxLimit);
 
       // Fetch unverified users from database
-      const unverifiedUsers = await UserVerification.findUnverified(skip, validLimit, sortBy);
-      const total = await UserVerification.countUnverified();
+      const unverifiedUsers = await User.findUnverified(skip, validLimit, sortBy);
+      const total = await User.countUnverified();
 
       res.status(200).json({
         success: true,
@@ -415,13 +415,13 @@ router.get(
       const validLimit = Math.min(Math.max(limit, 1), maxLimit);
 
       // Fetch verified (approved) users from database
-      const verifiedUsers = await UserVerification.find({ status: 'approved' })
+      const verifiedUsers = await User.find({ status: 'approved' })
         .sort(sortBy)
         .skip(skip)
         .limit(validLimit)
         .lean();
 
-      const total = await UserVerification.countDocuments({ status: 'approved' });
+      const total = await User.countDocuments({ status: 'approved' });
 
       res.status(200).json({
         success: true,
@@ -468,9 +468,9 @@ router.get(
       const { user_id } = req.params;
 
       // Try MongoDB _id first (used by frontend), then fall back to user_id field
-      let verification = await UserVerification.findById(user_id).catch(() => null);
+      let verification = await User.findById(user_id).catch(() => null);
       if (!verification) {
-        verification = await UserVerification.findOne({ user_id });
+        verification = await User.findOne({ user_id });
       }
 
       if (!verification) {
@@ -534,9 +534,9 @@ router.post(
       const adminEmail = req.user?.email || 'admin@system.local';
 
       // Fetch verification record by _id (MongoDB ID) or user_id
-      let verification = await UserVerification.findById(user_id);
+      let verification = await User.findById(user_id);
       if (!verification) {
-        verification = await UserVerification.findOne({ user_id });
+        verification = await User.findOne({ user_id });
       }
 
       if (!verification) {
@@ -675,9 +675,9 @@ router.post(
       const adminEmail = req.user?.email || 'admin@system.local';
 
       // Fetch verification record by _id (MongoDB ID) or user_id
-      let verification = await UserVerification.findById(user_id);
+      let verification = await User.findById(user_id);
       if (!verification) {
-        verification = await UserVerification.findOne({ user_id });
+        verification = await User.findOne({ user_id });
       }
 
       if (!verification) {
@@ -782,12 +782,12 @@ router.post(
   requireAdminRole,
   async (req, res) => {
     try {
-      const approvedUsers = await UserVerification.find({ status: 'approved' }).lean();
+      const approvedUsers = await User.find({ status: 'approved' }).lean();
       const results = { synced: [], failed: [] };
 
       for (const user of approvedUsers) {
         try {
-          const verification = await UserVerification.findById(user._id);
+          const verification = await User.findById(user._id);
           await syncApprovedUserToKeycloak(verification);
           results.synced.push({
             email: user.email,
@@ -819,3 +819,20 @@ router.post(
 );
 
 export default router;
+
+
+/**
+ * POST /api/v1/admin/users/keycloak-webhook
+ * Webhook endpoint for Keycloak events — triggers user sync
+ * Called by notification-service or Keycloak event listener
+ */
+router.post('/keycloak-webhook', async (req, res) => {
+  try {
+    const syncKeycloakUsers = (await import('../scripts/syncKeycloakUsers.js')).default;
+    const result = await syncKeycloakUsers();
+    res.status(200).json({ success: true, message: 'Sync triggered', data: result });
+  } catch (error) {
+    logger.error('Keycloak webhook sync failed:', error.message);
+    res.status(500).json({ success: false, message: 'Sync failed', error: error.message });
+  }
+});

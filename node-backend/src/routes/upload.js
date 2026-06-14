@@ -6,7 +6,7 @@ import logger from '../config/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import config from '../config/index.js';
-import UserVerification from '../schemas/userVerification.js';
+import User from '../schemas/user.js';
 
 /**
  * Transform MinIO image URLs to backend proxy URLs (avoids CORS issues)
@@ -124,16 +124,16 @@ router.post(
         const userEmail = req.user?.email;
         
         if (userEmail) {
-          userRecord = await UserVerification.findOne({ email: userEmail });
+          userRecord = await User.findOne({ email: userEmail });
         }
         if (!userRecord && userId) {
-          userRecord = await UserVerification.findOne({ user_id: userId });
+          userRecord = await User.findOne({ user_id: userId });
         }
         if (!userRecord && userId && userId.match(/^[0-9a-fA-F]{24}$/)) {
-          userRecord = await UserVerification.findById(userId);
+          userRecord = await User.findById(userId);
         }
         if (!userRecord && merchantId) {
-          userRecord = await UserVerification.findOne({ merchant_id: merchantId });
+          userRecord = await User.findOne({ merchant_id: merchantId });
         }
 
         if (userRecord) {

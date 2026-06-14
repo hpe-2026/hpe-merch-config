@@ -275,7 +275,7 @@ The **identity and access management (IAM) provider** — handles all authentica
 **Dependency of:** `kafka`
 
 ---
-
+com
 ### 9. `kafka`
 
 | Property | Value |

@@ -102,8 +102,8 @@ export const requireOwnership = (options = {}) => {
         let userMerchantId = req.user.merchantId;
         if (!userMerchantId && req.user.email) {
           try {
-            const UserVerification = (await import('../schemas/userVerification.js')).default;
-            const userRecord = await UserVerification.findOne({ email: req.user.email.toLowerCase() });
+            const User = (await import('../schemas/user.js')).default;
+            const userRecord = await User.findOne({ email: req.user.email.toLowerCase() });
             if (userRecord?.merchant_id) {
               userMerchantId = userRecord.merchant_id;
               req.user.merchantId = userMerchantId;
@@ -232,8 +232,8 @@ export const filterByOwnership = (options = {}) => {
       if (!merchantId && req.user?.email) {
         // Look up merchant_id from user_verifications collection
         try {
-          const UserVerification = (await import('../schemas/userVerification.js')).default;
-          const userRecord = await UserVerification.findOne({ email: req.user.email.toLowerCase() });
+          const User = (await import('../schemas/user.js')).default;
+          const userRecord = await User.findOne({ email: req.user.email.toLowerCase() });
           if (userRecord && userRecord.merchant_id) {
             merchantId = userRecord.merchant_id;
           }

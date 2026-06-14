@@ -25,7 +25,7 @@ db.createUser({
 // Create collections
 db.createCollection('products');
 db.createCollection('orders');
-db.createCollection('user_verifications');
+db.createCollection('users');
 
 // Note: Products are seeded by scripts/seed-products.js after MinIO is ready
 // This ensures product images are stored in MinIO (not external URLs)
@@ -41,7 +41,7 @@ db.createCollection('products');
 
 print('Products collection ready. Run seed-products.js to seed with MinIO images.');
 
-// Seed admin user in user_verifications for simple auth demo
+// Seed admin user in users for simple auth demo
 const adminUser = {
   _id: ObjectId(),
   email: 'admin@nitte.edu',
@@ -71,7 +71,7 @@ const adminUser = {
   ]
 };
 
-db.user_verifications.insertOne(adminUser);
+db.users.insertOne(adminUser);
 
 // Create indexes
 db.products.createIndex({ name: 1 });
@@ -81,7 +81,7 @@ db.products.createIndex({ merchant_id: 1 });  // For merchant filtering
 db.products.createIndex({ created_by: 1 });  // For ownership queries
 db.orders.createIndex({ user_id: 1 });
 db.orders.createIndex({ order_id: 1 }, { unique: true });
-db.user_verifications.createIndex({ email: 1 });
-db.user_verifications.createIndex({ status: 1 });
+db.users.createIndex({ email: 1 });
+db.users.createIndex({ status: 1 });
 
 print('MongoDB initialization complete: users created, indexes built. Products to be seeded via seed-products.js.');

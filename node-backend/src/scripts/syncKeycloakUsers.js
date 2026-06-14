@@ -4,7 +4,7 @@
  */
 
 import axios from 'axios';
-import UserVerification from '../schemas/userVerification.js';
+import User from '../schemas/user.js';
 import logger from '../config/logger.js';
 
 const KEYCLOAK_SERVER = process.env.KEYCLOAK_SERVER_URL || 'http://keycloak:8080';
@@ -131,7 +131,7 @@ async function syncKeycloakUsers() {
       const userType = getUserType(roles);
 
       // Check if user exists in MongoDB
-      let existing = await UserVerification.findOne({ email: email.toLowerCase() });
+      let existing = await User.findOne({ email: email.toLowerCase() });
 
       if (!existing) {
         // Determine merchant_id from email/roles
@@ -143,7 +143,7 @@ async function syncKeycloakUsers() {
         }
 
         // Create new record
-        const newUser = new UserVerification({
+        const newUser = new User({
           user_id: user.id,
           email: email.toLowerCase(),
           name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || email.split('@')[0],

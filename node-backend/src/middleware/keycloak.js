@@ -361,17 +361,17 @@ export const login = async (req, res) => {
 
     // Check if user is verified in MongoDB
     try {
-      const UserVerification = require('../models/UserVerification.js');
-      const userVerification = await UserVerification.findOne({ email });
+      const User = require('../schemas/user.js');
+      const userRecord = await User.findOne({ email });
       
-      if (userVerification && userVerification.status !== 'approved') {
+      if (userRecord && userRecord.status !== 'approved') {
         logger.warn('User login blocked - verification pending', {
           email,
-          status: userVerification.status,
+          status: userRecord.status,
         });
         return res.status(403).json({
           success: false,
-          message: `Account not approved yet. Status: ${userVerification.status || 'pending'}. Please wait for admin approval.`,
+          message: `Account not approved yet. Status: ${userRecord.status || 'pending'}. Please wait for admin approval.`,
         });
       }
     } catch (dbError) {

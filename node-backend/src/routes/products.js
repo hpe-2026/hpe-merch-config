@@ -168,8 +168,8 @@ router.get('/', optionalAuthMiddleware, async (req, res, next) => {
         // If no merchantId in token, look up from database
         if (!merchantId && req.user.email) {
           try {
-            const UserVerification = (await import('../schemas/userVerification.js')).default;
-            const userRecord = await UserVerification.findOne({ email: req.user.email.toLowerCase() });
+            const User = (await import('../schemas/user.js')).default;
+            const userRecord = await User.findOne({ email: req.user.email.toLowerCase() });
             if (userRecord?.merchant_id) {
               merchantId = userRecord.merchant_id;
             }

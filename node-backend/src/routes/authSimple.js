@@ -5,7 +5,7 @@ import { body, validationResult } from 'express-validator';
 import logger from '../config/logger.js';
 import config from '../config/index.js';
 import keycloakConfig from '../config/keycloak.js';
-import UserVerification from '../schemas/userVerification.js';
+import User from '../schemas/user.js';
 import { userRegistrationsTotal, authAttempts } from '../metrics.js';
 
 const router = express.Router();
@@ -57,7 +57,7 @@ router.post('/signup', signupValidator, handleValidationErrors, async (req, res)
     const isAlumni = user_type === 'alumni';
 
     // Check if user already exists
-    const exists = await UserVerification.findOne({ email });
+    const exists = await User.findOne({ email });
     if (exists) {
       return res.status(409).json({
         success: false,
@@ -113,7 +113,7 @@ router.post('/signup', signupValidator, handleValidationErrors, async (req, res)
     }
 
     // Create user verification record
-    const newUser = new UserVerification({
+    const newUser = new User({
       user_id: keycloakUserId,
       email,
       name,
@@ -177,7 +177,7 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
     console.log('[AUTH] Login endpoint hit:', email);
 
     // Find user
-    const user = await UserVerification.findOne({ email });
+    const user = await User.findOne({ email });
     console.log('[AUTH] User found:', !!user, user?.email);
     logger.info('Login attempt', { email, userFound: !!user, userStatus: user?.status });
     
