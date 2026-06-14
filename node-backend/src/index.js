@@ -45,6 +45,7 @@ import jaegerRoutes from './routes/jaeger.js';
 import paymentsRoutes from './routes/payments.js';
 import uploadRoutes from './routes/upload.js';
 import merchantRoutes from './routes/merchants.js';
+import databaseRoutes from './routes/database.js';
 
 const app = express();
 
@@ -342,6 +343,7 @@ app.use('/api/v1/jaeger', jaegerRoutes);
 app.use('/api/v1/payments', paymentsRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 app.use('/api/v1/merchants', merchantRoutes);
+app.use('/api/v1/admin/database', databaseRoutes);
 
 // ============================ RBAC ============================
 // Role-based access control is handled by Keycloak roles + middleware
