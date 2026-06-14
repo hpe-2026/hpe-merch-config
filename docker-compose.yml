@@ -1,18 +1,107 @@
 services:
+  # ======================== MongoDB Sharded Cluster ========================
+  # Config server (stores cluster metadata)
+  mongo-config:
+    image: mongo:6.0
+    container_name: nitte-mongo-config
+    command: mongod --configsvr --replSet configRS --port 27017 --bind_ip_all
+    volumes:
+      - mongo_config_data:/data/db
+    networks:
+      - nitte-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Shard 1 - South/West India
+  mongo-shard1:
+    image: mongo:6.0
+    container_name: nitte-mongo-shard1
+    command: mongod --shardsvr --replSet shard1 --port 27018 --bind_ip_all
+    volumes:
+      - mongo_shard1_data:/data/db
+    networks:
+      - nitte-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "27018", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Shard 2 - North/East India
+  mongo-shard2:
+    image: mongo:6.0
+    container_name: nitte-mongo-shard2
+    command: mongod --shardsvr --replSet shard2 --port 27019 --bind_ip_all
+    volumes:
+      - mongo_shard2_data:/data/db
+    networks:
+      - nitte-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "27019", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Mongos Router (application connects here)
   mongodb:
     image: mongo:6.0
     container_name: nitte-mongodb
+    command: mongos --configdb configRS/mongo-config:27017 --port 27017 --bind_ip_all
     ports:
       - "27017:27017"
-    environment:
-      MONGO_INITDB_DATABASE: nitte_merch
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
-    volumes:
-      - mongodb_data:/data/db
-      - ./database/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    depends_on:
+      mongo-config:
+        condition: service_healthy
+      mongo-shard1:
+        condition: service_healthy
+      mongo-shard2:
+        condition: service_healthy
     networks:
       - nitte-network
+
+  # Init container — initializes replica sets + sharding + users
+  mongo-init:
+    image: mongo:6.0
+    container_name: nitte-mongo-init
+    depends_on:
+      mongodb:
+        condition: service_started
+    volumes:
+      - ./database/sharding-init.js:/scripts/sharding-init.js:ro
+    entrypoint: >
+      bash -c "
+        echo 'Waiting for cluster nodes...' &&
+        sleep 10 &&
+
+        echo 'Initiating config server replica set...' &&
+        mongosh --host mongo-config:27017 --eval '
+          try { rs.initiate({ _id: \"configRS\", configsvr: true, members: [{ _id: 0, host: \"mongo-config:27017\" }] }) } catch(e) { print(\"Config RS already initiated\") }
+        ' &&
+        sleep 3 &&
+
+        echo 'Initiating shard1 replica set...' &&
+        mongosh --host mongo-shard1:27018 --eval '
+          try { rs.initiate({ _id: \"shard1\", members: [{ _id: 0, host: \"mongo-shard1:27018\" }] }) } catch(e) { print(\"Shard1 RS already initiated\") }
+        ' &&
+        sleep 3 &&
+
+        echo 'Initiating shard2 replica set...' &&
+        mongosh --host mongo-shard2:27019 --eval '
+          try { rs.initiate({ _id: \"shard2\", members: [{ _id: 0, host: \"mongo-shard2:27019\" }] }) } catch(e) { print(\"Shard2 RS already initiated\") }
+        ' &&
+        sleep 5 &&
+
+        echo 'Running sharding initialization...' &&
+        mongosh --host mongodb:27017 /scripts/sharding-init.js &&
+
+        echo 'MongoDB sharded cluster ready!'
+      "
+    networks:
+      - nitte-network
+    restart: "no"
 
   keycloak:
     image: quay.io/keycloak/keycloak:20.0.0
@@ -112,7 +201,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      MONGODB_URL: mongodb://app_writer:app_writer_pass@mongodb:27017/nitte_merch?authSource=nitte_merch
+      MONGODB_URL: mongodb://mongodb:27017/nitte_merch
       PYTHON_SERVICE_URL: http://python-service:8000
       JWT_SECRET: super-secret-key-change-in-production
       JWT_EXPIRY: 7d
@@ -231,7 +320,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      MONGODB_URL: mongodb://app_writer:app_writer_pass@mongodb:27017/nitte_merch?authSource=nitte_merch
+      MONGODB_URL: mongodb://mongodb:27017/nitte_merch
       DATABASE_NAME: nitte_merch
       API_GATEWAY_URL: http://node-backend:3000
       JAEGER_AGENT_HOST: jaeger
@@ -491,12 +580,9 @@ services:
     environment:
       ME_CONFIG_MONGODB_SERVER: mongodb
       ME_CONFIG_MONGODB_PORT: 27017
-      ME_CONFIG_MONGODB_AUTH_USERNAME: app_writer
-      ME_CONFIG_MONGODB_AUTH_PASSWORD: app_writer_pass
-      ME_CONFIG_MONGODB_AUTH_DATABASE: nitte_merch
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_UI_PASSWORD:-admin123}
-      ME_CONFIG_MONGODB_ENABLE_ADMIN: "false"
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
     depends_on:
       - mongodb
     networks:
@@ -549,8 +635,8 @@ services:
       dockerfile: Dockerfile
     container_name: nitte-seed-products
     depends_on:
-      mongodb:
-        condition: service_started
+      mongo-init:
+        condition: service_completed_successfully
       minio:
         condition: service_started
       minio-init:
@@ -558,7 +644,7 @@ services:
       node-backend:
         condition: service_started
     environment:
-      MONGODB_URL: mongodb://app_writer:app_writer_pass@nitte-mongodb:27017/nitte_merch?authSource=nitte_merch
+      MONGODB_URL: mongodb://mongodb:27017/nitte_merch
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_ENDPOINT: http://localhost:9000
       S3_ACCESS_KEY: minioadmin
@@ -643,9 +729,6 @@ services:
             --host mongodb \
             --port 27017 \
             --db nitte_merch \
-            --username app_writer \
-            --password app_writer_pass \
-            --authenticationDatabase nitte_merch \
             --archive="/tmp/$${BACKUP_FILE}" \
             --gzip
           
@@ -674,7 +757,9 @@ networks:
     driver: bridge
 
 volumes:
-  mongodb_data:
+  mongo_config_data:
+  mongo_shard1_data:
+  mongo_shard2_data:
   prometheus_data:
   grafana_data:
   loki_data:
