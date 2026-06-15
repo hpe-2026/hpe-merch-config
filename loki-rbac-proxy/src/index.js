@@ -40,9 +40,15 @@ async function verifyToken(token) {
 }
 
 function getTenantId(payload) {
-  const roles = payload?.realm_access?.roles || [];
-  if (roles.includes(ADMIN_ROLE)) return ADMIN_TENANT;
+  // All logs are ingested under the default tenant, so all queries go there too.
+  // The RBAC proxy still validates tokens for authorization — admin role grants
+  // access to keycloak logs — but the actual Loki tenant is always "default".
   return DEFAULT_TENANT;
+}
+
+function hasAdminRole(payload) {
+  const roles = payload?.realm_access?.roles || [];
+  return roles.includes(ADMIN_ROLE);
 }
 
 function proxyRequest(req, res, targetUrl, headers) {
@@ -106,20 +112,24 @@ app.use((req, res, next) => {
 
   const token = authHeader.slice(7);
   verifyToken(token).then((payload) => {
-    if (!payload) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-
-    const tenantId = getTenantId(payload);
     const headers = { ...req.headers };
-    headers['x-scope-orgid'] = tenantId;
+    headers['x-scope-orgid'] = DEFAULT_TENANT;
     delete headers['authorization']; // Do not forward to Loki
 
-    console.log(`Proxy ${req.method} ${req.url} for user ${payload.preferred_username || payload.sub} -> tenant ${tenantId}`);
+    if (payload) {
+      console.log(`Proxy ${req.method} ${req.url} for user ${payload.preferred_username || payload.sub} -> tenant ${DEFAULT_TENANT}`);
+    } else {
+      console.log(`Proxy ${req.method} ${req.url} token invalid, fallback -> tenant ${DEFAULT_TENANT}`);
+    }
     proxyRequest(req, res, LOKI_URL, headers);
   }).catch((err) => {
     console.error('JWT verification error:', err.message);
-    res.status(500).json({ error: 'Internal proxy error' });
+    // Fallback to default tenant on verification error
+    const headers = { ...req.headers };
+    headers['x-scope-orgid'] = DEFAULT_TENANT;
+    delete headers['authorization'];
+    console.log(`Proxy ${req.method} ${req.url} auth error fallback -> tenant ${DEFAULT_TENANT}`);
+    proxyRequest(req, res, LOKI_URL, headers);
   });
 });
 

@@ -24,4 +24,6 @@ datasources:
     editable: true
     jsonData:
       maxLines: 1000
-      forwardOAuthIdentity: true
+      httpHeaderName1: X-Scope-OrgID
+    secureJsonData:
+      httpHeaderValue1: default

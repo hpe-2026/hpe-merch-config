@@ -50,7 +50,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki-ds" },
-          "expr": "{project=\"hpe-stuff\", service=~\"$service\"} |~ \"$search\"",
+          "expr": "{service=~\"$service\"} |~ \"$search\"",
           "queryType": "range"
         }
       ]
@@ -170,7 +170,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki-ds" },
-          "expr": "{project=\"hpe-stuff\", service=~\"$service\"} |~ \"(?i)(error|ERROR|exception|EXCEPTION|failed|FAILED|fatal|FATAL)\"",
+          "expr": "{service=~\"$service\"} |~ \"(?i)(error|ERROR|exception|EXCEPTION|failed|FAILED|fatal|FATAL)\"",
           "queryType": "range"
         }
       ]
@@ -218,7 +218,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki-ds" },
-          "expr": "sum by (service) (rate({project=\"hpe-stuff\", service=~\"$service\"}[1m]))",
+          "expr": "sum by (service) (rate({service=~\"$service\"}[1m]))",
           "queryType": "range",
           "legendFormat": "{{service}}"
         }
