@@ -127,9 +127,8 @@ async def create_order(
 
             order_dict = order.model_dump()
             
-            # Generate order_id if not provided
-            if "order_id" not in order_dict or not order_dict["order_id"]:
-                # Generate a unique order_id
+            # Use provided order_id or generate one
+            if not order_dict.get("order_id"):
                 count = await orders_collection.count_documents({})
                 order_dict["order_id"] = f"ORD-{count + 1:05d}"
             

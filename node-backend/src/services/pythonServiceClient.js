@@ -108,10 +108,10 @@ class PythonServiceClient {
 
   async createOrder(orderData) {
     try {
-      const response = await this.client.post('/api/v1/orders', orderData);
+      const response = await this.client.post('/api/v1/orders/', orderData);
       return response.data;
     } catch (error) {
-      logger.error('Failed to create order', { error: error.message });
+      logger.error('Failed to create order', { error: error.message, status: error.response?.status, detail: error.response?.data });
       throw error;
     }
   }

@@ -273,6 +273,7 @@ router.post(
         data: order,
       });
     } catch (error) {
+      console.error('ORDER CREATE ERROR:', error.message, error.stack?.split('\n')[1]);
       logger.error('Failed to create order', { error: error.message });
       databaseOperations.inc({ operation: 'create_order', status: 'failed' });
       span.setAttributes({
