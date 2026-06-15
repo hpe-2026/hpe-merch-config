@@ -362,9 +362,9 @@ router.get(
       const maxLimit = 100;
       const validLimit = Math.min(Math.max(limit, 1), maxLimit);
 
-      // Fetch unverified users from database
-      const unverifiedUsers = await User.findUnverified(skip, validLimit, sortBy);
-      const total = await User.countUnverified();
+      // Fetch unverified (pending) users from database
+      const unverifiedUsers = await User.findPending(skip, validLimit);
+      const total = await User.countPending();
 
       res.status(200).json({
         success: true,
