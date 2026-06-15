@@ -225,6 +225,7 @@ router.post(
       const productIds = req.body.items.map(item => item.product_id);
       
       let merchantIds = [];
+      let itemsWithPrice = req.body.items;
       try {
         const { ObjectId } = await import('mongodb');
         const products = await db.collection('products').find({
@@ -232,8 +233,16 @@ router.post(
             { _id: { $in: productIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id)) } },
             { _id: { $in: productIds } },
           ]
-        }).project({ merchant_id: 1 }).toArray();
+        }).project({ merchant_id: 1, price: 1 }).toArray();
         merchantIds = [...new Set(products.map(p => p.merchant_id).filter(Boolean))];
+        
+        // Enrich items with price from product catalog (required by Python service)
+        const priceMap = {};
+        products.forEach(p => { priceMap[p._id.toString()] = p.price; });
+        itemsWithPrice = req.body.items.map(item => ({
+          ...item,
+          price: item.price || priceMap[item.product_id] || 0,
+        }));
       } catch (lookupErr) {
         logger.debug('Could not look up merchant_ids for order:', lookupErr.message);
       }
@@ -242,7 +251,7 @@ router.post(
         order_id: `ORD-${uuidv4()}`,
         user_id: req.user.userId,
         user_email: req.user.email,
-        items: req.body.items,
+        items: itemsWithPrice,
         shipping_address: req.body.shipping_address,
         region: req.body.region || 'south',
         notes: req.body.notes || '',
