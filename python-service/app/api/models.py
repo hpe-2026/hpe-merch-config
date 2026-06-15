@@ -80,6 +80,7 @@ class PaymentInfo(BaseModel):
     status: Optional[str] = None
 
 class OrderCreate(BaseModel):
+    order_id: Optional[str] = None
     user_id: str
     user_email: str
     items: List[OrderItem]
@@ -90,6 +91,10 @@ class OrderCreate(BaseModel):
     merchant_id: Optional[str] = None
     merchant_ids: Optional[List[str]] = None
     region: Optional[str] = "south"
+    created_at: Optional[datetime] = None
+
+    class Config:
+        extra = "ignore"
 
 class OrderUpdate(BaseModel):
     status: Optional[str] = None
