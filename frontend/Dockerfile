@@ -1,6 +1,5 @@
-FROM node:18-alpine
-
-RUN apk add --no-cache curl
+# Build stage
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -10,11 +9,20 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Set proper permissions for non-root user (cross-platform compatible)
-RUN chown -R node:node /app && chmod -R 755 /app
+# Production stage
+FROM nginx:alpine
 
-USER node
+RUN apk add --no-cache curl
+
+# Copy built app from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 5173
 
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:5173/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

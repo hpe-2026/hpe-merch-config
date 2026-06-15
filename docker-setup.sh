@@ -140,9 +140,75 @@ start_services() {
     ok "Keycloak event listener JAR already present"
   fi
 
-  header "Building & Starting Services"
-  step "Running: $COMPOSE_CMD up --build -d"
-  if ! $COMPOSE_CMD up --build -d; then
+  header "Building Images (batched to avoid timeouts)"
+
+  # Detect available memory and set parallelism accordingly.
+  # 16GB systems → build 2 at a time, 32GB+ → build 3 at a time.
+  local mem_gb=16
+  if command -v free &>/dev/null; then
+    mem_gb=$(free -g 2>/dev/null | awk '/^Mem:/{print $2}')
+  elif [[ -f /proc/meminfo ]]; then
+    mem_gb=$(awk '/MemTotal/{printf "%d", $2/1024/1024}' /proc/meminfo)
+  elif command -v sysctl &>/dev/null; then
+    mem_gb=$(sysctl -n hw.memsize 2>/dev/null | awk '{printf "%d", $1/1024/1024/1024}')
+  elif command -v wmic &>/dev/null; then
+    mem_gb=$(wmic OS get TotalVisibleMemorySize /value 2>/dev/null | grep -o '[0-9]*' | awk '{printf "%d", $1/1024/1024}')
+  fi
+  [[ -z "$mem_gb" || "$mem_gb" -lt 1 ]] && mem_gb=16
+
+  local parallel=2
+  if [[ "$mem_gb" -ge 24 ]]; then
+    parallel=3
+  fi
+  info "Detected ~${mem_gb}GB RAM → building $parallel images in parallel"
+
+  # Disable provenance attestations to avoid the slow "resolving provenance" step
+  export BUILDX_NO_DEFAULT_ATTESTATIONS=1
+  export COMPOSE_HTTP_TIMEOUT=300
+
+  # Build services in batches to avoid context deadline exceeded errors.
+  # Group heavy Node.js builds (with node_modules) separately from lighter builds.
+  local -a BATCH_1=("node-backend" "python-service" "notification-service")
+  local -a BATCH_2=("frontend" "admin-dashboard" "merchant-portal")
+  local -a BATCH_3=("jenkins" "loki-rbac-proxy")
+
+  local batch_num=0
+  for batch_var in BATCH_1 BATCH_2 BATCH_3; do
+    batch_num=$((batch_num + 1))
+    local -n batch_ref="$batch_var"
+
+    # Skip services that don't exist in the compose file
+    local -a valid_services=()
+    for svc in "${batch_ref[@]}"; do
+      if $COMPOSE_CMD config --services 2>/dev/null | grep -qx "$svc"; then
+        valid_services+=("$svc")
+      fi
+    done
+
+    [[ ${#valid_services[@]} -eq 0 ]] && continue
+
+    step "Batch $batch_num: building ${valid_services[*]} (parallel=$parallel)"
+    if ! $COMPOSE_CMD build --parallel "$parallel" "${valid_services[@]}"; then
+      err "Batch $batch_num build failed."
+      info "Retrying batch $batch_num sequentially…"
+      for svc in "${valid_services[@]}"; do
+        step "  Building $svc…"
+        if ! $COMPOSE_CMD build "$svc"; then
+          err "Failed to build $svc"
+          info "Check logs with: $COMPOSE_CMD logs --tail=80"
+          exit 1
+        fi
+        ok "  $svc built"
+      done
+    fi
+    ok "Batch $batch_num complete"
+  done
+
+  ok "All images built successfully"
+
+  header "Starting Services"
+  step "Running: $COMPOSE_CMD up -d"
+  if ! $COMPOSE_CMD up -d; then
     err "docker compose failed."
     info "Check logs with: $COMPOSE_CMD logs --tail=80"
     exit 1

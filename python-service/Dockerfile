@@ -20,9 +20,9 @@ RUN useradd -m -u 1000 appuser
 # Copy Python dependencies from builder
 COPY --from=builder /root/.local /home/appuser/.local
 
-# Copy application code
-COPY app ./app
-COPY requirements.txt .
+# Copy application code with correct ownership
+COPY --chown=appuser:appuser app ./app
+COPY --chown=appuser:appuser requirements.txt .
 
 # Set environment variables
 ENV PATH=/home/appuser/.local/bin:$PATH \
@@ -32,9 +32,6 @@ ENV PATH=/home/appuser/.local/bin:$PATH \
 # Health check using Python instead of curl (avoids apt-get/proxy issues)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)" || exit 1
-
-# Set proper permissions for non-root user (cross-platform compatible)
-RUN chmod -R 755 /app
 
 # Switch to non-root user
 USER appuser

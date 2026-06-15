@@ -12,8 +12,9 @@ services:
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   # Shard 1 - South/West India
   mongo-shard1:
@@ -27,8 +28,9 @@ services:
     healthcheck:
       test: ["CMD", "mongosh", "--port", "27018", "--eval", "db.adminCommand('ping')"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   # Shard 2 - North/East India
   mongo-shard2:
@@ -42,8 +44,9 @@ services:
     healthcheck:
       test: ["CMD", "mongosh", "--port", "27019", "--eval", "db.adminCommand('ping')"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   # Mongos Router (application connects here)
   mongodb:
@@ -308,6 +311,7 @@ services:
       KEYCLOAK_ADMIN_EMAILS: ${KEYCLOAK_ADMIN_EMAILS:-internal-admin@nitte.ac.in}
     depends_on:
       - kafka
+    restart: unless-stopped
     networks:
       - nitte-network
 

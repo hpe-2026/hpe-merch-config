@@ -43,6 +43,14 @@ class EmailService {
         },
       };
 
+      // Skip SMTP if credentials are not configured
+      if (!config.email.smtp.auth.user || !config.email.smtp.auth.pass) {
+        logger.warn('SMTP credentials not configured — falling back to CONSOLE mode');
+        this.provider = 'console';
+        this.isInitialized = true;
+        return;
+      }
+
       this.transporter = nodemailer.createTransport(smtpConfig);
 
       // Verify connection
@@ -53,8 +61,9 @@ class EmailService {
       });
       this.isInitialized = true;
     } catch (error) {
-      logger.error('Failed to initialize email service:', error.message);
-      throw error;
+      logger.warn('SMTP connection failed — falling back to CONSOLE mode:', String(error.message || error));
+      this.provider = 'console';
+      this.isInitialized = true;
     }
   }
 
