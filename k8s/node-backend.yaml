@@ -40,7 +40,7 @@ spec:
         - name: PORT
           value: "3000"
         - name: MONGODB_URL
-          value: "mongodb://app_writer:app_writer_pass@mongodb:27017/nitte_merch?authSource=nitte_merch"
+          value: "mongodb://mongodb:27017/nitte_merch"
         - name: PYTHON_SERVICE_URL
           value: "http://python-service:8000"
         - name: JWT_SECRET
@@ -66,7 +66,7 @@ spec:
         - name: API_BASE
           value: "http://node-backend:3000"
         - name: CORS_ORIGINS
-          value: "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:8080"
+          value: "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175"
         - name: LOG_LEVEL
           value: info
         - name: REQUEST_TIMEOUT
@@ -81,6 +81,34 @@ spec:
             secretKeyRef:
               name: nitte-secrets
               key: RAZORPAY_KEY_SECRET
+        - name: KEYCLOAK_ADMIN
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: KEYCLOAK_ADMIN
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: KEYCLOAK_ADMIN_PASSWORD
+        - name: S3_ENDPOINT
+          value: "http://minio:9000"
+        - name: S3_PUBLIC_ENDPOINT
+          value: "http://localhost:9000"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: MINIO_ROOT_USER
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: MINIO_ROOT_PASSWORD
+        - name: S3_PRODUCTS_BUCKET
+          value: "nitte-products"
+        - name: AWS_REGION
+          value: "us-east-1"
         resources:
           requests:
             memory: "128Mi"

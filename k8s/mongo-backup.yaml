@@ -1,0 +1,85 @@
+# MongoDB Backup CronJob
+# Runs daily backup of nitte_merch database, uploads to MinIO
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongo-backup
+  namespace: nitte
+  labels:
+    app: mongo-backup
+spec:
+  schedule: "0 2 * * *"  # Daily at 2:00 AM
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: mongo-backup
+            image: mongo:6.0
+            imagePullPolicy: IfNotPresent
+            env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: nitte-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nitte-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: BACKUP_RETENTION_DAYS
+              value: "7"
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "[backup] Starting MongoDB backup at $(date)"
+
+              BACKUP_BUCKET='nitte-backups'
+              DATE=$(date +%Y%m%d-%H%M%S)
+              BACKUP_FILE="mongodb-nitte-merch-${DATE}.archive"
+
+              # Install MinIO client
+              echo "[backup] Installing MinIO client..."
+              apt-get update -qq 2>/dev/null || true
+              apt-get install -y -qq ca-certificates curl 2>/dev/null || true
+              curl -sL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+              chmod +x /usr/local/bin/mc
+
+              # Create backup
+              echo "[backup] Dumping MongoDB..."
+              mongodump \
+                --host mongodb \
+                --port 27017 \
+                --db nitte_merch \
+                --archive="/tmp/${BACKUP_FILE}" \
+                --gzip
+
+              # Upload to MinIO
+              echo "[backup] Uploading to MinIO..."
+              mc alias set local http://minio:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+              mc mb local/${BACKUP_BUCKET} || true
+              mc cp "/tmp/${BACKUP_FILE}" local/${BACKUP_BUCKET}/
+
+              # Cleanup local file
+              rm -f "/tmp/${BACKUP_FILE}"
+
+              # Remove old backups
+              echo "[backup] Cleaning up old backups (retention: ${BACKUP_RETENTION_DAYS} days)..."
+              mc find local/${BACKUP_BUCKET} --name 'mongodb-*.archive' --older-than "${BACKUP_RETENTION_DAYS}d" --exec 'mc rm {}' || true
+
+              echo "[backup] Backup completed: ${BACKUP_FILE}"
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"

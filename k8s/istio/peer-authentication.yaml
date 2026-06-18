@@ -1,0 +1,84 @@
+# PeerAuthentication: Enable mTLS across the nitte namespace
+# All service-to-service traffic is automatically encrypted
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: nitte
+spec:
+  mtls:
+    mode: STRICT
+---
+# Disable mTLS for MongoDB services (raw TCP, not HTTP)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mongodb-permissive
+  namespace: nitte
+spec:
+  selector:
+    matchLabels:
+      app: mongodb
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mongo-config-permissive
+  namespace: nitte
+spec:
+  selector:
+    matchLabels:
+      app: mongo-config
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mongo-shard1-permissive
+  namespace: nitte
+spec:
+  selector:
+    matchLabels:
+      app: mongo-shard1
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mongo-shard2-permissive
+  namespace: nitte
+spec:
+  selector:
+    matchLabels:
+      app: mongo-shard2
+  mtls:
+    mode: PERMISSIVE
+---
+# Kafka also uses raw TCP
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: kafka-permissive
+  namespace: nitte
+spec:
+  selector:
+    matchLabels:
+      app: kafka
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: zookeeper-permissive
+  namespace: nitte
+spec:
+  selector:
+    matchLabels:
+      app: zookeeper
+  mtls:
+    mode: PERMISSIVE

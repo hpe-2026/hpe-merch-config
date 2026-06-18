@@ -36,6 +36,8 @@ spec:
               key: KEYCLOAK_ADMIN_PASSWORD
         - name: KC_DB
           value: dev-file
+        - name: KC_DB_URL_PROPERTIES
+          value: ";DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1"
         - name: KC_FEATURES
           value: import-realm
         - name: KEYCLOAK_IMPORT
@@ -73,15 +75,23 @@ spec:
             cpu: "250m"
           limits:
             memory: "1Gi"
-            cpu: "1000m"
+            cpu: "1500m"
+        startupProbe:
+          httpGet:
+            path: /realms/master
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 60
         livenessProbe:
           httpGet:
             path: /realms/master
             port: 8080
-          initialDelaySeconds: 60
-          periodSeconds: 15
+          initialDelaySeconds: 0
+          periodSeconds: 30
           timeoutSeconds: 5
-          failureThreshold: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /realms/master
