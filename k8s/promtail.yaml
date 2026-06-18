@@ -62,6 +62,7 @@ spec:
       annotations:
         sidecar.istio.io/inject: "false"
     spec:
+      serviceAccountName: promtail
       tolerations:
       - key: node-role.kubernetes.io/master
         operator: Exists
