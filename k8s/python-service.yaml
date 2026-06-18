@@ -28,7 +28,7 @@ spec:
         - containerPort: 8000
         env:
         - name: MONGODB_URL
-          value: "mongodb://app_writer:app_writer_pass@mongodb:27017/nitte_merch?authSource=nitte_merch"
+          value: "mongodb://mongodb:27017/nitte_merch"
         - name: DATABASE_NAME
           value: nitte_merch
         - name: API_GATEWAY_URL

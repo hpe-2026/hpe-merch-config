@@ -24,6 +24,9 @@ NS="nitte"
 PF_PIDS_FILE="$SCRIPT_DIR/.k8s-pf.pids"
 K8S_DIR="$SCRIPT_DIR/k8s"
 
+# Flag: skip Istio for low-resource machines (set via --no-istio)
+NO_ISTIO="${NO_ISTIO:-0}"
+
 # ---------- Pretty printing ---------------------------------------------------
 if [[ -t 1 ]]; then
   RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'
@@ -92,13 +95,44 @@ ensure_minikube() {
   if [[ "$status" == "Running" ]]; then
     ok "Minikube already running"
   else
-    step "Starting minikube (8GB RAM, 4 CPUs) — this may take a few minutes on first run…"
+    # Detect available memory
+    local mem_gb=16
+    if command -v free &>/dev/null; then
+      mem_gb=$(free -g | awk '/^Mem:/{print $2}')
+    elif [[ -f /proc/meminfo ]]; then
+      mem_gb=$(awk '/MemTotal/{printf "%d", $2/1024/1024}' /proc/meminfo)
+    elif command -v sysctl &>/dev/null; then
+      mem_gb=$(sysctl -n hw.memsize 2>/dev/null | awk '{printf "%d", $1/1024/1024/1024}')
+    fi
+    [[ -z "$mem_gb" || "$mem_gb" -lt 1 ]] && mem_gb=16
+
+    # Allocate ~75% of system RAM to minikube (min 6GB, max 12GB)
+    local mk_memory=8192
+    if [[ "$mem_gb" -ge 32 ]]; then
+      mk_memory=12288
+    elif [[ "$mem_gb" -ge 24 ]]; then
+      mk_memory=10240
+    elif [[ "$mem_gb" -ge 16 ]]; then
+      mk_memory=12288  # Tight but needed for Istio
+      info "16GB system detected. Allocating 12GB to minikube for Istio support."
+      info "Close unnecessary apps to free RAM."
+    else
+      mk_memory=8192
+      info "Low RAM detected (${mem_gb}GB). Istio may not work — use --no-istio."
+    fi
+
+    local mk_cpus=4
+    if [[ $(nproc 2>/dev/null || echo 4) -le 4 ]]; then
+      mk_cpus=3
+    fi
+
+    step "Starting minikube (${mk_memory}MB RAM, ${mk_cpus} CPUs) — this may take a few minutes on first run…"
     minikube start \
-      --memory=8192 \
-      --cpus=4 \
-      --disk-size=20g \
+      --memory="${mk_memory}" \
+      --cpus="${mk_cpus}" \
+      --disk-size=30g \
       --driver=docker
-    ok "Minikube started"
+    ok "Minikube started (system RAM: ${mem_gb}GB, allocated: $((mk_memory/1024))GB)"
   fi
 
   # Point our shell's docker to minikube's daemon so built images are visible to k8s
@@ -119,8 +153,12 @@ pull_base_images() {
     "grafana/grafana:10.2.2"
     "grafana/loki:2.9.4"
     "grafana/promtail:2.9.4"
+    "grafana/promtail:3.1.0"
     "jaegertracing/all-in-one:1.52"
     "quay.io/oauth2-proxy/oauth2-proxy:v7.6.0"
+    "minio/minio:latest"
+    "minio/mc:latest"
+    "mongo:6.0"
     "busybox:1.35"
     "curlimages/curl:8.5.0"
   )
@@ -141,6 +179,104 @@ pull_base_images() {
   ok "All standard images ready in minikube"
 }
 
+# ---------- Install Istio service mesh ----------------------------------------
+install_istio() {
+  header "Installing Istio Service Mesh"
+
+  local ISTIO_VERSION="1.20.0"
+  local ISTIO_DIR="$SCRIPT_DIR/.istio"
+
+  # Check if istioctl is already available
+  if command -v istioctl &>/dev/null; then
+    ok "istioctl already installed: $(istioctl version --short 2>/dev/null || echo 'unknown')"
+  elif [[ -x "$ISTIO_DIR/bin/istioctl" ]]; then
+    export PATH="$ISTIO_DIR/bin:$PATH"
+    ok "istioctl found in .istio/bin"
+  else
+    step "Downloading Istio $ISTIO_VERSION…"
+    mkdir -p "$ISTIO_DIR"
+    
+    local os_type
+    case "$(uname -s)" in
+      Linux*)  os_type="linux-amd64" ;;
+      Darwin*) os_type="osx-amd64" ;;
+      *)       os_type="linux-amd64" ;;
+    esac
+
+    local download_url="https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/istio-${ISTIO_VERSION}-${os_type}.tar.gz"
+    
+    if curl -sL "$download_url" | tar xz -C "$ISTIO_DIR" --strip-components=1; then
+      export PATH="$ISTIO_DIR/bin:$PATH"
+      ok "Istio $ISTIO_VERSION downloaded"
+    else
+      err "Failed to download Istio. Install manually: https://istio.io/latest/docs/setup/getting-started/"
+      info "Continuing without Istio — services will work but without mesh features."
+      return 1
+    fi
+  fi
+
+  # Install Istio into the cluster (demo profile for full features)
+  step "Installing Istio into the cluster (demo profile)…"
+  if istioctl install --set profile=demo -y 2>/dev/null; then
+    ok "Istio installed successfully"
+  else
+    # If already installed, that's fine
+    if kubectl get namespace istio-system &>/dev/null; then
+      ok "Istio already installed in cluster"
+    else
+      err "Istio installation failed"
+      return 1
+    fi
+  fi
+
+  # Enable sidecar injection for our namespace
+  step "Enabling Istio sidecar injection for namespace: $NS"
+  kubectl label namespace "$NS" istio-injection=enabled --overwrite >/dev/null 2>&1 || true
+  ok "Sidecar injection enabled for '$NS' namespace"
+
+  # Install Kiali (Istio dashboard) for observability
+  step "Installing Kiali dashboard…"
+  if [[ -d "$ISTIO_DIR/samples/addons" ]]; then
+    kubectl apply -f "$ISTIO_DIR/samples/addons/kiali.yaml" -n istio-system >/dev/null 2>&1 || true
+    ok "Kiali dashboard installed"
+  else
+    info "Kiali samples not found — install manually if needed"
+  fi
+
+  ok "Istio service mesh ready"
+}
+
+# ---------- Apply Istio configuration ----------------------------------------
+deploy_istio_config() {
+  header "Deploying Istio Configuration"
+
+  local istio_dir="$K8S_DIR/istio"
+  if [[ ! -d "$istio_dir" ]]; then
+    info "No istio/ directory found — skipping Istio config"
+    return 0
+  fi
+
+  local configs=(
+    "gateway.yaml"
+    "virtual-services.yaml"
+    "destination-rules.yaml"
+    "peer-authentication.yaml"
+    "authorization-policies.yaml"
+    "rate-limiting.yaml"
+    "service-entries.yaml"
+  )
+
+  for config in "${configs[@]}"; do
+    if [[ -f "$istio_dir/$config" ]]; then
+      step "Applying Istio: $config…"
+      kubectl apply -f "$istio_dir/$config" >/dev/null 2>&1
+      ok "Applied: $config"
+    fi
+  done
+
+  ok "Istio configuration deployed"
+}
+
 # ---------- Build custom images ----------------------------------------------
 build_images() {
   header "Building Custom Images"
@@ -149,6 +285,7 @@ build_images() {
     "node-backend:1.0.0|./node-backend"
     "frontend:1.0.0|./frontend"
     "admin-dashboard:1.0.0|./admin-dashboard"
+    "merchant-portal:1.0.0|./merchant-portal"
     "notification-service:1.0.0|./notification-service"
     "python-service:1.0.0|./python-service"
     "nitte-jenkins:1.0.0|./jenkins"
@@ -187,7 +324,10 @@ create_configmaps() {
   }
 
   cm_from_file mongo-init-config \
-    --from-file=mongo-init.js=./database/mongo-init.js
+    --from-file=mongo-init.js=./database/sharding-init.js
+
+  cm_from_file mongo-sharding-init-config \
+    --from-file=sharding-init.js=./database/sharding-init.js
 
   cm_from_file keycloak-realm-config \
     --from-file=nitte-realm.json=./keycloak/nitte-realm.json
@@ -222,6 +362,12 @@ create_configmaps() {
   cm_from_file promtail-keycloak-config \
     --from-file=promtail-keycloak-config.yml=./promtail/promtail-keycloak-config.yml
 
+  # Seed products script (if available)
+  if [[ -f "./scripts/seed-products.mjs" ]]; then
+    cm_from_file seed-products-config \
+      --from-file=seed-products.mjs=./scripts/seed-products.mjs
+  fi
+
   ok "All ConfigMaps created/updated"
 }
 
@@ -237,15 +383,21 @@ deploy_manifests() {
     "keycloak.yaml"
     "keycloak-setup.yaml"
     "kafka.yaml"
+    "minio.yaml"
+    "minio-init.yaml"
     "python-service.yaml"
     "node-backend.yaml"
     "frontend.yaml"
     "admin-dashboard.yaml"
+    "merchant-portal.yaml"
     "notification-service.yaml"
+    "seed-products.yaml"
+    "mongo-backup.yaml"
     "jaeger.yaml"
     "alertmanager.yaml"
     "loki.yaml"
     "promtail.yaml"
+    "promtail-keycloak.yaml"
     "prometheus.yaml"
     "grafana.yaml"
     "loki-rbac-proxy.yaml"
@@ -266,14 +418,19 @@ wait_ready() {
   header "Waiting for All Pods to be Ready"
 
   local deployments=(
+    "mongo-config"
+    "mongo-shard1"
+    "mongo-shard2"
     "mongodb"
     "keycloak"
     "zookeeper"
     "kafka"
+    "minio"
     "python-service"
     "node-backend"
     "frontend"
     "admin-dashboard"
+    "merchant-portal"
     "notification-service"
     "jaeger"
     "alertmanager"
@@ -323,7 +480,10 @@ start_port_forwards() {
   pf_bg "Backend API"          "node-backend"          "3000:3000"
   pf_bg "Storefront"           "frontend"              "5173:5173"
   pf_bg "Admin Dashboard"      "admin-dashboard"       "5174:5174"
+  pf_bg "Merchant Portal"      "merchant-portal"       "5175:5175"
   pf_bg "Python Service"       "python-service"        "8000:8000"
+  pf_bg "MinIO API"            "minio"                 "9000:9000"
+  pf_bg "MinIO Console"        "minio"                 "9001:9001"
   pf_bg "Prometheus (proxied)" "oauth2-proxy-prometheus" "9090:4180"
   pf_bg "Jaeger (proxied)"     "oauth2-proxy-jaeger"   "16686:4181"
   pf_bg "Alertmanager"         "alertmanager"          "9093:9093"
@@ -332,6 +492,15 @@ start_port_forwards() {
   pf_bg "Jenkins"              "jenkins"               "8081:8080"
   pf_bg "Nexus"                "nexus"                 "8082:8081"
   pf_bg "MongoDB"              "mongodb"               "27017:27017"
+
+  # Istio-specific port-forwards (if istio-system namespace exists)
+  if kubectl get namespace istio-system &>/dev/null 2>&1; then
+    nohup bash -c "while true; do kubectl port-forward -n istio-system svc/kiali 20001:20001 2>/dev/null; sleep 2; done" \
+      >/dev/null 2>&1 &
+    disown $!
+    echo $! >> "$PF_PIDS_FILE"
+    ok "Port-forward: Kiali (Istio UI)  (20001:20001)"
+  fi
 
   info "Port-forward PIDs saved to .k8s-pf.pids"
   info "Run './k8s-setup.sh stop' to clean up all port-forwards"
@@ -378,6 +547,13 @@ probe_api() {
 start_services() {
   check_prereqs
   ensure_minikube
+
+  if [[ "$NO_ISTIO" != "1" ]]; then
+    install_istio
+  else
+    info "Skipping Istio (--no-istio mode)"
+  fi
+
   pull_base_images
 
   header "Building Keycloak Event Listener SPI"
@@ -396,8 +572,21 @@ start_services() {
   step "Creating namespace…"
   kubectl apply -f "$K8S_DIR/namespace.yaml" >/dev/null
   ok "Namespace ready"
+
+  # Enable Istio sidecar injection on the namespace (only if Istio is installed)
+  if [[ "$NO_ISTIO" != "1" ]]; then
+    step "Ensuring Istio sidecar injection is enabled…"
+    kubectl label namespace "$NS" istio-injection=enabled --overwrite >/dev/null 2>&1 || true
+    ok "Istio injection label set"
+  fi
+
   create_configmaps
   deploy_manifests
+
+  if [[ "$NO_ISTIO" != "1" ]]; then
+    deploy_istio_config
+  fi
+
   wait_ready
   start_port_forwards
   mount_repo_for_jenkins
@@ -454,19 +643,25 @@ show_status() {
   printf '%b\n' "$SEP"
 
   local -a SERVICES=(
+    "mongo-config|—"
+    "mongo-shard1|—"
+    "mongo-shard2|—"
     "mongodb|27017"
     "keycloak|8080"
     "zookeeper|—"
     "kafka|—"
+    "minio|9000"
     "python-service|8000"
     "node-backend|3000"
     "frontend|5173"
     "admin-dashboard|5174"
+    "merchant-portal|5175"
     "notification-service|—"
     "jaeger|—"
     "prometheus|—"
     "alertmanager|9093"
     "loki|3100"
+    "loki-rbac-proxy|—"
     "grafana|3001"
     "oauth2-proxy-prometheus|9090"
     "oauth2-proxy-jaeger|16686"
@@ -499,11 +694,102 @@ show_status() {
       "${ready}/${desired:-1}" "$port_disp"
   done
 
+  # DaemonSets (promtail, promtail-keycloak)
+  local -a DAEMONSETS=("promtail|—" "promtail-keycloak|—")
+  for entry in "${DAEMONSETS[@]}"; do
+    IFS='|' read -r name port <<< "$entry"
+    local ds_ready ds_desired ds_status_color
+    ds_desired=$(kubectl get daemonset "$name" -n "$NS" \
+      -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo "0")
+    ds_ready=$(kubectl get daemonset "$name" -n "$NS" \
+      -o jsonpath='{.status.numberReady}' 2>/dev/null || echo "0")
+    local ds_pod_info
+    ds_pod_info=$(kubectl get pods -n "$NS" -l "app=$name" \
+      --no-headers -o custom-columns=':metadata.name,:status.phase' 2>/dev/null | head -1 || echo "")
+
+    [[ -z "$ds_ready" ]] && ds_ready="0"
+    [[ -z "$ds_desired" ]] && ds_desired="1"
+    if [[ "$ds_ready" -ge "$ds_desired" ]] 2>/dev/null && [[ "$ds_desired" -gt 0 ]]; then
+      ds_status_color="$GREEN"; running=$((running+1))
+    else
+      ds_status_color="$RED"
+    fi
+    total=$((total+1))
+
+    printf '  %-24s %b%-36s%b %-10s %-8s\n' \
+      "$name (ds)" "$ds_status_color" "${ds_pod_info:-not deployed}" "$NC" \
+      "${ds_ready}/${ds_desired}" "—"
+  done
+
   printf '%b\n' "$SEP"
   if [[ "$running" -eq "$total" ]]; then
-    printf '%b  ✔  All %d/%d deployments ready%b\n\n' "$GREEN$BOLD" "$running" "$total" "$NC"
+    printf '%b  ✔  All %d/%d services ready%b\n\n' "$GREEN$BOLD" "$running" "$total" "$NC"
   else
-    printf '%b  ⚠  %d/%d deployments ready%b\n\n' "$YELLOW$BOLD" "$running" "$total" "$NC"
+    printf '%b  ⚠  %d/%d services ready%b\n\n' "$YELLOW$BOLD" "$running" "$total" "$NC"
+  fi
+
+  # Istio Service Mesh status
+  if kubectl get namespace istio-system &>/dev/null 2>&1; then
+    printf '\n  %b%-24s %-36s %-10s %-8s%b\n' \
+      "$BOLD" "ISTIO (istio-system)" "" "READY" "PORT" "$NC"
+    printf '%b\n' "$SEP"
+
+    local -a ISTIO_SERVICES=("istiod|—" "istio-ingressgateway|80" "kiali|20001")
+    for entry in "${ISTIO_SERVICES[@]}"; do
+      IFS='|' read -r iname iport <<< "$entry"
+      local iready idesired istatus_color
+      iready=$(kubectl get deployment "$iname" -n istio-system \
+        -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+      idesired=$(kubectl get deployment "$iname" -n istio-system \
+        -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
+      local ipod_info
+      ipod_info=$(kubectl get pods -n istio-system -l "app=$iname" \
+        --no-headers -o custom-columns=':metadata.name,:status.phase' 2>/dev/null | head -1 || echo "")
+      # Fallback: try istio label for ingressgateway
+      if [[ -z "$ipod_info" && "$iname" == "istio-ingressgateway" ]]; then
+        ipod_info=$(kubectl get pods -n istio-system -l "istio=ingressgateway" \
+          --no-headers -o custom-columns=':metadata.name,:status.phase' 2>/dev/null | head -1 || echo "")
+      fi
+
+      [[ -z "$iready" ]] && iready="0"
+      [[ -z "$idesired" || "$idesired" == "0" ]] && idesired="1"
+      if [[ "$iready" -ge "$idesired" ]] 2>/dev/null; then
+        istatus_color="$GREEN"
+      else
+        istatus_color="$RED"
+      fi
+      local iport_disp; [[ "$iport" == "—" ]] && iport_disp="—" || iport_disp=":$iport"
+
+      printf '  %-24s %b%-36s%b %-10s %-8s\n' \
+        "$iname" "$istatus_color" "${ipod_info:-not deployed}" "$NC" \
+        "${iready}/${idesired}" "$iport_disp"
+    done
+
+    # Check sidecar injection status
+    local injection_label
+    injection_label=$(kubectl get namespace "$NS" -o jsonpath='{.metadata.labels.istio-injection}' 2>/dev/null || echo "")
+    if [[ "$injection_label" == "enabled" ]]; then
+      printf '\n'
+      ok "Istio sidecar injection: enabled (namespace: $NS)"
+    else
+      printf '\n'
+      info "Istio sidecar injection: NOT enabled on namespace $NS"
+    fi
+
+    # Show mTLS status
+    local mtls_mode
+    mtls_mode=$(kubectl get peerauthentication default -n "$NS" -o jsonpath='{.spec.mtls.mode}' 2>/dev/null || echo "none")
+    if [[ "$mtls_mode" == "STRICT" ]]; then
+      ok "mTLS: STRICT (all traffic encrypted)"
+    elif [[ "$mtls_mode" == "PERMISSIVE" ]]; then
+      info "mTLS: PERMISSIVE (accepts both plain and TLS)"
+    else
+      info "mTLS: not configured"
+    fi
+    printf '%b\n' "$SEP"
+  else
+    printf '\n'
+    info "Istio: not installed (istio-system namespace not found)"
   fi
 
   # Show port-forward status
@@ -549,33 +835,38 @@ print_summary() {
   local SEP="${CYAN}  $(printf '%.0s─' {1..62})${NC}"
   printf '\n'
   printf '%s╔══════════════════════════════════════════════════════════════╗%s\n' "$CYAN" "$NC"
-  printf '%s║%s  %sNITTE Alumni Shop — Kubernetes (minikube) Edition%s         %s║%s\n' "$CYAN" "$NC" "$BOLD" "$NC" "$CYAN" "$NC"
-  printf '%s║%s  Keycloak RBAC · MongoDB · Kafka · Observability · DevOps  %s║%s\n' "$CYAN" "$NC" "$CYAN" "$NC"
+  printf '%s║%s  %sNITTE Alumni Shop — Kubernetes (minikube) + Istio%s        %s║%s\n' "$CYAN" "$NC" "$BOLD" "$NC" "$CYAN" "$NC"
+  printf '%s║%s  Istio Mesh · Keycloak RBAC · MongoDB · Kafka · DevOps     %s║%s\n' "$CYAN" "$NC" "$CYAN" "$NC"
   printf '%s╚══════════════════════════════════════════════════════════════╝%s\n' "$CYAN" "$NC"
   printf '\n'
 
   printf '%s  ALL SERVICE URLS  (same as docker-compose)%s\n' "$BOLD" "$NC"
   printf '%s\n' "$SEP"
   printf '  %-24s %-32s %s\n' "Storefront"          "http://localhost:5173"  "Alumni merch shop"
-  printf '  %-24s %-32s %s\n' "Admin / Merchant UI" "http://localhost:5174"  "Role-based management"
+  printf '  %-24s %-32s %s\n' "Admin Dashboard"     "http://localhost:5174"  "Platform admin console"
+  printf '  %-24s %-32s %s\n' "Merchant Portal"     "http://localhost:5175"  "Merchant management"
   printf '  %-24s %-32s %s\n' "Backend API"         "http://localhost:3000"  "REST API + JWT auth"
   printf '  %-24s %-32s %s\n' "Keycloak"            "http://localhost:8080"  "Identity & access"
   printf '  %-24s %-32s %s\n' "Jenkins"             "http://localhost:8081"  "CI/CD pipelines"
   printf '  %-24s %-32s %s\n' "Nexus Repository"    "http://localhost:8082"  "Artifact registry"
+  printf '  %-24s %-32s %s\n' "MinIO Console"       "http://localhost:9001"  "Object storage"
   printf '  %-24s %-32s %s\n' "Prometheus"          "http://localhost:9090"  "Metrics (Keycloak SSO)"
   printf '  %-24s %-32s %s\n' "Alertmanager"        "http://localhost:9093"  "Alert routing"
   printf '  %-24s %-32s %s\n' "Grafana"             "http://localhost:3001"  "Dashboards"
   printf '  %-24s %-32s %s\n' "Jaeger"              "http://localhost:16686" "Traces (Keycloak SSO)"
   printf '  %-24s %-32s %s\n' "Loki"                "http://localhost:3100"  "Log aggregation"
+  printf '  %-24s %-32s %s\n' "Kiali (Istio)"       "http://localhost:20001" "Service mesh dashboard"
   printf '\n'
 
   printf '%s  DEMO CREDENTIALS%s\n' "$BOLD" "$NC"
   printf '%s\n' "$SEP"
   printf '  %-18s %-36s %s\n' "Platform Admin"    "admin@nitte.edu"               "admin@123"
+  printf '  %-18s %-36s %s\n' "NITTE Merchant"    "merchant-admin@nitte.edu"      "MerchantAdmin@123"
   printf '  %-18s %-36s %s\n' "Amazon Merchant"   "amazon-merchant@amazon.com"    "Amazon@123"
   printf '  %-18s %-36s %s\n' "Flipkart Merchant" "flipkart-merchant@flipkart.com" "Flipkart@123"
   printf '  %-18s %-36s %s\n' "Jenkins (local)"   "local-admin"                   "LocalAdmin@123"
   printf '  %-18s %-36s %s\n' "Nexus"             "admin"                         "nexus-admin-123"
+  printf '  %-18s %-36s %s\n' "MinIO"             "minioadmin"                    "minioadmin123"
   printf '  %-18s %-36s %s\n' "Grafana (local)"   "admin"                         "admin123"
   printf '\n'
 
@@ -595,7 +886,7 @@ usage() {
   cat <<EOF
 NITTE Alumni Merchandise Shop — Kubernetes setup
 
-Usage: $0 [command] [args]
+Usage: $0 [command] [flags]
 
 Commands:
   start           Pull/build images, deploy all services, start port-forwards (default)
@@ -607,16 +898,33 @@ Commands:
   demo            Quick self-test against running stack
   help            Show this message
 
+Flags:
+  --no-istio      Skip Istio service mesh (for machines with <16GB RAM)
+
 Examples:
-  $0                     # start everything
-  $0 logs python-service # tail python-service logs
+  $0                         # start everything with Istio
+  $0 start --no-istio        # start without Istio (lighter, 16GB systems)
+  $0 logs python-service     # tail python-service logs
   $0 status
+
+System Requirements:
+  With Istio:     24GB+ RAM recommended, 32GB+ ideal
+  Without Istio:  16GB RAM minimum (use --no-istio)
 EOF
 }
 
 # ---------- Entry point ------------------------------------------------------
 main() {
-  local action="${1:-start}"
+  # Parse flags
+  local args=()
+  for arg in "$@"; do
+    case "$arg" in
+      --no-istio) NO_ISTIO=1 ;;
+      *) args+=("$arg") ;;
+    esac
+  done
+
+  local action="${args[0]:-start}"
   case "$action" in
     start)   start_services ;;
     stop)    stop_services ;;
@@ -624,7 +932,7 @@ main() {
     restart) restart_services ;;
     clean)   clean_all ;;
     status)  show_status ;;
-    logs)    show_logs "$@" ;;
+    logs)    show_logs "${args[@]}" ;;
     demo)    run_demo ;;
     help|-h|--help) usage ;;
     *)

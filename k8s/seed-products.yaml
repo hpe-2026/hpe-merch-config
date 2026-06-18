@@ -1,0 +1,97 @@
+# Product Seeding Job
+# Uploads product images to MinIO and creates products in MongoDB
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-products
+  namespace: nitte
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+      - name: wait-for-backend
+        image: curlimages/curl:8.5.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for backend API to be ready..."
+          until curl -sf http://node-backend:3000/api/v1/health; do
+            echo "Backend not ready, retrying in 5s..."
+            sleep 5
+          done
+          echo "Backend is ready!"
+      - name: wait-for-minio
+        image: curlimages/curl:8.5.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for MinIO to be ready..."
+          until curl -sf http://minio:9000/minio/health/live; do
+            echo "MinIO not ready, retrying in 3s..."
+            sleep 3
+          done
+          echo "MinIO is ready!"
+      containers:
+      - name: seed-products
+        image: node-backend:1.0.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Installing dependencies..."
+          npm install mongodb @aws-sdk/client-s3 --no-save 2>/dev/null || true
+          echo "Running product seeding..."
+          node scripts/seed-products.mjs
+        env:
+        - name: MONGODB_URL
+          value: "mongodb://mongodb:27017/nitte_merch"
+        - name: S3_ENDPOINT
+          value: "http://minio:9000"
+        - name: S3_PUBLIC_ENDPOINT
+          value: "http://localhost:9000"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: MINIO_ROOT_USER
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: MINIO_ROOT_PASSWORD
+        - name: S3_PRODUCTS_BUCKET
+          value: "nitte-products"
+        - name: AWS_REGION
+          value: "us-east-1"
+        - name: NODE_ENV
+          value: "development"
+        volumeMounts:
+        - name: seed-script
+          mountPath: /app/scripts/seed-products.mjs
+          subPath: seed-products.mjs
+          readOnly: true
+        - name: product-images
+          mountPath: /app/product-images
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: seed-script
+        configMap:
+          name: seed-products-config
+      - name: product-images
+        configMap:
+          name: product-images-config
+          optional: true
