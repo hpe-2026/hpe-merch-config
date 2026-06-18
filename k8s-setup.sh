@@ -397,7 +397,6 @@ deploy_manifests() {
     "alertmanager.yaml"
     "loki.yaml"
     "promtail.yaml"
-    "promtail-keycloak.yaml"
     "prometheus.yaml"
     "grafana.yaml"
     "loki-rbac-proxy.yaml"
@@ -695,7 +694,7 @@ show_status() {
   done
 
   # DaemonSets (promtail, promtail-keycloak)
-  local -a DAEMONSETS=("promtail|—" "promtail-keycloak|—")
+  local -a DAEMONSETS=("promtail|—")
   for entry in "${DAEMONSETS[@]}"; do
     IFS='|' read -r name port <<< "$entry"
     local ds_ready ds_desired ds_status_color

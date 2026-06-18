@@ -65,6 +65,8 @@ spec:
     metadata:
       labels:
         app: promtail-keycloak
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       tolerations:
       - key: node-role.kubernetes.io/master

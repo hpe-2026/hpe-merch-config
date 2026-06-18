@@ -27,9 +27,6 @@ data:
               names:
                 - nitte
         relabel_configs:
-          - source_labels: ['__meta_kubernetes_pod_label_app']
-            regex: keycloak
-            action: drop
           - source_labels: ['__meta_kubernetes_pod_node_name']
             target_label: '__host__'
           - source_labels: ['__meta_kubernetes_namespace']
@@ -62,6 +59,8 @@ spec:
     metadata:
       labels:
         app: promtail
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       tolerations:
       - key: node-role.kubernetes.io/master
