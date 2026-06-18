@@ -14,7 +14,7 @@ data:
       filename: /tmp/positions.yaml
 
     clients:
-      - url: http://loki:3100/loki/api/v1/push
+      - url: http://loki-rbac-proxy:3200/loki/api/v1/push
         tenant_id: default
         headers:
           X-Promtail-Api-Key: promtail-loki-secret
