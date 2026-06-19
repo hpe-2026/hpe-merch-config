@@ -8,39 +8,32 @@ data:
     server:
       http_listen_port: 9080
       grpc_listen_port: 0
-      log_level: warn
+      log_level: info
 
     positions:
       filename: /tmp/positions.yaml
 
     clients:
-      - url: http://loki:3100/loki/api/v1/push
+      - url: http://loki-rbac-proxy:3200/loki/api/v1/push
         tenant_id: default
         headers:
           X-Promtail-Api-Key: promtail-loki-secret
 
     scrape_configs:
       - job_name: pod-logs
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names:
-                - nitte
-        relabel_configs:
-          - source_labels: ['__meta_kubernetes_pod_node_name']
-            target_label: '__host__'
-          - source_labels: ['__meta_kubernetes_namespace']
-            target_label: namespace
-          - source_labels: ['__meta_kubernetes_pod_name']
-            target_label: pod
-          - source_labels: ['__meta_kubernetes_pod_container_name']
-            target_label: container
-          - source_labels: ['__meta_kubernetes_pod_label_app']
-            target_label: service
-          - source_labels: ['__meta_kubernetes_pod_label_app']
-            target_label: job
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: pod-logs
+              __path__: /var/log/pods/nitte_*/*/*.log
         pipeline_stages:
           - cri: {}
+          - regex:
+              expression: '/var/log/pods/nitte_(?P<service>[a-z][-a-z0-9]*?)(?:-[a-z0-9]{5,10}){1,2}_[^/]+/(?P<container>[^/]+)/'
+          - labels:
+              service:
+              container:
           - labeldrop:
               - filename
 ---
@@ -62,6 +55,7 @@ spec:
       annotations:
         sidecar.istio.io/inject: "false"
     spec:
+      serviceAccountName: promtail
       tolerations:
       - key: node-role.kubernetes.io/master
         operator: Exists
@@ -84,6 +78,9 @@ spec:
         - name: containers-logs
           mountPath: /var/log/containers
           readOnly: true
+        - name: docker-containers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
         resources:
           requests:
             memory: "64Mi"
@@ -104,3 +101,6 @@ spec:
       - name: containers-logs
         hostPath:
           path: /var/log/containers
+      - name: docker-containers
+        hostPath:
+          path: /var/lib/docker/containers

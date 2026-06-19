@@ -96,3 +96,17 @@ spec:
       app: loki
   mtls:
     mode: PERMISSIVE
+
+---
+# loki-rbac-proxy accepts plaintext from promtail (no sidecar)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: loki-rbac-proxy-permissive
+  namespace: nitte
+spec:
+  selector:
+    matchLabels:
+      app: loki-rbac-proxy
+  mtls:
+    mode: PERMISSIVE
