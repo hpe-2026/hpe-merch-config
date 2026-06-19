@@ -8,7 +8,7 @@ data:
     server:
       http_listen_port: 9080
       grpc_listen_port: 0
-      log_level: info
+      log_level: warn
 
     positions:
       filename: /tmp/positions.yaml
@@ -78,9 +78,6 @@ spec:
         - name: containers-logs
           mountPath: /var/log/containers
           readOnly: true
-        - name: docker-containers
-          mountPath: /var/lib/docker/containers
-          readOnly: true
         resources:
           requests:
             memory: "64Mi"
@@ -101,6 +98,3 @@ spec:
       - name: containers-logs
         hostPath:
           path: /var/log/containers
-      - name: docker-containers
-        hostPath:
-          path: /var/lib/docker/containers
