@@ -396,7 +396,6 @@ deploy_manifests() {
     "jaeger.yaml"
     "alertmanager.yaml"
     "loki.yaml"
-    "promtail-rbac.yaml"
     "promtail.yaml"
     "prometheus.yaml"
     "grafana.yaml"
