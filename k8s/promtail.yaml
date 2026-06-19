@@ -39,12 +39,6 @@ data:
             target_label: service
           - source_labels: ['__meta_kubernetes_pod_label_app']
             target_label: job
-          - source_labels:
-              - __meta_kubernetes_pod_uid
-              - __meta_kubernetes_pod_container_name
-            target_label: __path__
-            separator: /
-            replacement: /var/log/pods/*$1/*.log
         pipeline_stages:
           - cri: {}
           - labeldrop:
