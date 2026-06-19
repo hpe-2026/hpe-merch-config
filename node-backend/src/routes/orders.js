@@ -265,6 +265,16 @@ router.post(
       ordersCreated.inc();
       databaseOperations.inc({ operation: 'create_order', status: 'success' });
       
+      // Publish order created event to Kafka for email notifications
+      const kafkaProducer = req.app?.locals?.kafkaProducer;
+      if (kafkaProducer) {
+        try {
+          await kafkaProducer.publishOrderCreatedEvent({ ...orderData, ...order });
+        } catch (kafkaErr) {
+          logger.warn('Failed to publish order:created event:', kafkaErr.message);
+        }
+      }
+
       span.setAttributes({ 'http.status_code': 201 });
       
       res.status(201).json({
@@ -330,6 +340,17 @@ router.put(
       };
 
       const order = await pythonServiceClient.updateOrder(id, updateData);
+
+      // Publish order updated event to Kafka for email notifications
+      const kafkaProducer = req.app?.locals?.kafkaProducer;
+      if (kafkaProducer) {
+        try {
+          await kafkaProducer.publishOrderUpdatedEvent(id, updateData, req.user?.email || order?.user_email);
+        } catch (kafkaErr) {
+          logger.warn('Failed to publish order:updated event:', kafkaErr.message);
+        }
+      }
+
       span.setAttributes({
         'http.status_code': 200,
         'ownership.level': req.ownership?.level || 'unknown',

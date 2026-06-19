@@ -79,6 +79,30 @@ class KafkaProducer {
             { name: 'retention.ms', value: '2592000000' }, // 30 days
           ],
         },
+        {
+          topic: 'order-events',
+          numPartitions: 1,
+          replicationFactor: 1,
+          configEntries: [
+            { name: 'retention.ms', value: '2592000000' }, // 30 days
+          ],
+        },
+        {
+          topic: 'product-events',
+          numPartitions: 1,
+          replicationFactor: 1,
+          configEntries: [
+            { name: 'retention.ms', value: '2592000000' }, // 30 days
+          ],
+        },
+        {
+          topic: 'user-activity',
+          numPartitions: 1,
+          replicationFactor: 1,
+          configEntries: [
+            { name: 'retention.ms', value: '604800000' }, // 7 days
+          ],
+        },
       ];
 
       await admin.createTopics({
@@ -188,6 +212,138 @@ class KafkaProducer {
     };
 
     await this.publishEvent('user-rejected', payload, 'user:rejected');
+  }
+
+  /**
+   * Publish order created event
+   */
+  async publishOrderCreatedEvent(order) {
+    const payload = {
+      order_id: order.order_id || order._id,
+      user_id: order.user_id,
+      user_email: order.user_email,
+      items: order.items,
+      shipping_address: order.shipping_address,
+      status: order.status || 'pending',
+      total_amount: order.items?.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0) || 0,
+      created_at: order.created_at || new Date().toISOString(),
+    };
+
+    await this.publishEvent('order-events', payload, 'order:created');
+  }
+
+  /**
+   * Publish order updated event (status change)
+   */
+  async publishOrderUpdatedEvent(orderId, updateData, userEmail) {
+    const payload = {
+      order_id: orderId,
+      user_email: userEmail,
+      status: updateData.status,
+      notes: updateData.notes,
+      updated_at: new Date().toISOString(),
+    };
+
+    await this.publishEvent('order-events', payload, 'order:updated');
+  }
+
+  /**
+   * Publish product created event
+   */
+  async publishProductCreatedEvent(product, creatorEmail) {
+    const payload = {
+      product_id: product._id || product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      stock: product.stock,
+      created_by: creatorEmail,
+      created_at: new Date().toISOString(),
+    };
+
+    await this.publishEvent('product-events', payload, 'product:created');
+  }
+
+  /**
+   * Publish product updated event
+   */
+  async publishProductUpdatedEvent(productId, updateData, updaterEmail) {
+    const payload = {
+      product_id: productId,
+      updates: updateData,
+      updated_by: updaterEmail,
+      updated_at: new Date().toISOString(),
+    };
+
+    await this.publishEvent('product-events', payload, 'product:updated');
+  }
+
+  /**
+   * Publish product deleted event
+   */
+  async publishProductDeletedEvent(productId, deleterEmail) {
+    const payload = {
+      product_id: productId,
+      deleted_by: deleterEmail,
+      deleted_at: new Date().toISOString(),
+    };
+
+    await this.publishEvent('product-events', payload, 'product:deleted');
+  }
+
+  /**
+   * Publish user login event
+   */
+  async publishUserLoginEvent(email, method = 'local') {
+    const payload = {
+      email,
+      login_method: method,
+      logged_in_at: new Date().toISOString(),
+    };
+
+    await this.publishEvent('user-activity', payload, 'user:login');
+  }
+
+  /**
+   * Publish user signup event
+   */
+  async publishUserSignupEvent(user) {
+    const payload = {
+      user_id: user._id?.toString() || user.id,
+      email: user.email,
+      name: user.name,
+      user_type: user.user_type || 'alumni',
+      registered_at: new Date().toISOString(),
+    };
+
+    await this.publishEvent('user-activity', payload, 'user:signup');
+  }
+
+  /**
+   * Publish email verification event (sends verification link to user)
+   */
+  async publishEmailVerificationEvent(email, name, verificationToken) {
+    const payload = {
+      email,
+      name,
+      verification_token: verificationToken,
+      sent_at: new Date().toISOString(),
+    };
+
+    await this.publishEvent('user-activity', payload, 'user:email-verification');
+  }
+
+  /**
+   * Publish email confirmed event (user clicked the verification link)
+   */
+  async publishEmailConfirmedEvent(email, name) {
+    const payload = {
+      email,
+      name,
+      confirmed_at: new Date().toISOString(),
+    };
+
+    await this.publishEvent('user-activity', payload, 'user:email-confirmed');
   }
 
   /**

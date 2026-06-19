@@ -1,3 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notification-service-config
+  namespace: nitte
+data:
+  KAFKA_BROKERS: "kafka:9092"
+  KAFKA_CLIENT_ID: "notification-service"
+  KAFKA_CONSUMER_GROUP: "notification-service"
+  EMAIL_ENABLED: "true"
+  EMAIL_PROVIDER: "smtp"
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  SMTP_FROM: "noreply@nitte-merch-shop.com"
+  SLACK_ENABLED: "true"
+  TICKET_ENABLED: "true"
+  TICKET_PROVIDER: "console"
+  TICKET_ENDPOINT: ""
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  API_BASE_URL: "http://node-backend:3000"
+  FRONTEND_URL: "http://localhost:5173"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: notification-service-secrets
+  namespace: nitte
+type: Opaque
+stringData:
+  SMTP_USER: ""
+  SMTP_PASS: ""
+  SLACK_WEBHOOK_URL: ""
+  KEYCLOAK_ADMIN_EMAILS: "internal-admin@nitte.ac.in"
+  ADMIN_NOTIFICATION_EMAILS: "internal-admin@nitte.ac.in"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,39 +63,37 @@ spec:
         imagePullPolicy: Never
         ports:
         - containerPort: 9100
+        envFrom:
+        - configMapRef:
+            name: notification-service-config
         env:
-        - name: KAFKA_BROKERS
-          value: "kafka:9092"
+        - name: SMTP_USER
+          valueFrom:
+            secretKeyRef:
+              name: notification-service-secrets
+              key: SMTP_USER
+        - name: SMTP_PASS
+          valueFrom:
+            secretKeyRef:
+              name: notification-service-secrets
+              key: SMTP_PASS
+        - name: SLACK_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: notification-service-secrets
+              key: SLACK_WEBHOOK_URL
+        - name: KEYCLOAK_ADMIN_EMAILS
+          valueFrom:
+            secretKeyRef:
+              name: notification-service-secrets
+              key: KEYCLOAK_ADMIN_EMAILS
+        - name: ADMIN_NOTIFICATION_EMAILS
+          valueFrom:
+            secretKeyRef:
+              name: notification-service-secrets
+              key: ADMIN_NOTIFICATION_EMAILS
         - name: NOTIFICATION_EMAIL
           value: "notifications@nitte.edu"
-        - name: SLACK_ENABLED
-          value: "true"
-        - name: SLACK_WEBHOOK_URL
-          value: ""
-        - name: EMAIL_ENABLED
-          value: "true"
-        - name: EMAIL_PROVIDER
-          value: "smtp"
-        - name: SMTP_HOST
-          value: "smtp.gmail.com"
-        - name: SMTP_PORT
-          value: "587"
-        - name: SMTP_SECURE
-          value: "false"
-        - name: SMTP_USER
-          value: ""
-        - name: SMTP_PASS
-          value: ""
-        - name: SMTP_FROM
-          value: "noreply@nitte-merch-shop.com"
-        - name: TICKET_ENABLED
-          value: "true"
-        - name: TICKET_PROVIDER
-          value: "console"
-        - name: TICKET_ENDPOINT
-          value: ""
-        - name: KEYCLOAK_ADMIN_EMAILS
-          value: "internal-admin@nitte.ac.in"
         resources:
           requests:
             memory: "64Mi"
@@ -66,6 +101,20 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9100
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9100
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
 ---
 apiVersion: v1
 kind: Service

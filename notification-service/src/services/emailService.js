@@ -327,6 +327,357 @@ NITTE Merchandise Shop Team
   }
 
   /**
+   * Send order created confirmation email
+   */
+  async sendOrderCreatedEmail(userEmail, orderId, itemsList, totalAmount, shippingAddress) {
+    const subject = '✓ Your NITTE Order Has Been Placed!';
+    const text = `
+Hi there,
+
+Your order has been placed successfully!
+
+Order Details:
+- Order ID: ${orderId}
+- Items: ${itemsList}
+- Total Amount: ₹${totalAmount}
+- Shipping Address: ${shippingAddress}
+
+We'll notify you when your order status changes.
+
+Best regards,
+NITTE Merchandise Shop Team
+    `.trim();
+
+    const html = `
+<html>
+<body style="font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden;">
+    <div style="padding: 24px; background: #4caf50; color: #fff;">
+      <h2 style="margin: 0;">✓ Order Placed Successfully!</h2>
+    </div>
+    <div style="padding: 24px;">
+      <p>Hi there,</p>
+      <p>Your order has been placed successfully!</p>
+      <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Order ID</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${orderId}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Items</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${itemsList}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Total Amount</td><td style="padding: 8px; border-bottom: 1px solid #eee;">₹${totalAmount}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Shipping Address</td><td style="padding: 8px;">${shippingAddress}</td></tr>
+      </table>
+      <p>We'll notify you when your order status changes.</p>
+    </div>
+    <div style="padding: 16px 24px; background: #fafafa; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
+      NITTE Merchandise Shop
+    </div>
+  </div>
+</body>
+</html>`.trim();
+
+    return this.sendEmail(userEmail, subject, text, html);
+  }
+
+  /**
+   * Send order status update email
+   */
+  async sendOrderStatusUpdateEmail(userEmail, orderId, status, notes) {
+    const statusEmoji = {
+      pending: '⏳',
+      confirmed: '✓',
+      processing: '⚙️',
+      shipped: '🚚',
+      delivered: '📦',
+      cancelled: '✗',
+    };
+
+    const emoji = statusEmoji[status] || '📋';
+    const subject = `${emoji} Order ${orderId} - Status Update: ${status.toUpperCase()}`;
+    const text = `
+Hi there,
+
+Your order status has been updated.
+
+Order ID: ${orderId}
+New Status: ${status}
+${notes ? `Notes: ${notes}` : ''}
+
+Best regards,
+NITTE Merchandise Shop Team
+    `.trim();
+
+    const html = `
+<html>
+<body style="font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden;">
+    <div style="padding: 24px; background: #1976d2; color: #fff;">
+      <h2 style="margin: 0;">${emoji} Order Status Update</h2>
+    </div>
+    <div style="padding: 24px;">
+      <p>Hi there,</p>
+      <p>Your order status has been updated:</p>
+      <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Order ID</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${orderId}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">New Status</td><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong style="color: #1976d2;">${status.toUpperCase()}</strong></td></tr>
+        ${notes ? `<tr><td style="padding: 8px; font-weight: bold;">Notes</td><td style="padding: 8px;">${notes}</td></tr>` : ''}
+      </table>
+    </div>
+    <div style="padding: 16px 24px; background: #fafafa; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
+      NITTE Merchandise Shop
+    </div>
+  </div>
+</body>
+</html>`.trim();
+
+    return this.sendEmail(userEmail, subject, text, html);
+  }
+
+  /**
+   * Send product action email (created/updated/deleted)
+   */
+  async sendProductActionEmail(recipientEmail, action, productName, details) {
+    const actionLabels = {
+      created: { emoji: '🆕', label: 'Created', color: '#4caf50' },
+      updated: { emoji: '✏️', label: 'Updated', color: '#ff9800' },
+      deleted: { emoji: '🗑️', label: 'Deleted', color: '#f44336' },
+    };
+
+    const { emoji, label, color } = actionLabels[action] || { emoji: '📋', label: action, color: '#1976d2' };
+    const subject = `${emoji} Product ${label}: ${productName}`;
+    const text = `
+Product ${label} Confirmation
+============================
+Product: ${productName}
+Action: ${label}
+Time: ${details.created_at || details.updated_at || details.deleted_at || new Date().toISOString()}
+
+Best regards,
+NITTE Merchandise Shop Team
+    `.trim();
+
+    const html = `
+<html>
+<body style="font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden;">
+    <div style="padding: 24px; background: ${color}; color: #fff;">
+      <h2 style="margin: 0;">${emoji} Product ${label}</h2>
+    </div>
+    <div style="padding: 24px;">
+      <p>Your product action has been completed successfully.</p>
+      <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Product</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${productName}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Action</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${label}</td></tr>
+        ${details.category ? `<tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Category</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${details.category}</td></tr>` : ''}
+        ${details.price ? `<tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Price</td><td style="padding: 8px; border-bottom: 1px solid #eee;">₹${details.price}</td></tr>` : ''}
+        <tr><td style="padding: 8px; font-weight: bold;">Time</td><td style="padding: 8px;">${details.created_at || details.updated_at || details.deleted_at || new Date().toISOString()}</td></tr>
+      </table>
+    </div>
+    <div style="padding: 16px 24px; background: #fafafa; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
+      NITTE Merchandise Shop
+    </div>
+  </div>
+</body>
+</html>`.trim();
+
+    return this.sendEmail(recipientEmail, subject, text, html);
+  }
+
+  /**
+   * Send login notification email
+   */
+  async sendLoginNotificationEmail(email, loginMethod, loginTime) {
+    const subject = '🔐 New Login to Your NITTE Account';
+    const text = `
+Hi there,
+
+A new login was detected on your NITTE Merchandise Shop account.
+
+Details:
+- Email: ${email}
+- Method: ${loginMethod}
+- Time: ${loginTime || new Date().toISOString()}
+
+If this was you, no action is needed. If you didn't log in, please change your password immediately.
+
+Best regards,
+NITTE Merchandise Shop Team
+    `.trim();
+
+    const html = `
+<html>
+<body style="font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden;">
+    <div style="padding: 24px; background: #1976d2; color: #fff;">
+      <h2 style="margin: 0;">🔐 New Login Detected</h2>
+    </div>
+    <div style="padding: 24px;">
+      <p>A new login was detected on your account.</p>
+      <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Email</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${email}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Login Method</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${loginMethod}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Time</td><td style="padding: 8px;">${loginTime || new Date().toISOString()}</td></tr>
+      </table>
+      <p style="color: #d32f2f; font-weight: bold;">If this wasn't you, please change your password immediately.</p>
+    </div>
+    <div style="padding: 16px 24px; background: #fafafa; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
+      NITTE Merchandise Shop
+    </div>
+  </div>
+</body>
+</html>`.trim();
+
+    return this.sendEmail(email, subject, text, html);
+  }
+
+  /**
+   * Send signup confirmation email
+   */
+  async sendSignupConfirmationEmail(email, name, userType) {
+    const subject = '🎉 Welcome to NITTE Merchandise Shop!';
+    const text = `
+Hi ${name},
+
+Thank you for registering on the NITTE Merchandise Shop!
+
+Your Details:
+- Email: ${email}
+- Account Type: ${userType}
+- Status: Pending Admin Approval
+
+Your account is currently pending admin approval. You'll receive an email once your account has been reviewed.
+
+Best regards,
+NITTE Merchandise Shop Team
+    `.trim();
+
+    const html = `
+<html>
+<body style="font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden;">
+    <div style="padding: 24px; background: #4caf50; color: #fff;">
+      <h2 style="margin: 0;">🎉 Welcome to NITTE Merchandise Shop!</h2>
+    </div>
+    <div style="padding: 24px;">
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>Thank you for registering!</p>
+      <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Email</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${email}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Account Type</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${userType}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Status</td><td style="padding: 8px;"><span style="color: #ff9800; font-weight: bold;">⏳ Pending Approval</span></td></tr>
+      </table>
+      <p>Your account is currently pending admin approval. You'll receive an email once your account has been reviewed.</p>
+    </div>
+    <div style="padding: 16px 24px; background: #fafafa; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
+      NITTE Merchandise Shop
+    </div>
+  </div>
+</body>
+</html>`.trim();
+
+    return this.sendEmail(email, subject, text, html);
+  }
+
+  /**
+   * Send email verification link
+   */
+  async sendEmailVerificationEmail(email, name, verificationToken) {
+    const verifyUrl = `${process.env.API_BASE_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/api/v1/auth/verify-email/${verificationToken}`;
+    const subject = '📧 Verify Your Email - NITTE Merchandise Shop';
+    const text = `
+Hi ${name},
+
+Thank you for registering on the NITTE Merchandise Shop!
+
+Please verify your email address by clicking the link below:
+
+${verifyUrl}
+
+This link will expire once used. If you did not create an account, please ignore this email.
+
+Best regards,
+NITTE Merchandise Shop Team
+    `.trim();
+
+    const html = `
+<html>
+<body style="font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden;">
+    <div style="padding: 24px; background: #1976d2; color: #fff;">
+      <h2 style="margin: 0;">📧 Verify Your Email Address</h2>
+    </div>
+    <div style="padding: 24px;">
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>Thank you for registering! Please verify your email address to complete your registration.</p>
+      <div style="margin: 24px 0; text-align: center;">
+        <a href="${verifyUrl}" style="display: inline-block; padding: 14px 32px; background: #4caf50; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+          ✓ Verify My Email
+        </a>
+      </div>
+      <p style="font-size: 13px; color: #666;">Or copy and paste this link in your browser:</p>
+      <p style="font-size: 12px; color: #888; word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 4px;">${verifyUrl}</p>
+      <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+      <p style="font-size: 12px; color: #888;">If you did not create an account, please ignore this email.</p>
+    </div>
+    <div style="padding: 16px 24px; background: #fafafa; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
+      NITTE Merchandise Shop
+    </div>
+  </div>
+</body>
+</html>`.trim();
+
+    return this.sendEmail(email, subject, text, html);
+  }
+
+  /**
+   * Send email confirmed success notification
+   */
+  async sendEmailConfirmedEmail(email, name) {
+    const subject = '✓ Email Verified - NITTE Merchandise Shop';
+    const text = `
+Hi ${name},
+
+Your email address has been verified successfully!
+
+Your account is now pending admin approval. You will receive another email once an admin has reviewed your registration.
+
+What happens next:
+1. An admin will review your registration details
+2. You will receive an approval or rejection email
+3. Once approved, you can log in and start shopping
+
+Best regards,
+NITTE Merchandise Shop Team
+    `.trim();
+
+    const html = `
+<html>
+<body style="font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden;">
+    <div style="padding: 24px; background: #4caf50; color: #fff;">
+      <h2 style="margin: 0;">✓ Email Verified Successfully!</h2>
+    </div>
+    <div style="padding: 24px;">
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>Your email address has been verified successfully!</p>
+      <div style="margin: 20px 0; padding: 16px; background: #e8f5e9; border-radius: 6px; border-left: 4px solid #4caf50;">
+        <p style="margin: 0; color: #2e7d32; font-weight: bold;">What happens next?</p>
+        <ol style="margin: 10px 0 0; padding-left: 20px; color: #333;">
+          <li>An admin will review your registration details</li>
+          <li>You will receive an approval or rejection email</li>
+          <li>Once approved, you can log in and start shopping!</li>
+        </ol>
+      </div>
+      <p>Your account status: <strong style="color: #ff9800;">⏳ Pending Admin Approval</strong></p>
+    </div>
+    <div style="padding: 16px 24px; background: #fafafa; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
+      NITTE Merchandise Shop
+    </div>
+  </div>
+</body>
+</html>`.trim();
+
+    return this.sendEmail(email, subject, text, html);
+  }
+
+  /**
    * Disconnect email service
    */
   async disconnect() {

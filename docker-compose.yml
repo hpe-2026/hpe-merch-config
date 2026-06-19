@@ -289,6 +289,8 @@ services:
     container_name: nitte-notifications
     environment:
       KAFKA_BROKERS: kafka:9092
+      KAFKA_CLIENT_ID: notification-service
+      KAFKA_CONSUMER_GROUP: notification-service
       NOTIFICATION_EMAIL: notifications@nitte.edu
       # ── Slack notifications ───────────────────────
       # Set SLACK_WEBHOOK_URL in .env (see .env.example)
@@ -308,7 +310,12 @@ services:
       TICKET_ENABLED: "true"
       TICKET_PROVIDER: console
       TICKET_ENDPOINT: ""
+      # ── Admin notification emails ──────────────────
       KEYCLOAK_ADMIN_EMAILS: ${KEYCLOAK_ADMIN_EMAILS:-internal-admin@nitte.ac.in}
+      ADMIN_NOTIFICATION_EMAILS: ${ADMIN_NOTIFICATION_EMAILS:-internal-admin@nitte.ac.in}
+      # ── Verification link URLs ─────────────────────
+      API_BASE_URL: http://localhost:3000
+      FRONTEND_URL: http://localhost:5173
     depends_on:
       - kafka
     restart: unless-stopped

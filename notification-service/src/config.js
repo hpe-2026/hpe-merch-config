@@ -14,6 +14,9 @@ const config = {
       userRejected: 'user-rejected',
       unverifiedUsers: 'unverified-users',
       keycloakEvents: 'keycloak-events',
+      orderEvents: 'order-events',
+      productEvents: 'product-events',
+      userActivity: 'user-activity',
     },
     connectionTimeout: 3000,
     requestTimeout: 30000,
@@ -57,6 +60,12 @@ const config = {
       attempts: 3,
       delayMs: 1000,
     },
+  },
+
+  // Admin notification recipients
+  admin: {
+    emails: (process.env.ADMIN_NOTIFICATION_EMAILS || process.env.KEYCLOAK_ADMIN_EMAILS || 'internal-admin@nitte.ac.in')
+      .split(',').map(s => s.trim()).filter(Boolean),
   },
 };
 

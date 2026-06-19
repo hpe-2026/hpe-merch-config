@@ -102,6 +102,12 @@ const userSchema = new mongoose.Schema(
     // Correlation ID for Kafka event tracing
     correlation_id: { type: String, default: null, index: true },
 
+    // Email verification
+    email_verified: { type: Boolean, default: false },
+    email_verification_token: { type: String, default: null, index: true },
+    email_verification_sent_at: { type: Date, default: null },
+    email_verified_at: { type: Date, default: null },
+
     // Metadata
     metadata: { type: Map, of: String, default: new Map() },
   },

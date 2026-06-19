@@ -313,6 +313,17 @@ router.post(
       };
 
       const product = await pythonServiceClient.createProduct(productData);
+
+      // Publish product created event to Kafka for email notifications
+      const kafkaProducer = req.app?.locals?.kafkaProducer;
+      if (kafkaProducer) {
+        try {
+          await kafkaProducer.publishProductCreatedEvent(product, req.user?.email);
+        } catch (kafkaErr) {
+          logger.warn('Failed to publish product:created event:', kafkaErr.message);
+        }
+      }
+
       res.status(201).json({
         success: true,
         message: 'Product created successfully',
@@ -350,6 +361,17 @@ router.put(
       delete productData.merchant_id;
 
       const product = await pythonServiceClient.updateProduct(id, productData);
+
+      // Publish product updated event to Kafka for email notifications
+      const kafkaProducer = req.app?.locals?.kafkaProducer;
+      if (kafkaProducer) {
+        try {
+          await kafkaProducer.publishProductUpdatedEvent(id, productData, req.user?.email);
+        } catch (kafkaErr) {
+          logger.warn('Failed to publish product:updated event:', kafkaErr.message);
+        }
+      }
+
       res.status(200).json({
         success: true,
         message: 'Product updated successfully',
@@ -381,6 +403,17 @@ router.delete(
     try {
       const { id } = req.params;
       await pythonServiceClient.deleteProduct(id);
+
+      // Publish product deleted event to Kafka for email notifications
+      const kafkaProducer = req.app?.locals?.kafkaProducer;
+      if (kafkaProducer) {
+        try {
+          await kafkaProducer.publishProductDeletedEvent(id, req.user?.email);
+        } catch (kafkaErr) {
+          logger.warn('Failed to publish product:deleted event:', kafkaErr.message);
+        }
+      }
+
       res.status(200).json({
         success: true,
         message: 'Product deleted successfully',

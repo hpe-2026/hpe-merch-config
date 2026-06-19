@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { body, validationResult } from 'express-validator';
 import logger from '../config/logger.js';
 import config from '../config/index.js';
@@ -113,6 +114,7 @@ router.post('/signup', signupValidator, handleValidationErrors, async (req, res)
     }
 
     // Create user verification record
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
     const newUser = new User({
       user_id: keycloakUserId,
       email,
@@ -123,12 +125,31 @@ router.post('/signup', signupValidator, handleValidationErrors, async (req, res)
       user_type,
       password: hashedPassword,
       status: 'pending',
+      email_verified: false,
+      email_verification_token: emailVerificationToken,
+      email_verification_sent_at: new Date(),
       registration_timestamp: new Date(),
     });
 
     await newUser.save();
     userRegistrationsTotal.inc({ status: 'pending' });
     logger.info('User registered', { email, user_type, alumni_id: isAlumni ? alumni_id : null, keycloakUserId });
+
+    // Publish user signup event to Kafka for email notifications (includes verification link)
+    const kafkaProducer = req.app?.locals?.kafkaProducer;
+    if (kafkaProducer) {
+      try {
+        await kafkaProducer.publishUserSignupEvent(newUser);
+        // Publish email verification event
+        await kafkaProducer.publishEmailVerificationEvent(
+          email,
+          name,
+          emailVerificationToken
+        );
+      } catch (kafkaErr) {
+        logger.warn('Failed to publish user:signup event:', kafkaErr.message);
+      }
+    }
 
     const token = jwt.sign(
       {
@@ -215,6 +236,16 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
 
         logger.info('User logged in via Keycloak:', email);
 
+        // Publish login event to Kafka for email notifications
+        const kafkaProducer = req.app?.locals?.kafkaProducer;
+        if (kafkaProducer) {
+          try {
+            await kafkaProducer.publishUserLoginEvent(email, 'keycloak');
+          } catch (kafkaErr) {
+            logger.warn('Failed to publish user:login event:', kafkaErr.message);
+          }
+        }
+
         return res.status(200).json({
           success: true,
           message: 'Login successful',
@@ -280,6 +311,16 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
 
     logger.info('User logged in via local fallback:', email);
 
+    // Publish login event to Kafka for email notifications
+    const kafkaProducerLocal = req.app?.locals?.kafkaProducer;
+    if (kafkaProducerLocal) {
+      try {
+        await kafkaProducerLocal.publishUserLoginEvent(email, 'local');
+      } catch (kafkaErr) {
+        logger.warn('Failed to publish user:login event:', kafkaErr.message);
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -311,6 +352,132 @@ router.post('/login', loginValidator, handleValidationErrors, async (req, res) =
     });
   }
 });
+
+/**
+ * GET /api/v1/auth/verify-email/:token
+ * Verify user's email address via token link
+ */
+router.get('/verify-email/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification token is required',
+      });
+    }
+
+    // Find user by verification token
+    const user = await User.findOne({ email_verification_token: token });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invalid or expired verification token',
+      });
+    }
+
+    if (user.email_verified) {
+      return res.status(200).json({
+        success: true,
+        message: 'Email already verified',
+      });
+    }
+
+    // Mark email as verified
+    user.email_verified = true;
+    user.email_verified_at = new Date();
+    user.email_verification_token = null; // Invalidate token after use
+    await user.save();
+
+    logger.info('Email verified successfully', { email: user.email });
+
+    // Publish email confirmed event
+    const kafkaProducer = req.app?.locals?.kafkaProducer;
+    if (kafkaProducer) {
+      try {
+        await kafkaProducer.publishEmailConfirmedEvent(user.email, user.name);
+      } catch (kafkaErr) {
+        logger.warn('Failed to publish user:email-confirmed event:', kafkaErr.message);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: '✓ Email verified successfully! Your account is now pending admin approval.',
+      data: {
+        email: user.email,
+        email_verified: true,
+        status: user.status,
+      },
+    });
+  } catch (error) {
+    logger.error('Email verification error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Email verification failed',
+    });
+  }
+});
+
+/**
+ * POST /api/v1/auth/resend-verification
+ * Resend verification email to user
+ */
+router.post('/resend-verification',
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+      }
+
+      if (user.email_verified) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email is already verified',
+        });
+      }
+
+      // Generate new token
+      const newToken = crypto.randomBytes(32).toString('hex');
+      user.email_verification_token = newToken;
+      user.email_verification_sent_at = new Date();
+      await user.save();
+
+      // Publish verification email event
+      const kafkaProducer = req.app?.locals?.kafkaProducer;
+      if (kafkaProducer) {
+        try {
+          await kafkaProducer.publishEmailVerificationEvent(email, user.name, newToken);
+        } catch (kafkaErr) {
+          logger.warn('Failed to publish email verification event:', kafkaErr.message);
+        }
+      }
+
+      logger.info('Verification email resent', { email });
+
+      res.status(200).json({
+        success: true,
+        message: 'Verification email has been resent. Please check your inbox.',
+      });
+    } catch (error) {
+      logger.error('Resend verification error:', error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to resend verification email',
+      });
+    }
+  }
+);
 
 /**
  * Middleware to verify JWT token
