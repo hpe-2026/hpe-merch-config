@@ -30,9 +30,9 @@ data:
         pipeline_stages:
           - cri: {}
           - regex:
-              expression: '/var/log/pods/nitte_(?P<service>[a-z][-a-z0-9]*?)(?:-[a-z0-9]{5,10}){1,2}_[^/]+/(?P<container>[^/]+)/'
+              expression: '/var/log/pods/nitte_(?P<pod_name>[^_]+)[^/]+/(?P<container>[^/]+)/'
           - labels:
-              service:
+              pod_name:
               container:
           - labeldrop:
               - filename
