@@ -1,233 +1,107 @@
 # Kubernetes Deployment Guide — NITTE Alumni Merchandise Shop
 
-## Desired Architecture
+## Server Architecture
 
 ```
 Your System (Windows/Mac/Linux)
         │
         │  ssh arcade@117.250.206.138
         ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                    Ubuntu Desktop (Host)                              │
-│                    arcade-HP                                          │
-│                                                                      │
-│   ┌──────────────── VirtualBox ─────────────────────────────────┐   │
-│   │                                                             │   │
-│   │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐      │   │
-│   │  │  mastervm   │   │   dev-vm    │   │   prod-vm   │      │   │
-│   │  │  (Master)   │   │ (Worker 1)  │   │ (Worker 2)  │      │   │
-│   │  │  6GB/100GB  │   │  8GB/150GB  │   │  8GB/150GB  │      │   │
-│   │  └─────────────┘   └─────────────┘   └─────────────┘      │   │
-│   │                                                             │   │
-│   │         RKE2 Kubernetes Cluster (Rancher)                   │   │
-│   │    Single Master + 2 Worker Nodes  (22GB total RAM)         │   │
-│   │                                                             │   │
-│   │  ┌───────────────────────────────────────────────────────┐  │   │
-│   │  │              Istio Service Mesh (mTLS)                │  │   │
-│   │  │                                                       │  │   │
-│   │  │  App: Frontend · Admin · Merchant · Backend · Python  │  │   │
-│   │  │  Data: MongoDB Sharded · Kafka · MinIO                │  │   │
-│   │  │  Auth: Keycloak · WAF                                 │  │   │
-│   │  │  Obs: Prometheus · Grafana · Loki · Jaeger · GoAlert  │  │   │
-│   │  │  CI/CD: Jenkins · SonarQube · Nexus · ArgoCD          │  │   │
-│   │  │  Docs: Redocly (OpenAPI + SwaggerUI)                  │  │   │
-│   │  │                                                       │  │   │
-│   │  └───────────────────────────────────────────────────────┘  │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│          Ubuntu Desktop (Host)              │
+│          arcade-HP                          │
+│                                             │
+│   ┌───────────── VirtualBox ──────────────┐ │
+│   │                                       │ │
+│   │  ┌───────────┐ ┌──────────┐ ┌──────────┐ │
+│   │  │ Master VM │ │Worker1 VM│ │Worker2 VM│ │
+│   │  │192.168.56 │ │192.168.56│ │192.168.56│ │
+│   │  │   .10     │ │   .11    │ │   .12    │ │
+│   │  │  100GB    │ │  150GB   │ │  150GB   │ │
+│   │  └───────────┘ └──────────┘ └──────────┘ │
+│   │                                       │ │
+│   │         RKE2 Kubernetes Cluster       │ │
+│   │    Single Master + 2 Worker Nodes     │ │
+│   └───────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
 ```
 
-> **VM Names (actual):** `mastervm`, `dev-vm`, `prod-vm`
-> Verify with `VBoxManage list runningvms` on the host.
-> **Total cluster RAM: 22GB** (6+8+8). Tight for the full stack — see resource notes below.
+## Prerequisites
 
----
+- SSH access to `arcade@117.250.206.138` (password will be provided)
+- VMs should be running (verify with `VBoxManage list running vms` on the host)
+- RKE2 cluster already provisioned on the 3 VMs
 
-## Resource Planning (IMPORTANT — 22GB total)
-
-The cluster has **22GB total RAM** (mastervm 6GB + dev-vm 8GB + prod-vm 8GB). The full stack with Istio is tight. Approximate memory budget:
-
-| Group | Components | ~RAM |
-|-------|-----------|------|
-| Kubernetes + RKE2 system | etcd, control plane, CNI, kubelet | ~3 GB |
-| Istio | istiod, ingress, sidecars (×~25 pods) | ~2 GB |
-| Data layer | MongoDB (4 pods), Kafka, Zookeeper, MinIO | ~5 GB |
-| Identity | Keycloak | ~1 GB |
-| Apps | backend, python, 3 frontends, notification | ~2 GB |
-| Observability | Prometheus, Grafana, Loki, Jaeger, promtail | ~3 GB |
-| CI/CD | Jenkins, Nexus, SonarQube, ArgoCD | ~4 GB |
-| New | GoAlert, Redocly, WAF | ~1 GB |
-| **Total** | | **~21 GB** |
-
-**This leaves almost no headroom.** Recommendations:
-- **Phase the deployment** — bring up infra + apps first, verify, then add CI/CD and observability
-- **SonarQube is heavy (~2GB)** — run it only during builds, scale to 0 otherwise: `kubectl scale deploy/sonarqube --replicas=0`
-- **Nexus is heavy (~1.5GB)** — keep if you need the registry; otherwise use the lightweight local `registry:2`
-- Consider running **Jenkins + SonarQube on dev-vm** and keeping **prod-vm** for runtime workloads
-- If pods get `Evicted` or `OOMKilled`, scale down non-critical tools
-
----
-
-
-
-| Category | Component | Purpose | Status |
-|----------|-----------|---------|--------|
-| **Cluster** | RKE2 | Kubernetes distribution (Rancher) | To provision |
-| **Cluster** | Rancher UI | Cluster management dashboard | To install |
-| **Service Mesh** | Istio | mTLS, circuit breakers, rate limiting | To install |
-| **Service Mesh** | Kiali | Istio visualization dashboard | To install |
-| **GitOps** | ArgoCD | Continuous delivery from Git | To install |
-| **CI/CD** | Jenkins | Build pipelines | To deploy |
-| **CI/CD** | SonarQube | Code quality & security scanning | To deploy |
-| **Artifacts** | Sonatype Nexus | Docker/npm/Maven registry | To deploy |
-| **Security** | Keycloak | Identity & access management (OIDC) | To deploy |
-| **Security** | WAF | Web Application Firewall (ModSecurity/Coraza) | To deploy |
-| **Security** | Istio AuthorizationPolicy | Service-to-service access control | To configure |
-| **Storage** | MinIO | S3-compatible object storage | To deploy |
-| **Database** | MongoDB Sharded | Config + 2 shards + mongos | To deploy |
-| **Streaming** | Kafka + Zookeeper | Event-driven messaging | To deploy |
-| **Monitoring** | Prometheus | Metrics collection | To deploy |
-| **Monitoring** | Grafana | Dashboards & alerting | To deploy |
-| **Monitoring** | GoAlert | On-call alerting & escalation | To deploy |
-| **Logging** | Loki | Log aggregation | To deploy |
-| **Logging** | Promtail | Log shipping | To deploy |
-| **Tracing** | Jaeger | Distributed tracing | To deploy |
-| **API Docs** | Redocly + SwaggerUI | OpenAPI documentation portal | To deploy |
-| **App** | Frontend (Storefront) | Alumni shopping UI | To deploy |
-| **App** | Admin Dashboard | User verification, DB mgmt | To deploy |
-| **App** | Merchant Portal | Product/order management | To deploy |
-| **App** | Node Backend | Express.js API gateway | To deploy |
-| **App** | Python Service | FastAPI catalog/orders | To deploy |
-| **App** | Notification Service | Kafka consumer → Email/Slack | To deploy |
-
----
-
-## What Needs to Be Done on the Server
-
-### Phase 0: Server Access & VM Verification
+## SSH Access Quick Reference
 
 ```bash
-# SSH into Ubuntu Desktop host
+# Step 1: SSH into Ubuntu Desktop
 ssh arcade@117.250.206.138
 
-# Verify VMs are running
-VBoxManage list runningvms
+# Step 2: SSH into VMs (from inside Ubuntu Desktop)
+ssh master@192.168.56.10    # Master node
+ssh worker1@192.168.56.11   # Worker 1
+ssh worker2@192.168.56.12   # Worker 2
 
-# SSH into master node
-ssh master@192.168.56.10
-
-# Verify RKE2 cluster health
-sudo kubectl get nodes
-# Expected: mastervm (Ready, control-plane), dev-vm (Ready), prod-vm (Ready)
+# Logout: type 'logout' or Ctrl+D at each level
 ```
 
 ---
 
-### Phase 1: RKE2 Cluster Setup & kubectl Access
+## Deployment Plan
 
-**What:** Configure kubectl, create namespace, set up kubeconfig.
+### Phase 1: Cluster Verification & Setup
+
+#### 1.1 Verify RKE2 Cluster is Healthy
 
 ```bash
-# On master node
+# SSH into master node
+ssh arcade@117.250.206.138
+ssh master@192.168.56.10
+
+# Check cluster nodes
+sudo kubectl get nodes
+
+# Expected output:
+# NAME         STATUS   ROLES                       AGE   VERSION
+# mastervm     Ready    control-plane,etcd,master   ...   v1.28.x+rke2r1
+# workervm1    Ready    <none>                      ...   v1.28.x+rke2r1
+# workervm2    Ready    <none>                      ...   v1.28.x+rke2r1
+
+# Check system pods
+sudo kubectl get pods -n kube-system
+```
+
+#### 1.2 Set Up kubectl Access
+
+```bash
+# On master node, make kubectl accessible without sudo
 mkdir -p ~/.kube
 sudo cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
 sudo chown $(id -u):$(id -g) ~/.kube/config
 export KUBECONFIG=~/.kube/config
-echo 'export KUBECONFIG=~/.kube/config' >> ~/.bashrc
 
-# Create project namespace
+# Add to .bashrc for persistence
+echo 'export KUBECONFIG=~/.kube/config' >> ~/.bashrc
+```
+
+#### 1.3 Create Namespace
+
+```bash
 kubectl create namespace nitte-merch
 kubectl config set-context --current --namespace=nitte-merch
 ```
 
 ---
 
-### Phase 2: Install Istio Service Mesh
+### Phase 2: Container Registry Setup
 
-**What:** Install Istio with demo profile for mTLS, traffic management, and observability.
+Since there's no external registry, we'll build images locally and use a lightweight registry inside the cluster.
 
-```bash
-# Download istioctl on master node
-curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.20.0 sh -
-cd istio-1.20.0
-export PATH=$PWD/bin:$PATH
-echo 'export PATH=~/istio-1.20.0/bin:$PATH' >> ~/.bashrc
-
-# Install Istio (demo profile includes ingress gateway + kiali + prometheus)
-istioctl install --set profile=demo -y
-
-# Enable sidecar injection for our namespace
-kubectl label namespace nitte-merch istio-injection=enabled
-
-# Verify
-kubectl get pods -n istio-system
-# Expected: istiod, istio-ingressgateway, istio-egressgateway all Running
-
-# Install Kiali (Istio dashboard)
-kubectl apply -f istio-1.20.0/samples/addons/kiali.yaml
-kubectl apply -f istio-1.20.0/samples/addons/prometheus.yaml
-```
-
----
-
-### Phase 3: Install ArgoCD (GitOps)
-
-**What:** ArgoCD watches the Git repo and auto-deploys changes to the cluster.
+#### 2.1 Deploy Local Docker Registry
 
 ```bash
-# Create ArgoCD namespace
-kubectl create namespace argocd
-
-# Install ArgoCD
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-# Wait for pods
-kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
-
-# Expose ArgoCD UI via NodePort
-kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "ports": [{"port": 443, "targetPort": 8080, "nodePort": 30443}]}}'
-
-# Get initial admin password
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-echo
-
-# Access: https://192.168.56.10:30443
-# Username: admin
-# Password: (from above command)
-```
-
-**Configure ArgoCD to watch the repo:**
-```bash
-# Install ArgoCD CLI
-curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-chmod +x argocd
-sudo mv argocd /usr/local/bin/
-
-# Login
-argocd login 192.168.56.10:30443 --insecure --username admin --password <password>
-
-# Add the Git repo
-argocd repo add https://github.com/radheshpai87/learning-devops.git
-
-# Create the application (watches k8s/ folder)
-argocd app create nitte-merch \
-  --repo https://github.com/radheshpai87/learning-devops.git \
-  --path k8s \
-  --dest-server https://kubernetes.default.svc \
-  --dest-namespace nitte-merch \
-  --sync-policy automated \
-  --auto-prune \
-  --self-heal
-```
-
----
-
-### Phase 4: Container Registry (Local)
-
-**What:** Deploy a local Docker registry inside the cluster for custom images.
-
-```bash
-# Deploy registry
+# On master node
 kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
@@ -243,8 +117,6 @@ spec:
     metadata:
       labels:
         app: registry
-      annotations:
-        sidecar.istio.io/inject: "false"
     spec:
       containers:
       - name: registry
@@ -274,9 +146,12 @@ spec:
 EOF
 ```
 
-**Configure all nodes to trust the local registry:**
+#### 2.2 Configure Nodes to Trust Local Registry
+
+On each node (master, worker1, worker2):
+
 ```bash
-# On EACH node (master, worker1, worker2):
+# Add insecure registry to RKE2 containerd config
 sudo mkdir -p /etc/rancher/rke2
 sudo tee /etc/rancher/rke2/registries.yaml <<EOF
 mirrors:
@@ -285,133 +160,211 @@ mirrors:
       - "http://192.168.56.10:30500"
 EOF
 
-# Restart RKE2 (one node at a time!)
-# Master: sudo systemctl restart rke2-server
-# Workers: sudo systemctl restart rke2-agent
+# Restart RKE2 (do one node at a time!)
+# On master:
+sudo systemctl restart rke2-server
+# On workers:
+sudo systemctl restart rke2-agent
 ```
 
-**Build and push images:**
+#### 2.3 Clone Repo & Build Images
+
 ```bash
-cd ~/learning-devops
+# On master node
+cd ~
+git clone https://github.com/radheshpai87/learning-devops.git
+cd learning-devops
+
+# Build and push each service image
 REGISTRY="192.168.56.10:30500"
 
+# Node Backend
 docker build -t $REGISTRY/node-backend:1.0.0 ./node-backend
+docker push $REGISTRY/node-backend:1.0.0
+
+# Python Service
 docker build -t $REGISTRY/python-service:1.0.0 ./python-service
+docker push $REGISTRY/python-service:1.0.0
+
+# Frontend
 docker build -t $REGISTRY/frontend:1.0.0 ./frontend
+docker push $REGISTRY/frontend:1.0.0
+
+# Admin Dashboard
 docker build -t $REGISTRY/admin-dashboard:1.0.0 ./admin-dashboard
+docker push $REGISTRY/admin-dashboard:1.0.0
+
+# Merchant Portal
 docker build -t $REGISTRY/merchant-portal:1.0.0 ./merchant-portal
+docker push $REGISTRY/merchant-portal:1.0.0
+
+# Notification Service
 docker build -t $REGISTRY/notification-service:1.0.0 ./notification-service
+docker push $REGISTRY/notification-service:1.0.0
+
+# Loki RBAC Proxy
 docker build -t $REGISTRY/loki-rbac-proxy:1.0.0 ./loki-rbac-proxy
-
-for img in node-backend python-service frontend admin-dashboard merchant-portal notification-service loki-rbac-proxy; do
-  docker push $REGISTRY/$img:1.0.0
-done
+docker push $REGISTRY/loki-rbac-proxy:1.0.0
 ```
 
 ---
 
-### Phase 5: Deploy WAF (Web Application Firewall)
+### Phase 3: Deploy Infrastructure Services
 
-**What:** ModSecurity/Coraza WAF in front of the Istio ingress gateway to block SQL injection, XSS, etc.
+#### 3.1 MongoDB (Sharded Cluster)
 
 ```bash
-# Option A: Use Istio's built-in WAF via EnvoyFilter with Coraza
-kubectl apply -f - <<EOF
-apiVersion: networking.istio.io/v1alpha3
-kind: EnvoyFilter
-metadata:
-  name: waf-filter
-  namespace: istio-system
-spec:
-  workloadSelector:
-    labels:
-      istio: ingressgateway
-  configPatches:
-  - applyTo: HTTP_FILTER
-    match:
-      context: GATEWAY
-      listener:
-        filterChain:
-          filter:
-            name: "envoy.filters.network.http_connection_manager"
-            subFilter:
-              name: "envoy.filters.http.router"
-    patch:
-      operation: INSERT_BEFORE
-      value:
-        name: envoy.filters.http.wasm
-        typed_config:
-          "@type": type.googleapis.com/udpa.type.v1.TypedStruct
-          type_url: type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
-          value:
-            config:
-              name: "coraza-filter"
-              root_id: ""
-              vm_config:
-                vm_id: "coraza-filter"
-                runtime: "envoy.wasm.runtime.v8"
-                code:
-                  remote:
-                    http_uri:
-                      uri: "https://github.com/corazawaf/coraza-proxy-wasm/releases/download/v0.5.0/coraza-proxy-wasm.wasm"
-                      timeout: 10s
-              configuration:
-                "@type": "type.googleapis.com/google.protobuf.StringValue"
-                value: |
-                  {
-                    "directives_map": {
-                      "default": [
-                        "SecRuleEngine On",
-                        "SecRule REQUEST_URI \"@rx /etc/passwd\" \"id:1,phase:1,deny,status:403,msg:'Path traversal attempt'\""
-                      ]
-                    },
-                    "default_directives": "default"
-                  }
-EOF
+# Create persistent volumes, config server, shards, mongos
+kubectl apply -f k8s/mongodb/
 ```
 
-**Option B (simpler): Deploy ModSecurity as a reverse proxy in front of ingress:**
+Manifest structure needed:
+- `mongodb-configserver-statefulset.yaml` — Config replica set
+- `mongodb-shard1-statefulset.yaml` — Shard 1 (South/West)
+- `mongodb-shard2-statefulset.yaml` — Shard 2 (North/East)
+- `mongodb-mongos-deployment.yaml` — Router
+- `mongodb-init-job.yaml` — Sharding initialization
+
+#### 3.2 Kafka + Zookeeper
+
 ```bash
-# Deploy ModSecurity nginx as a WAF gateway
-kubectl apply -f k8s/waf/modsecurity-deployment.yaml
+kubectl apply -f k8s/kafka/
 ```
+
+- `zookeeper-statefulset.yaml`
+- `kafka-statefulset.yaml`
+
+#### 3.3 Keycloak (Identity Provider)
+
+```bash
+kubectl apply -f k8s/keycloak/
+```
+
+- `keycloak-deployment.yaml` — With realm import
+- `keycloak-service.yaml` — ClusterIP + NodePort for external access
+
+#### 3.4 MinIO (Object Storage)
+
+```bash
+kubectl apply -f k8s/minio/
+```
+
+- `minio-statefulset.yaml`
+- `minio-init-job.yaml` — Bucket creation
 
 ---
 
-### Phase 6: Deploy GoAlert (On-Call Alerting)
+### Phase 4: Deploy Application Services
 
-**What:** GoAlert handles alert escalation, on-call schedules, and notifications. Integrates with Prometheus Alertmanager.
+#### 4.1 Node Backend API
 
-```bash
-# Deploy GoAlert
-kubectl apply -f - <<EOF
+```yaml
+# k8s/node-backend/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: goalert
+  name: node-backend
   namespace: nitte-merch
-  labels:
-    app: goalert
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: goalert
+      app: node-backend
   template:
     metadata:
       labels:
-        app: goalert
+        app: node-backend
     spec:
       containers:
-      - name: goalert
-        image: goalert/goalert:latest
+      - name: node-backend
+        image: 192.168.56.10:30500/node-backend:1.0.0
         ports:
-        - containerPort: 8081
+        - containerPort: 3000
         env:
-        - name: GOALERT_DB_URL
-          value: "postgres://goalert:goalert@goalert-postgres:5432/goalert?sslmode=disable"
-        - name: GOALERT_PUBLIC_URL
-          value: "http://192.168.56.10:30084"
+        - name: NODE_ENV
+          value: "production"
+        - name: MONGODB_URL
+          value: "mongodb://mongodb-mongos:27017/nitte_merch"
+        - name: PYTHON_SERVICE_URL
+          value: "http://python-service:8000"
+        - name: KEYCLOAK_SERVER_URL
+          value: "http://keycloak:8080"
+        - name: KAFKA_BROKERS
+          value: "kafka:9092"
+        - name: S3_ENDPOINT
+          value: "http://minio:9000"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-secret
+              key: access-key
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-secret
+              key: secret-key
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-backend
+  namespace: nitte-merch
+spec:
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: node-backend
+```
+
+#### 4.2 Python Service
+
+```yaml
+# k8s/python-service/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-service
+  namespace: nitte-merch
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: python-service
+  template:
+    metadata:
+      labels:
+        app: python-service
+    spec:
+      containers:
+      - name: python-service
+        image: 192.168.56.10:30500/python-service:1.0.0
+        ports:
+        - containerPort: 8000
+        env:
+        - name: MONGODB_URL
+          value: "mongodb://mongodb-mongos:27017/nitte_merch"
+        - name: JAEGER_AGENT_HOST
+          value: "jaeger"
         resources:
           requests:
             memory: "128Mi"
@@ -419,107 +372,51 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "300m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: goalert
-  namespace: nitte-merch
-spec:
-  type: NodePort
-  ports:
-  - port: 8081
-    targetPort: 8081
-    nodePort: 30084
-  selector:
-    app: goalert
-EOF
-
-# GoAlert needs PostgreSQL - deploy a small instance
-kubectl apply -f - <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: goalert-postgres
-  namespace: nitte-merch
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: goalert-postgres
-  template:
-    metadata:
-      labels:
-        app: goalert-postgres
-    spec:
-      containers:
-      - name: postgres
-        image: postgres:15-alpine
-        env:
-        - name: POSTGRES_USER
-          value: "goalert"
-        - name: POSTGRES_PASSWORD
-          value: "goalert"
-        - name: POSTGRES_DB
-          value: "goalert"
-        ports:
-        - containerPort: 5432
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: goalert-postgres
+  name: python-service
   namespace: nitte-merch
 spec:
   ports:
-  - port: 5432
+  - port: 8000
+    targetPort: 8000
   selector:
-    app: goalert-postgres
-EOF
+    app: python-service
 ```
 
-**Configure Alertmanager to send to GoAlert:**
+#### 4.3 Frontend Services (Storefront, Admin, Merchant Portal)
+
+Each frontend is a simple nginx deployment:
+
 ```yaml
-# In alertmanager.yml, add webhook receiver pointing to GoAlert
-receivers:
-  - name: goalert
-    webhook_configs:
-      - url: http://goalert:8081/api/v2/generic/incoming
-```
-
----
-
-### Phase 7: Deploy Redocly (OpenAPI + SwaggerUI)
-
-**What:** Serve interactive API documentation from the OpenAPI spec.
-
-```bash
-kubectl apply -f - <<EOF
+# Example: k8s/frontend/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redocly
+  name: frontend
   namespace: nitte-merch
-  labels:
-    app: redocly
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: redocly
+      app: frontend
   template:
     metadata:
       labels:
-        app: redocly
+        app: frontend
     spec:
       containers:
-      - name: redocly
-        image: redocly/redoc:latest
+      - name: frontend
+        image: 192.168.56.10:30500/frontend:1.0.0
         ports:
-        - containerPort: 80
-        env:
-        - name: SPEC_URL
-          value: "http://node-backend:3000/api/docs/swagger.json"
+        - containerPort: 5173
         resources:
           requests:
             memory: "64Mi"
@@ -531,142 +428,62 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: redocly
+  name: frontend
   namespace: nitte-merch
 spec:
   type: NodePort
   ports:
-  - port: 80
-    targetPort: 80
-    nodePort: 30085
+  - port: 5173
+    targetPort: 5173
+    nodePort: 30173
   selector:
-    app: redocly
-EOF
+    app: frontend
 ```
 
-Access: `http://192.168.56.10:30085`
+Repeat similarly for:
+- `admin-dashboard` → NodePort 30174
+- `merchant-portal` → NodePort 30175
 
 ---
 
-### Phase 8: Deploy Infrastructure Services
+### Phase 5: Deploy Observability Stack
+
+#### 5.1 Prometheus + Grafana
 
 ```bash
-# MongoDB Sharded Cluster
-kubectl apply -f k8s/mongodb.yaml
-
-# Kafka + Zookeeper
-kubectl apply -f k8s/kafka.yaml
-
-# Keycloak
-kubectl apply -f k8s/keycloak.yaml
-
-# MinIO
-kubectl apply -f k8s/minio.yaml
-kubectl apply -f k8s/minio-init.yaml
+kubectl apply -f k8s/monitoring/
 ```
 
----
+- `prometheus-deployment.yaml` + ConfigMap for `prometheus.yml`
+- `grafana-deployment.yaml` + provisioning ConfigMaps
+- `alertmanager-deployment.yaml`
 
-### Phase 9: Deploy Application Services
+#### 5.2 Loki + Promtail
 
 ```bash
-# Backend APIs
-kubectl apply -f k8s/node-backend.yaml
-kubectl apply -f k8s/python-service.yaml
-
-# Frontends
-kubectl apply -f k8s/frontend.yaml
-kubectl apply -f k8s/admin-dashboard.yaml
-kubectl apply -f k8s/merchant-portal.yaml
-
-# Notification service
-kubectl apply -f k8s/notification-service.yaml
+kubectl apply -f k8s/logging/
 ```
 
----
+- `loki-statefulset.yaml`
+- `promtail-daemonset.yaml` — Runs on every node to scrape container logs
+- `loki-rbac-proxy-deployment.yaml`
 
-### Phase 10: Deploy Observability Stack
+#### 5.3 Jaeger (Tracing)
 
 ```bash
-# Monitoring
-kubectl apply -f k8s/prometheus.yaml
-kubectl apply -f k8s/grafana.yaml
-kubectl apply -f k8s/alertmanager.yaml
-
-# Logging
-kubectl apply -f k8s/loki.yaml
-kubectl apply -f k8s/promtail.yaml
-kubectl apply -f k8s/promtail-rbac.yaml
-kubectl apply -f k8s/loki-rbac-proxy.yaml
-
-# Tracing
-kubectl apply -f k8s/jaeger.yaml
+kubectl apply -f k8s/tracing/
 ```
 
----
-
-### Phase 11: Apply Istio Configuration
-
-```bash
-# Gateway, routing, mTLS, circuit breakers, rate limiting
-kubectl apply -f k8s/istio/gateway.yaml
-kubectl apply -f k8s/istio/virtual-services.yaml
-kubectl apply -f k8s/istio/destination-rules.yaml
-kubectl apply -f k8s/istio/peer-authentication.yaml
-kubectl apply -f k8s/istio/authorization-policies.yaml
-kubectl apply -f k8s/istio/rate-limiting.yaml
-kubectl apply -f k8s/istio/service-entries.yaml
-```
+- `jaeger-deployment.yaml` (all-in-one)
 
 ---
 
-### Phase 12: Deploy DevOps Tools
+### Phase 6: Ingress / External Access
 
-```bash
-# Jenkins CI/CD
-kubectl apply -f k8s/jenkins.yaml
+Since this is a VirtualBox setup with no cloud load balancer, use NodePort services to expose apps:
 
-# Nexus Artifact Registry
-kubectl apply -f k8s/nexus.yaml
-
-# ArgoCD already installed in Phase 3
-```
-
----
-
-## Secrets Management
-
-```bash
-kubectl create secret generic nitte-secrets \
-  --from-literal=MONGO_ROOT_USERNAME=admin \
-  --from-literal=MONGO_ROOT_PASSWORD=password \
-  --from-literal=JWT_SECRET=super-secret-key-change-in-production \
-  --from-literal=RAZORPAY_KEY_ID=rzp_test_SkyURyeOfwXob0 \
-  --from-literal=RAZORPAY_KEY_SECRET=5oyFiJoBoScZ3wFDq2wgm4lq \
-  --from-literal=KEYCLOAK_CLIENT_SECRET=nitte-client-secret \
-  --from-literal=KEYCLOAK_ADMIN=admin \
-  --from-literal=KEYCLOAK_ADMIN_PASSWORD=admin \
-  --from-literal=MINIO_ROOT_USER=minioadmin \
-  --from-literal=MINIO_ROOT_PASSWORD=minioadmin123 \
-  -n nitte-merch
-```
-
----
-
-## Node Distribution Strategy
-
-| Node | Role | Services |
-|------|------|----------|
-| **mastervm** (Master, 6GB/100GB) | Control Plane | MongoDB Config, Keycloak, Prometheus, Grafana, Loki, Registry, ArgoCD |
-| **dev-vm** (Worker 1, 8GB/150GB) | Workload | MongoDB Shard 1, Node Backend, Python Service, Frontend, Kafka, Jaeger, SonarQube |
-| **prod-vm** (Worker 2, 8GB/150GB) | Workload | MongoDB Shard 2, Admin, Merchant, MinIO, Nexus, Jenkins, GoAlert, Redocly |
-
----
-
-## External Access (NodePort + SSH Tunneling)
-
-| Service | NodePort | Access URL (from host) |
-|---------|----------|------------------------|
+| Service | NodePort | Access URL |
+|---------|----------|------------|
 | Storefront | 30173 | `http://192.168.56.10:30173` |
 | Admin Dashboard | 30174 | `http://192.168.56.10:30174` |
 | Merchant Portal | 30175 | `http://192.168.56.10:30175` |
@@ -674,75 +491,135 @@ kubectl create secret generic nitte-secrets \
 | Keycloak | 30080 | `http://192.168.56.10:30080` |
 | Grafana | 30001 | `http://192.168.56.10:30001` |
 | Jenkins | 30081 | `http://192.168.56.10:30081` |
-| ArgoCD | 30443 | `https://192.168.56.10:30443` |
-| GoAlert | 30084 | `http://192.168.56.10:30084` |
-| Redocly (API Docs) | 30085 | `http://192.168.56.10:30085` |
-| Kiali (Istio) | 30086 | `http://192.168.56.10:30086` |
-| Nexus | 30082 | `http://192.168.56.10:30082` |
-| MinIO Console | 30901 | `http://192.168.56.10:30901` |
 
-**SSH port-forwarding to access from your laptop:**
+To access from your local machine, set up SSH port forwarding:
+
 ```bash
+# From your Windows/Mac terminal — forward all ports through the arcade host
 ssh -L 5173:192.168.56.10:30173 \
     -L 5174:192.168.56.10:30174 \
     -L 5175:192.168.56.10:30175 \
     -L 3000:192.168.56.10:30000 \
     -L 8080:192.168.56.10:30080 \
     -L 3001:192.168.56.10:30001 \
-    -L 8081:192.168.56.10:30081 \
-    -L 9443:192.168.56.10:30443 \
-    -L 20001:192.168.56.10:30086 \
-    -L 8084:192.168.56.10:30084 \
-    -L 8085:192.168.56.10:30085 \
     arcade@117.250.206.138
 ```
 
-Then open `http://localhost:5173` etc. in your browser.
+Then open `http://localhost:5173` in your browser.
 
 ---
 
-## Summary of What's New (vs current k8s-setup.sh)
+### Phase 7: Secrets Management
 
-| Component | Current (minikube) | Server (RKE2) |
-|-----------|-------------------|---------------|
-| Cluster | minikube (single node) | RKE2 (1 master + 2 workers) |
-| GitOps | Manual kubectl apply | **ArgoCD** (auto-sync from Git) |
-| WAF | None | **Coraza WAF** on Istio ingress |
-| Alerting | Alertmanager only | Alertmanager + **GoAlert** (on-call) |
-| API Docs | SwaggerUI in backend | **Redocly** (standalone OpenAPI portal) |
-| Registry | minikube internal | **Local registry** (NodePort 30500) |
-| Access | Port-forwards | **NodePort + SSH tunneling** |
-| Management | kubectl CLI | **Rancher UI** + ArgoCD dashboard |
+```bash
+# Create secrets for sensitive values
+kubectl create secret generic minio-secret \
+  --from-literal=access-key=minioadmin \
+  --from-literal=secret-key=minioadmin123 \
+  -n nitte-merch
+
+kubectl create secret generic keycloak-secret \
+  --from-literal=admin-user=admin \
+  --from-literal=admin-password=admin \
+  -n nitte-merch
+
+kubectl create secret generic jwt-secret \
+  --from-literal=secret=super-secret-key-change-in-production \
+  -n nitte-merch
+```
 
 ---
 
-## Order of Operations (Step-by-Step)
+### Phase 8: Verify Deployment
 
-1. Verify RKE2 cluster is healthy (3 nodes Ready)
-2. Install Istio service mesh
-3. Install ArgoCD for GitOps
-4. Deploy local container registry
-5. Build and push all Docker images
-6. Create namespace + secrets
-7. Deploy infrastructure (MongoDB, Kafka, Keycloak, MinIO)
-8. Deploy WAF (Coraza on Istio ingress)
-9. Deploy application services
-10. Deploy observability (Prometheus, Grafana, Loki, Jaeger, GoAlert)
-11. Deploy DevOps tools (Jenkins, Nexus)
-12. Deploy Redocly (API docs)
-13. Apply Istio configs (mTLS, routing, circuit breakers)
-14. Configure ArgoCD to auto-sync from Git
-15. Verify all services via NodePort access
-16. Set up SSH tunneling for external access
+```bash
+# Check all pods are running
+kubectl get pods -n nitte-merch
+
+# Check services
+kubectl get svc -n nitte-merch
+
+# Check pod distribution across nodes
+kubectl get pods -n nitte-merch -o wide
+
+# Test backend health
+curl http://192.168.56.10:30000/api/v1/health
+```
+
+---
+
+## Node Distribution Strategy
+
+| Node | Services |
+|------|----------|
+| **Master** (192.168.56.10, 100GB) | MongoDB Config, Keycloak, Prometheus, Grafana, Loki, Registry |
+| **Worker 1** (192.168.56.11, 150GB) | MongoDB Shard 1, Node Backend, Python Service, Frontend, Kafka |
+| **Worker 2** (192.168.56.12, 150GB) | MongoDB Shard 2, Node Backend (replica), Admin, Merchant, MinIO |
+
+Use node affinity or taints/tolerations to control placement:
+
+```yaml
+# Example: pin MongoDB Shard 1 to Worker 1
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - workervm1
+```
+
+---
+
+## Quick Deploy Script
+
+```bash
+#!/bin/bash
+# deploy-all.sh — Run from master node after cloning the repo
+
+set -e
+
+echo "=== Creating namespace ==="
+kubectl create namespace nitte-merch --dry-run=client -o yaml | kubectl apply -f -
+
+echo "=== Creating secrets ==="
+kubectl apply -f k8s/secrets/
+
+echo "=== Deploying infrastructure ==="
+kubectl apply -f k8s/mongodb/
+kubectl apply -f k8s/kafka/
+kubectl apply -f k8s/keycloak/
+kubectl apply -f k8s/minio/
+
+echo "=== Waiting for infrastructure (60s) ==="
+sleep 60
+
+echo "=== Deploying application services ==="
+kubectl apply -f k8s/node-backend/
+kubectl apply -f k8s/python-service/
+kubectl apply -f k8s/frontend/
+kubectl apply -f k8s/admin-dashboard/
+kubectl apply -f k8s/merchant-portal/
+kubectl apply -f k8s/notification-service/
+
+echo "=== Deploying observability ==="
+kubectl apply -f k8s/monitoring/
+kubectl apply -f k8s/logging/
+kubectl apply -f k8s/tracing/
+
+echo "=== Deployment complete ==="
+kubectl get pods -n nitte-merch
+```
 
 ---
 
 ## Important Notes
 
 1. **Don't power off VMs** — other people may be using the cluster
-2. **Don't reboot without coordinating** — inform your group chat
+2. **Don't reboot without informing others** — coordinate on your group chat
 3. **Don't edit Ubuntu Desktop system files** — only work inside VMs
-4. **Logout when done** — 15 min idle will disconnect
-5. **If VMs are not running** — run `VBoxManage startvm <vmname> --type headless` on the host
-6. **Package lock errors** — another user is running apt, wait and retry
-7. **ArgoCD auto-syncs** — push to Git and it deploys automatically (no manual kubectl needed after setup)
+4. **Logout when done** — 15 min idle will disconnect you anyway
+5. **If `VBoxManage list running vms` returns empty** — contact the server admin
+6. **Package lock errors on `apt`** — another user is running apt, wait and retry
