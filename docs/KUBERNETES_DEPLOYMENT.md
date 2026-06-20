@@ -207,11 +207,11 @@ sudo mv argocd /usr/local/bin/
 argocd login 192.168.56.10:30443 --insecure --username admin --password <password>
 
 # Add the Git repo
-argocd repo add https://github.com/radheshpai87/learning-devops.git
+argocd repo add https://github.com/pall111/HPE-merchendise-latest.git
 
 # Create the application (watches k8s/ folder)
 argocd app create nitte-merch \
-  --repo https://github.com/radheshpai87/learning-devops.git \
+  --repo https://github.com/pall111/HPE-merchendise-latest.git \
   --path k8s \
   --dest-server https://kubernetes.default.svc \
   --dest-namespace nitte-merch \
@@ -292,7 +292,7 @@ EOF
 
 **Build and push images:**
 ```bash
-cd ~/learning-devops
+cd ~/HPE-merchendise-latest
 REGISTRY="192.168.56.10:30500"
 
 docker build -t $REGISTRY/node-backend:1.0.0 ./node-backend

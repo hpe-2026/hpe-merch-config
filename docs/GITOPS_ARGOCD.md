@@ -75,11 +75,11 @@ argocd login 192.168.56.10:30443 --insecure \
 
 ```bash
 # Add the Git repo
-argocd repo add https://github.com/radheshpai87/learning-devops.git
+argocd repo add https://github.com/pall111/HPE-merchendise-latest.git
 
 # Create the ArgoCD application
 argocd app create nitte-merch \
-  --repo https://github.com/radheshpai87/learning-devops.git \
+  --repo https://github.com/pall111/HPE-merchendise-latest.git \
   --revision production \
   --path k8s \
   --dest-server https://kubernetes.default.svc \
@@ -103,7 +103,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/radheshpai87/learning-devops.git
+    repoURL: https://github.com/pall111/HPE-merchendise-latest.git
     targetRevision: production
     path: k8s
     directory:
