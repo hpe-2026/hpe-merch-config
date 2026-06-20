@@ -187,8 +187,8 @@ curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 |
 
 # Git (if not present) and clone the repo
 cd ~
-git clone https://github.com/radheshpai87/learning-devops.git
-cd learning-devops
+git clone https://github.com/pall111/HPE-merchendise-latest.git
+cd HPE-merchendise-latest
 ```
 
 ---
@@ -239,7 +239,7 @@ kubectl apply -f samples/addons/jaeger.yaml
 
 # Verify
 kubectl get pods -n istio-system
-cd ~/learning-devops
+cd ~/HPE-merchendise-latest
 ```
 
 ---
@@ -341,7 +341,7 @@ wget https://github.com/containerd/nerdctl/releases/download/v1.7.0/nerdctl-full
 sudo tar Cxzvf /usr/local nerdctl-full-1.7.0-linux-amd64.tar.gz
 
 REGISTRY="192.168.56.10:30500"
-cd ~/learning-devops
+cd ~/HPE-merchendise-latest
 
 for svc in node-backend python-service frontend admin-dashboard merchant-portal notification-service loki-rbac-proxy; do
   sudo nerdctl build -t $REGISTRY/$svc:1.0.0 ./$svc
@@ -390,9 +390,9 @@ sudo install /tmp/argocd /usr/local/bin/argocd
 argocd login 192.168.56.10:30443 --insecure --username admin --password <password-from-step-7>
 
 # Register repo + create app
-argocd repo add https://github.com/radheshpai87/learning-devops.git
+argocd repo add https://github.com/pall111/HPE-merchendise-latest.git
 argocd app create nitte-merch \
-  --repo https://github.com/radheshpai87/learning-devops.git \
+  --repo https://github.com/pall111/HPE-merchendise-latest.git \
   --revision main \
   --path k8s \
   --dest-server https://kubernetes.default.svc \
@@ -409,7 +409,7 @@ argocd app get nitte-merch
 ### Manual alternative (without ArgoCD)
 
 ```bash
-cd ~/learning-devops
+cd ~/HPE-merchendise-latest
 kubectl apply -f k8s/mongodb.yaml
 kubectl apply -f k8s/kafka.yaml
 kubectl apply -f k8s/keycloak.yaml
