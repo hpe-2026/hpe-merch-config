@@ -1,28 +1,9 @@
-# RBAC for Promtail to discover and read pod logs
+# Namespaced ServiceAccount for Promtail (one per environment).
+# The cluster-scoped ClusterRole/ClusterRoleBinding are managed separately
+# (see k8s/cluster/promtail-clusterrbac.yaml) because they are global objects
+# shared by all environments and must not be owned by a single overlay.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: promtail
   namespace: nitte
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: promtail-clusterrole
-rules:
-- apiGroups: [""]
-  resources: ["pods", "nodes", "nodes/proxy", "services", "endpoints"]
-  verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: promtail-clusterrolebinding
-subjects:
-- kind: ServiceAccount
-  name: promtail
-  namespace: nitte
-roleRef:
-  kind: ClusterRole
-  name: promtail-clusterrole
-  apiGroup: rbac.authorization.k8s.io
