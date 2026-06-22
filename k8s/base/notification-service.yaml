@@ -1,0 +1,130 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notification-service-config
+  namespace: nitte
+data:
+  KAFKA_BROKERS: "kafka:9092"
+  KAFKA_CLIENT_ID: "notification-service"
+  KAFKA_CONSUMER_GROUP: "notification-service"
+  EMAIL_ENABLED: "true"
+  EMAIL_PROVIDER: "smtp"
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  SMTP_FROM: "noreply@nitte-merch-shop.com"
+  SLACK_ENABLED: "true"
+  TICKET_ENABLED: "true"
+  TICKET_PROVIDER: "console"
+  TICKET_ENDPOINT: ""
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  API_BASE_URL: "http://node-backend:3000"
+  FRONTEND_URL: "http://localhost:5173"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: notification-service-secrets
+  namespace: nitte
+type: Opaque
+stringData:
+  SMTP_USER: ""
+  SMTP_PASS: ""
+  SLACK_WEBHOOK_URL: ""
+  KEYCLOAK_ADMIN_EMAILS: "internal-admin@nitte.ac.in"
+  ADMIN_NOTIFICATION_EMAILS: "internal-admin@nitte.ac.in"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: nitte
+  labels:
+    app: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.35
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nc -z kafka 9092; do echo "waiting for kafka"; sleep 2; done']
+      containers:
+      - name: notification-service
+        image: notification-service:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9100
+        envFrom:
+        - configMapRef:
+            name: notification-service-config
+        env:
+        - name: SMTP_USER
+          valueFrom:
+            secretKeyRef:
+              name: notification-service-secrets
+              key: SMTP_USER
+        - name: SMTP_PASS
+          valueFrom:
+            secretKeyRef:
+              name: notification-service-secrets
+              key: SMTP_PASS
+        - name: SLACK_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: notification-service-secrets
+              key: SLACK_WEBHOOK_URL
+        - name: KEYCLOAK_ADMIN_EMAILS
+          valueFrom:
+            secretKeyRef:
+              name: notification-service-secrets
+              key: KEYCLOAK_ADMIN_EMAILS
+        - name: ADMIN_NOTIFICATION_EMAILS
+          valueFrom:
+            secretKeyRef:
+              name: notification-service-secrets
+              key: ADMIN_NOTIFICATION_EMAILS
+        - name: NOTIFICATION_EMAIL
+          value: "notifications@nitte.edu"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9100
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9100
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: nitte
+spec:
+  selector:
+    app: notification-service
+  ports:
+  - port: 9100
+    targetPort: 9100
+  type: ClusterIP

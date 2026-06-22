@@ -96,14 +96,16 @@ print('  - north, east → Shard 2 (NORTH_EAST zone)');
 
 // Create indexes for other collections
 db = db.getSiblingDB('nitte_merch');
-db.products.createIndex({ name: 1 });
-db.products.createIndex({ category: 1 });
-db.products.createIndex({ merchant_id: 1 });
-db.orders.createIndex({ user_id: 1 });
-db.orders.createIndex({ merchant_id: 1 });
-db.orders.createIndex({ order_id: 1 });
-db.users.createIndex({ email: 1 });
-db.users.createIndex({ status: 1 });
+[
+  () => db.products.createIndex({ name: 1 }),
+  () => db.products.createIndex({ category: 1 }),
+  () => db.products.createIndex({ merchant_id: 1 }),
+  () => db.orders.createIndex({ user_id: 1 }),
+  () => db.orders.createIndex({ merchant_id: 1 }),
+  () => db.orders.createIndex({ order_id: 1 }),
+  () => db.users.createIndex({ email: 1 }),
+  () => db.users.createIndex({ status: 1 }),
+].forEach(fn => { try { fn(); } catch (e) { print('index skip: ' + e.message); } });
 
 // Seed admin user (idempotent)
 if (db.users.countDocuments({ email: 'admin@nitte.edu' }) === 0) {

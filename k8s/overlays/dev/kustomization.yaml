@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: nitte-dev
+
+resources:
+  - ../../base
+
+# Pin every workload in this environment to the dev worker node
+patches:
+  - target:
+      kind: Deployment
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ignored
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: workervm1
+  - target:
+      kind: Job
+    patch: |-
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: ignored
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: workervm1
