@@ -32,3 +32,15 @@ patches:
           spec:
             nodeSelector:
               kubernetes.io/hostname: workervm2
+  - target:
+      kind: DaemonSet
+    patch: |-
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: ignored
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: workervm2
