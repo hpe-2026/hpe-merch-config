@@ -23,13 +23,16 @@ import config from '../config/index.js';
  */
 const transformImageUrl = (url) => {
   if (!url) return null;
-  // If already a proxy URL, return as-is
-  if (url.includes('/api/v1/upload/images/')) return url;
-  // Convert MinIO URL to proxy URL
+  // If it already points at the proxy path, return it RELATIVE so the browser
+  // loads it same-origin (through whatever Istio host it is on), not via an
+  // internal cluster hostname like http://node-backend:3000.
+  const proxyIdx = url.indexOf('/api/v1/upload/images/');
+  if (proxyIdx !== -1) return url.substring(proxyIdx);
+  // Convert a MinIO URL to a relative proxy path
   const minioPattern = /http:\/\/[^:]+:9000\/(.*)/;
   const match = url.match(minioPattern);
   if (match) {
-    return `${config.api_base_url || ''}/api/v1/upload/images/${match[1]}`;
+    return `/api/v1/upload/images/${match[1]}`;
   }
   return url;
 };
