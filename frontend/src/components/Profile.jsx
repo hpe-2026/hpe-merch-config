@@ -288,7 +288,7 @@ export default function Profile({ user, onLogout }) {
                 </div>
               </div>
               <a
-                href="http://localhost:8080/realms/nitte-realm/account"
+                href={`${typeof window !== 'undefined' ? window.location.origin : ''}/realms/nitte-realm/account`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs font-medium text-indigo-600 hover:text-indigo-700 whitespace-nowrap"
