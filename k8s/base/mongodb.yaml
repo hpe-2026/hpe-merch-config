@@ -17,6 +17,8 @@ metadata:
     app: mongo-config
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mongo-config
@@ -83,6 +85,8 @@ metadata:
     app: mongo-shard1
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mongo-shard1
@@ -149,6 +153,8 @@ metadata:
     app: mongo-shard2
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mongo-shard2
@@ -215,6 +221,8 @@ metadata:
     app: mongodb
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mongodb
