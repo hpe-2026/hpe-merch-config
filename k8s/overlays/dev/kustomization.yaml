@@ -7,8 +7,23 @@ resources:
   - ../../base
   - mesh.yaml
 
-# Pin every workload in this environment to the dev worker node
+# Pin every workload in this environment to the dev worker node,
+# and point the Keycloak admin console at the gateway host.
 patches:
+  - target:
+      kind: Deployment
+      name: keycloak
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: KC_PROXY
+          value: "edge"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: KC_HOSTNAME_ADMIN_URL
+          value: "http://keycloak.dev.nitte.local:8080"
   - target:
       kind: Deployment
     patch: |-
