@@ -24,7 +24,7 @@ import {
   Legend,
 } from 'recharts'
 import axios from 'axios'
-import { API_BASE } from '../config/api'
+import { API_BASE, serviceUrl } from '../config/api'
 import { useTheme } from '../hooks/useTheme'
 
 const chartPalette = (isDark) =>
@@ -60,7 +60,7 @@ const chartPalette = (isDark) =>
         },
       }
 
-const PROM_URL = 'http://localhost:9090'
+const PROM_URL = serviceUrl('prometheus')
 
 export default function Metrics() {
   const { isDark } = useTheme()
@@ -177,7 +177,7 @@ export default function Metrics() {
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
           <a
-            href="http://localhost:3001"
+            href={serviceUrl('grafana')}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50"
@@ -352,12 +352,12 @@ export default function Metrics() {
         <ToolCard
           title="Jaeger"
           description="Distributed traces and service dependency graphs."
-          href="http://localhost:16686"
+          href={serviceUrl('jaeger')}
         />
         <ToolCard
           title="Grafana"
           description="Pre-built dashboards and alerting (admin / admin123)."
-          href="http://localhost:3001"
+          href={serviceUrl('grafana')}
         />
       </div>
     </div>
