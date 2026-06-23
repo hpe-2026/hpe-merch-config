@@ -14,16 +14,20 @@ patches:
       kind: Deployment
       name: keycloak
     patch: |-
-      - op: add
-        path: /spec/template/spec/containers/0/env/-
-        value:
-          name: KC_PROXY
-          value: "edge"
-      - op: add
-        path: /spec/template/spec/containers/0/env/-
-        value:
-          name: KC_HOSTNAME_ADMIN_URL
-          value: "http://keycloak.prod.nitte.local:8080"
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: keycloak
+      spec:
+        template:
+          spec:
+            containers:
+              - name: keycloak
+                env:
+                  - name: KC_HOSTNAME_URL
+                    value: "http://keycloak.prod.nitte.local:8080"
+                  - name: KC_PROXY
+                    value: "edge"
   - target:
       kind: Deployment
     patch: |-
