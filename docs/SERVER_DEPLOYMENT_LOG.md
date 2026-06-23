@@ -458,3 +458,78 @@ kubectl top nodes
 | ArgoCD admin | `admin` / (see command in section 10) |
 | Keycloak admin | `admin` / `admin` |
 | Grafana admin | `admin` / `admin123` |
+
+
+---
+
+## 14. Istio Service Mesh (dev + prod)
+
+Istio was added after the GitOps setup. The control plane is installed once
+(cluster-wide); the `nitte-dev` and `nitte-prod` namespaces are enrolled in the
+mesh. The admin/CI-CD namespaces (argocd, jenkins, nexus) are left out.
+
+### 14.1 Install control plane (mastervm)
+```bash
+cd /tmp
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.20.3 sh -
+sudo cp istio-1.20.3/bin/istioctl /usr/local/bin/
+istioctl install --set profile=default -y     # istiod + istio-ingressgateway
+kubectl get pods -n istio-system
+```
+The ingress gateway is a LoadBalancer with `EXTERNAL-IP <pending>` on bare metal;
+reach it via its NodePort for port 80 (e.g. `32367`).
+
+### 14.2 Enrol a namespace in the mesh
+```bash
+kubectl label namespace nitte-dev istio-injection=enabled
+# recreate completed init Jobs so they come back without a sidecar, then:
+kubectl rollout restart deployment -n nitte-dev
+```
+
+### 14.3 What is / isn't in the mesh (codified in Git)
+- **Out of mesh** (`sidecar.istio.io/inject: "false"`):
+  - init Jobs `mongo-init`, `minio-init` — a sidecar never exits, so a Job pod
+    would never Complete.
+  - `promtail` DaemonSet — needs host log access.
+  - Data layer `mongo-config`, `mongo-shard1/2`, `mongodb` (mongos), `kafka`,
+    `zookeeper` — raw binary protocols; Envoy interception breaks MongoDB
+    replica-set host discovery (`Could not find host ... for set configRS`).
+- **In the mesh** (2/2 with sidecar): all app + observability services.
+
+### 14.4 Stateful deployment restarts
+Single-replica deployments backed by a ReadWriteOnce local-path PVC use
+`strategy: Recreate` (terminate old before new). RollingUpdate caused the new
+pod to crash on the volume lock held by the old pod
+(`prometheus: lock DB directory ... resource temporarily unavailable`,
+`mongod exitCode 100`). Applies to mongo-config/shard1/shard2/mongos, prometheus,
+grafana, loki, minio.
+
+### 14.5 mongo-init re-run resilience
+`mongo-init` uses `set +e` and ends with `exit 0`. After an Istio-driven
+restart, a shard replica set may not have elected a primary yet, so `sh.addShard`
+errors transiently. The steps are idempotent; the Job now always completes and
+unblocks ArgoCD health.
+
+### 14.6 Mesh policy per environment (`k8s/overlays/<env>/mesh.yaml`)
+- `PeerAuthentication` default **STRICT** mTLS; PERMISSIVE for `loki` and
+  `loki-rbac-proxy` (they receive plaintext from non-meshed promtail).
+- `Gateway` + `VirtualService` host-routed:
+  - dev → `dev.nitte.local`, prod → `prod.nitte.local` (shared ingress gateway)
+  - `/` → frontend, `/admin` → admin-dashboard, `/merchant` → merchant-portal,
+    `/api` → node-backend, `/auth` + `/realms` → keycloak, `/grafana` → grafana
+
+### 14.7 Verify
+```bash
+istioctl proxy-status                      # all sidecars SYNCED
+GW=32367                                    # ingress gateway HTTP NodePort
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: dev.nitte.local"  http://192.168.56.10:$GW/
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: dev.nitte.local"  http://192.168.56.10:$GW/api/health
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: prod.nitte.local" http://192.168.56.10:$GW/
+```
+
+### 14.8 Access from a laptop
+SSH-tunnel the gateway NodePort, then add hostnames to `/etc/hosts` pointing at
+the tunnel (127.0.0.1), so the `Host` header routes dev vs prod:
+```
+127.0.0.1 dev.nitte.local prod.nitte.local
+```
