@@ -26,6 +26,8 @@ spec:
     metadata:
       labels:
         app: mongo-config
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       containers:
       - name: mongo-config
@@ -94,6 +96,8 @@ spec:
     metadata:
       labels:
         app: mongo-shard1
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       containers:
       - name: mongo-shard1
@@ -162,6 +166,8 @@ spec:
     metadata:
       labels:
         app: mongo-shard2
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       containers:
       - name: mongo-shard2
@@ -230,6 +236,8 @@ spec:
     metadata:
       labels:
         app: mongodb
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       initContainers:
       # Initiate config server replica set, then wait for it to elect a primary
