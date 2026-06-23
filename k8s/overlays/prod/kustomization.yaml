@@ -5,6 +5,7 @@ namespace: nitte-prod
 
 resources:
   - ../../base
+  - mesh.yaml
 
 # Pin every workload in this environment to the prod worker node
 patches:
