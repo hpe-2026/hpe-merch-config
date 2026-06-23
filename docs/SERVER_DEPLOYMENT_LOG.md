@@ -528,8 +528,161 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Host: prod.nitte.local" http://192.
 ```
 
 ### 14.8 Access from a laptop
-SSH-tunnel the gateway NodePort, then add hostnames to `/etc/hosts` pointing at
-the tunnel (127.0.0.1), so the `Host` header routes dev vs prod:
+Each SPA is served at the **root of its own hostname** (host-based routing) to
+avoid SPA base-path issues — path-based routing (`/admin`, `/merchant`) gave
+blank pages because the apps' HTML references assets at absolute `/assets/...`
+with no path prefix, which fell through to the storefront.
+
+SSH-tunnel the gateway NodePort, then map the hostnames to the tunnel:
+```bash
+# laptop terminal 1 — open the tunnel (laptop:8080 -> mastervm gateway NodePort)
+ssh -L 8080:192.168.56.10:32367 arcade@117.250.206.138
+
+# laptop terminal 2 — map all env hostnames to the tunnel
+echo "127.0.0.1 dev.nitte.local admin.dev.nitte.local merchant.dev.nitte.local prod.nitte.local admin.prod.nitte.local merchant.prod.nitte.local" | sudo tee -a /etc/hosts
 ```
-127.0.0.1 dev.nitte.local prod.nitte.local
+
+Open in the browser:
+| URL | App |
+|-----|-----|
+| http://dev.nitte.local:8080/ | Dev storefront |
+| http://admin.dev.nitte.local:8080/ | Dev admin dashboard |
+| http://merchant.dev.nitte.local:8080/ | Dev merchant portal |
+| http://prod.nitte.local:8080/ | Prod storefront |
+| http://admin.prod.nitte.local:8080/ | Prod admin dashboard |
+| http://merchant.prod.nitte.local:8080/ | Prod merchant portal |
+
+The `Host` header is what routes you to the right environment + app; everything
+goes through the one tunnel.
+
+> **Firefox note:** if a host won't resolve but `curl -H "Host: ..." http://localhost:8080/`
+> works, disable DNS-over-HTTPS (Settings → Privacy & Security → DNS over HTTPS → Off);
+> DoH bypasses `/etc/hosts`.
+
+> Each VirtualService also routes `/api` → node-backend and `/auth` + `/realms`
+> → keycloak on the same host, so the SPA's API/auth calls work without a
+> separate tunnel.
+
+
+
+---
+
+## 15. Post-Istio Troubleshooting & Data Bring-up
+
+After enabling Istio, login/products were failing. Root causes and fixes below.
+
+### 15.1 Empty database — sharded cluster had no shards
+
+**Symptom:** login returned "User found: false", signup returned "Registration
+failed", `nitte_merch` database didn't exist (`listDatabases` showed only
+`admin`/`config`), `sh.status()` showed `shards[]` empty.
+
+**Why:** In a **sharded** MongoDB cluster, *every* write through `mongos` lands on
+a shard — even non-sharded collections (`users`, `products`) live on a primary
+shard. With **zero shards registered**, mongos can't store anything, so the DB,
+collections, and seeded admin user were never created.
+
+The shards weren't registered because `sh.addShard` ran before the shard replica
+sets had elected primaries, and the `set +e` change (section 5/9) silently
+swallowed the failures so the Job still "succeeded".
+
+**Deeper cause:** the shard replica sets went into **REMOVED** state after the
+Istio-driven pod restart. The shards run as **Deployments** (not StatefulSets),
+so a restarted pod can fail to recognise itself in the replica-set config if DNS
+/ endpoints aren't ready at startup. This is a fragile design — see 15.5.
+
+### 15.2 Recovery — wipe & re-initiate the shards (no app data existed)
+
+```bash
+# stop ArgoCD auto-sync so it doesn't fight the manual recovery
+kubectl patch application nitte-dev -n argocd --type merge \
+  -p '{"spec":{"syncPolicy":{"automated":null}}}'
+
+# scale shards to 0, let the RWO PVCs release & delete, then recreate fresh
+kubectl scale deployment mongo-shard1 mongo-shard2 -n nitte-dev --replicas=0
+# (wait until shard pods gone and shard PVCs deleted)
+kubectl patch application nitte-dev -n argocd --type merge \
+  -p '{"operation":{"sync":{"revision":"main"}}}'      # recreate empty PVCs + pods
+
+# initiate replica sets and confirm PRIMARY (myState == 1)
+kubectl exec -n nitte-dev deploy/mongo-shard1 -- mongosh --quiet --port 27018 \
+  --eval 'rs.initiate({_id:"shard1",members:[{_id:0,host:"mongo-shard1:27018"}]})'
+kubectl exec -n nitte-dev deploy/mongo-shard2 -- mongosh --quiet --port 27019 \
+  --eval 'rs.initiate({_id:"shard2",members:[{_id:0,host:"mongo-shard2:27019"}]})'
+
+# register shards with mongos
+kubectl exec -n nitte-dev deploy/mongodb -c mongos -- mongosh --quiet --port 27017 --eval '
+  sh.addShard("shard1/mongo-shard1:27018"); sh.addShard("shard2/mongo-shard2:27019");'
+
+# run the sharding init (creates nitte_merch + seeds admin)
+kubectl exec -i -n nitte-dev deploy/mongodb -c mongos -- mongosh --quiet --port 27017 \
+  < ~/HPE-merchendise-latest/database/sharding-init.js
+
+# re-enable ArgoCD auto-sync
+kubectl patch application nitte-dev -n argocd --type merge \
+  -p '{"spec":{"syncPolicy":{"automated":{"selfHeal":true,"prune":false}}}}'
 ```
+Verify: `sh.status()` lists `shard1`/`shard2`; `nitte_merch` exists.
+
+### 15.3 Keycloak users → MongoDB sync
+
+The realm's predefined users (admin/merchant/internal) are synced into Mongo by
+node-backend on startup (`syncKeycloakUsers.js`). It had failed earlier (broken
+DB). After the DB was fixed, restart the backend to re-run the sync:
+```bash
+kubectl rollout restart deployment node-backend -n nitte-dev
+```
+Demo credentials (from `keycloak/nitte-realm.json`):
+| Account | Password |
+|---------|----------|
+| merchant-admin@nitte.edu | MerchantAdmin@123 |
+| amazon-merchant@amazon.com | Amazon@123 |
+| flipkart-merchant@flipkart.com | Flipkart@123 |
+| internal-admin@nitte.ac.in | (see realm) |
+
+### 15.4 Product seeding (catalog + MinIO images)
+
+`seed-products` wasn't part of the overlays, so the catalog was empty. The
+images (1.2 MB) exceed the ConfigMap limit, so run the seed inside a backend pod
+via `kubectl cp` (the pod already has Mongo/MinIO env + SDKs):
+```bash
+BE=$(kubectl get pod -n nitte-dev -l app=node-backend -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -n nitte-dev $BE -c node-backend -- mkdir -p /app/scripts
+kubectl cp scripts/seed-products.mjs nitte-dev/$BE:/app/scripts/seed-products.mjs -c node-backend
+kubectl cp product-images nitte-dev/$BE:/app/ -c node-backend
+kubectl exec -n nitte-dev $BE -c node-backend -- node scripts/seed-products.mjs
+```
+
+### 15.5 Frontend "hardcoded URL" fixes (browser access via gateway)
+
+Two SPA/back-end issues broke browser use behind the Istio host-based gateway:
+
+1. **Product images blank** — `node-backend` `transformImageUrl` prefixed
+   `config.api_base_url` (`http://node-backend:3000`, an internal name the
+   browser can't resolve). Fixed to emit a **relative** `/api/v1/upload/images/...`
+   path (served same-origin through the gateway). Rebuilt `node-backend:1.0.1`.
+
+2. **Merchant login CORS/`localhost:3000`** — `merchant-portal` hard-coded its
+   API base to `http://localhost:3000`. Fixed to use **same-origin** detection
+   (like frontend/admin-dashboard already did). Rebuilt `merchant-portal:1.0.1`.
+
+> `frontend` and `admin-dashboard` already used same-origin detection
+> (`getAPIBase()`), which is why the storefront worked from the start.
+
+**Image-tag workflow** (mutable `:1.0.0` + `imagePullPolicy: IfNotPresent` won't
+re-pull): bump the tag in `k8s/base/kustomization.yaml` `images:` (e.g. `1.0.1`),
+rebuild + push to Nexus, then ArgoCD sync pulls the new tag.
+```bash
+REGISTRY=192.168.56.10:30082
+sudo nerdctl --address /run/k3s/containerd/containerd.sock build -t $REGISTRY/<svc>:1.0.1 ./<svc>
+sudo nerdctl --address /run/k3s/containerd/containerd.sock save -o /tmp/x.tar $REGISTRY/<svc>:1.0.1
+crane push /tmp/x.tar $REGISTRY/<svc>:1.0.1 --insecure
+```
+
+### 15.6 Known fragility / TODO
+- **MongoDB shards on Deployments** can lose replica-set identity on pod
+  restart (REMOVED state). Durable fix: convert `mongo-config`/`mongo-shard1`/
+  `mongo-shard2` to **StatefulSets** with stable per-pod DNS. Until then, a shard
+  restart may require the 15.2 recovery.
+- Manual data bring-up (shards init, seed) is **not** in Git; only the workload
+  manifests are GitOps-managed. Re-running on a fresh namespace needs these steps.
