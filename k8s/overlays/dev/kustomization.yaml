@@ -5,6 +5,7 @@ namespace: nitte-dev
 
 resources:
   - ../../base
+  - mesh.yaml
 
 # Pin every workload in this environment to the dev worker node
 patches:

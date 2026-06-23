@@ -1,0 +1,97 @@
+# ───────────────────────── mTLS ─────────────────────────
+# Default: require mTLS for all meshed services in this namespace.
+# (The data layer — mongo/kafka/zookeeper — is NOT in the mesh, so it is
+#  unaffected. promtail has no sidecar, so loki + loki-rbac-proxy must accept
+#  plaintext from it.)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: loki-permissive
+spec:
+  selector:
+    matchLabels:
+      app: loki
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: loki-rbac-proxy-permissive
+spec:
+  selector:
+    matchLabels:
+      app: loki-rbac-proxy
+  mtls:
+    mode: PERMISSIVE
+---
+# ───────────────────────── Ingress Gateway ─────────────────────────
+# Single entry point; routed by Host header so dev and prod can share the
+# one cluster ingress gateway. Reach it on the gateway NodePort with
+#   Host: dev.nitte.local
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: nitte-gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "dev.nitte.local"
+---
+# ───────────────────────── Routing ─────────────────────────
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: nitte-routes
+spec:
+  hosts:
+    - "dev.nitte.local"
+  gateways:
+    - nitte-gateway
+  http:
+    - match:
+        - uri: { prefix: /api }
+      route:
+        - destination: { host: node-backend, port: { number: 3000 } }
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,refused-stream
+    - match:
+        - uri: { prefix: /auth }
+        - uri: { prefix: /realms }
+      route:
+        - destination: { host: keycloak, port: { number: 8080 } }
+    - match:
+        - uri: { prefix: /grafana }
+      route:
+        - destination: { host: grafana, port: { number: 3000 } }
+    - match:
+        - uri: { prefix: /admin }
+      rewrite: { uri: / }
+      route:
+        - destination: { host: admin-dashboard, port: { number: 5174 } }
+    - match:
+        - uri: { prefix: /merchant }
+      rewrite: { uri: / }
+      route:
+        - destination: { host: merchant-portal, port: { number: 5175 } }
+    - match:
+        - uri: { prefix: / }
+      route:
+        - destination: { host: frontend, port: { number: 5173 } }
