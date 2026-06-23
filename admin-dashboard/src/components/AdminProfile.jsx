@@ -15,7 +15,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react'
-import { API_BASE, auth, authUpload } from '../config/api'
+import { API_BASE, auth, authUpload, serviceUrl } from '../config/api'
 
 export default function AdminProfile({ user, onLogout, onUpdateUser }) {
   const [userData, setUserData] = useState(user)
@@ -274,7 +274,7 @@ export default function AdminProfile({ user, onLogout, onUpdateUser }) {
                 </div>
               </div>
               <a
-                href="http://localhost:8080/admin/master/console/"
+                href={`${serviceUrl('keycloak')}/admin/master/console/`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs font-medium text-indigo-600 hover:text-indigo-700 whitespace-nowrap"

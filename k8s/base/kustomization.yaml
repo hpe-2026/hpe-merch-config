@@ -37,6 +37,7 @@ images:
     newTag: "1.0.1"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/admin-dashboard
+    newTag: "1.0.1"
   - name: merchant-portal
     newName: 192.168.56.10:30082/merchant-portal
     newTag: "1.0.1"

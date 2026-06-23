@@ -1,5 +1,6 @@
 import { ExternalLink, CheckCircle, Clock, AlertCircle, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
+import { serviceUrl } from '../config/api'
 
 export default function JenkinsPipeline() {
   const [loading, setLoading] = useState(false)
@@ -88,7 +89,7 @@ export default function JenkinsPipeline() {
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-3xl font-bold text-gray-900">Jenkins CI/CD Pipeline</h2>
         <a
-          href="http://localhost:8080"
+          href={serviceUrl('jenkins')}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
@@ -177,7 +178,7 @@ export default function JenkinsPipeline() {
           <li>Push code to any branch (main, develop, or feature/*)</li>
           <li>Jenkins webhook automatically triggers the pipeline</li>
           <li>Pipeline runs: Checkout -> Lint -> Build -> Test -> Push -> Deploy</li>
-          <li>Monitor progress in Jenkins UI: <code className="bg-white px-2 py-1 rounded">http://localhost:8080</code></li>
+          <li>Monitor progress in Jenkins UI: <code className="bg-white px-2 py-1 rounded">{serviceUrl('jenkins')}</code></li>
           <li>On success, new version is deployed to Kubernetes</li>
         </ol>
       </div>

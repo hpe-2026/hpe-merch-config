@@ -13,7 +13,17 @@ import {
 import { API_BASE } from '../config/api'
 
 const JAEGER_PROXY_API = `${API_BASE}/api/v1/jaeger`
-const JAEGER_UI = 'http://localhost:16686'
+
+// Derive the externally-reachable Jaeger UI URL from the current host.
+// admin.<env>.nitte.local  ->  jaeger.<env>.nitte.local (same port/tunnel).
+// Falls back to localhost for local dev.
+const JAEGER_UI = (() => {
+  if (typeof window === 'undefined') return 'http://localhost:16686'
+  const { protocol, hostname, port } = window.location
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return 'http://localhost:16686'
+  const base = hostname.split('.').slice(1).join('.') || hostname
+  return `${protocol}//jaeger.${base}${port ? ':' + port : ''}`
+})()
 
 export default function Traces() {
   const [jaegerStatus, setJaegerStatus] = useState('checking')
@@ -321,7 +331,7 @@ export default function Traces() {
                   <p className="font-medium text-slate-700 mb-1">No traces yet</p>
                   <p>Generate some traffic and refresh:</p>
                   <code className="inline-block mt-2 bg-slate-100 px-2 py-1 rounded font-mono text-xs text-slate-700">
-                    curl http://localhost:3000/api/v1/health
+                    {`curl ${typeof window !== 'undefined' ? window.location.origin : ''}/api/v1/health`}
                   </code>
                 </div>
               ) : (
