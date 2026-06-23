@@ -1,0 +1,35 @@
+# Kiali ConfigMap override (applied out-of-band into istio-system, like Istio).
+# The stock addon points Prometheus/Grafana/Jaeger at istio-system services that
+# do not exist in this cluster — our observability stack lives in nitte-dev.
+# After applying this, restart the kiali deployment so it re-reads the config.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kiali
+  namespace: istio-system
+  labels:
+    app: kiali
+data:
+  config.yaml: |
+    auth:
+      # Behind the SSH tunnel this is a lab-internal console; anonymous keeps it
+      # simple. Swap to strategy: openid (Keycloak) if SSO is required later.
+      strategy: anonymous
+    deployment:
+      view_only_mode: false
+    istio_namespace: istio-system
+    server:
+      # Served at the root of kiali.nitte.local via the Istio gateway.
+      web_root: /
+    external_services:
+      prometheus:
+        url: "http://prometheus.nitte-dev:9090"
+      grafana:
+        enabled: true
+        internal_url: "http://grafana.nitte-dev:3000"
+        external_url: "http://grafana.dev.nitte.local:8080"
+      tracing:
+        enabled: true
+        internal_url: "http://jaeger.nitte-dev:16686"
+        external_url: "http://jaeger.dev.nitte.local:8080"
+        use_grpc: false
