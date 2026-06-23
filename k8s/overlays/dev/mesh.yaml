@@ -58,6 +58,7 @@ spec:
         - "prometheus.dev.nitte.local"
         - "jaeger.dev.nitte.local"
         - "minio.dev.nitte.local"
+        - "kiali.nitte.local"
 ---
 # Storefront (+ shared API / auth / grafana)
 apiVersion: networking.istio.io/v1beta1
@@ -209,3 +210,20 @@ spec:
   http:
     - route:
         - destination: { host: minio, port: { number: 9001 } }
+---
+# Kiali — Istio service-mesh console (cluster-wide, lives in istio-system).
+# Exposed on a single, env-less host since it observes all namespaces.
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: kiali-routes
+spec:
+  hosts:
+    - "kiali.nitte.local"
+  gateways:
+    - nitte-gateway
+  http:
+    - route:
+        - destination:
+            host: kiali.istio-system.svc.cluster.local
+            port: { number: 20001 }
