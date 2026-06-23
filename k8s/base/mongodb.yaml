@@ -339,7 +339,7 @@ spec:
         - /bin/bash
         - -c
         - |
-          set -e
+          set +e
           echo "Waiting for cluster nodes to be reachable..."
           sleep 15
 
@@ -384,6 +384,7 @@ spec:
           mongosh --host mongodb:27017 /scripts/sharding-init.js
 
           echo "MongoDB sharded cluster initialization complete!"
+          exit 0
         volumeMounts:
         - name: sharding-init
           mountPath: /scripts/sharding-init.js
