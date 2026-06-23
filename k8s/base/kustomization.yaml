@@ -29,6 +29,7 @@ resources:
 images:
   - name: node-backend
     newName: 192.168.56.10:30082/node-backend
+    newTag: "1.0.1"
   - name: python-service
     newName: 192.168.56.10:30082/python-service
   - name: frontend
