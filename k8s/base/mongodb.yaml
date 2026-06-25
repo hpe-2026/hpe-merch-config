@@ -307,33 +307,19 @@ spec:
         - /bin/bash
         - -c
         - |
-          echo "Waiting for mongo-config to accept connections..."
-          until mongosh --host mongo-config-0.mongo-config --port 27017 --eval "db.runCommand({ping:1})" >/dev/null 2>&1; do
-            echo "mongo-config not ready, retrying in 3s..."
-            sleep 3
+          NS=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace 2>/dev/null || echo nitte)
+          CFG="mongo-config-0.mongo-config.${NS}.svc.cluster.local:27017"
+          echo "Waiting for config server ($CFG)..."
+          until mongosh --host "$CFG" --eval "db.runCommand({ping:1})" >/dev/null 2>&1; do
+            echo "mongo-config not ready, retrying in 3s..."; sleep 3
           done
-          echo "mongo-config is reachable!"
-
-          echo "Initiating configRS replica set..."
-          mongosh --host mongo-config-0.mongo-config:27017 --eval '
-            try {
-              rs.initiate({ _id: "configRS", configsvr: true, members: [{ _id: 0, host: "mongo-config-0.mongo-config:27017" }] });
-              print("configRS initiated successfully");
-            } catch(e) {
-              print("configRS already initiated or error: " + e.message);
-            }
-          '
-
-          echo "Waiting for configRS to elect a primary..."
+          echo "Initiating configRS with FQDN member..."
+          mongosh --host "$CFG" --eval "try{ rs.initiate({_id:'configRS',configsvr:true,members:[{_id:0,host:'$CFG'}]}); print('configRS initiated'); }catch(e){ print('configRS: '+e.message); }"
           for i in $(seq 1 60); do
-            if mongosh --host mongo-config-0.mongo-config:27017 --eval 'rs.status().myState' 2>/dev/null | grep -q "1"; then
-              echo "configRS has a primary!"
-              exit 0
-            fi
-            echo "Waiting for primary election... ($i/60)"
-            sleep 3
+            mongosh --host "$CFG" --eval 'rs.status().myState' 2>/dev/null | grep -q "1" && { echo "configRS primary ready"; exit 0; }
+            echo "waiting for configRS primary ($i/60)"; sleep 3
           done
-          echo "configRS primary elected (or timeout — mongos will retry)"
+          echo "configRS primary (or timeout — mongos will retry)"
       containers:
       - name: mongos
         image: mongo:6.0
@@ -399,44 +385,27 @@ spec:
         - -c
         - |
           set +e
-          echo "Waiting for cluster nodes to be reachable..."
+          NS=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace 2>/dev/null || echo nitte)
+          CFG="mongo-config-0.mongo-config.${NS}.svc.cluster.local:27017"
+          S1="mongo-shard1-0.mongo-shard1.${NS}.svc.cluster.local:27018"
+          S2="mongo-shard2-0.mongo-shard2.${NS}.svc.cluster.local:27019"
+          echo "Namespace=$NS — using FQDN replica-set members"
           sleep 15
 
-          echo "Initiating config server replica set..."
-          mongosh --host mongo-config-0.mongo-config:27017 --eval '
-            try {
-              rs.initiate({ _id: "configRS", configsvr: true, members: [{ _id: 0, host: "mongo-config-0.mongo-config:27017" }] })
-            } catch(e) {
-              print("Config RS already initiated: " + e.message)
-            }
-          '
+          echo "Initiating configRS..."
+          mongosh --host "$CFG" --eval "try{ rs.initiate({_id:'configRS',configsvr:true,members:[{_id:0,host:'$CFG'}]}) }catch(e){ print('configRS: '+e.message) }"
           sleep 5
 
-          echo "Initiating shard1 replica set..."
-          mongosh --host mongo-shard1-0.mongo-shard1:27018 --eval '
-            try {
-              rs.initiate({ _id: "shard1", members: [{ _id: 0, host: "mongo-shard1-0.mongo-shard1:27018" }] })
-            } catch(e) {
-              print("Shard1 RS already initiated: " + e.message)
-            }
-          '
+          echo "Initiating shard1..."
+          mongosh --host "$S1" --eval "try{ rs.initiate({_id:'shard1',members:[{_id:0,host:'$S1'}]}) }catch(e){ print('shard1: '+e.message) }"
           sleep 5
 
-          echo "Initiating shard2 replica set..."
-          mongosh --host mongo-shard2-0.mongo-shard2:27019 --eval '
-            try {
-              rs.initiate({ _id: "shard2", members: [{ _id: 0, host: "mongo-shard2-0.mongo-shard2:27019" }] })
-            } catch(e) {
-              print("Shard2 RS already initiated: " + e.message)
-            }
-          '
+          echo "Initiating shard2..."
+          mongosh --host "$S2" --eval "try{ rs.initiate({_id:'shard2',members:[{_id:0,host:'$S2'}]}) }catch(e){ print('shard2: '+e.message) }"
           sleep 5
 
-          echo "Adding shards to the cluster via mongos..."
-          mongosh --host mongodb:27017 --eval '
-            try { sh.addShard("shard1/mongo-shard1-0.mongo-shard1:27018") } catch(e) { print("Shard1 already added: " + e.message) }
-            try { sh.addShard("shard2/mongo-shard2-0.mongo-shard2:27019") } catch(e) { print("Shard2 already added: " + e.message) }
-          '
+          echo "Adding shards via mongos..."
+          mongosh --host mongodb:27017 --eval "try{ sh.addShard('shard1/$S1') }catch(e){ print('shard1 add: '+e.message) }; try{ sh.addShard('shard2/$S2') }catch(e){ print('shard2 add: '+e.message) }"
           sleep 3
 
           echo "Running sharding initialization script..."
