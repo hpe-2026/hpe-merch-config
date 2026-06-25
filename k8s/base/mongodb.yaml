@@ -1,24 +1,28 @@
-# MongoDB Sharded Cluster for Kubernetes
-# Matches the docker-compose sharded architecture:
-#   - Config server (replica set: configRS)
+# MongoDB Sharded Cluster for Kubernetes (StatefulSets)
+#   - Config server (replica set: configRS, port 27017)
 #   - Shard 1 (replica set: shard1, port 27018)
 #   - Shard 2 (replica set: shard2, port 27019)
 #   - Mongos Router (connects to config server, port 27017)
 #   - Init Job (initializes replica sets + sharding + users)
+#
+# Each mongod runs as a StatefulSet behind a headless Service with
+# publishNotReadyAddresses: true, so every pod gets STABLE DNS
+# (<pod>-0.<svc>) that resolves to its own IP even before it is Ready.
+# Replica-set members use that stable DNS, so the cluster re-forms itself
+# across restarts/reschedules with NO manual reconfig.
 
 ---
 # ==================== Config Server ====================
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: mongo-config
   namespace: nitte
   labels:
     app: mongo-config
 spec:
+  serviceName: mongo-config
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: mongo-config
@@ -58,10 +62,15 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 15
           failureThreshold: 10
-      volumes:
-      - name: mongo-config-data
-        persistentVolumeClaim:
-          claimName: mongo-config-pvc
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-config-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 1Gi
 ---
 apiVersion: v1
 kind: Service
@@ -75,20 +84,20 @@ spec:
   - port: 27017
     targetPort: 27017
   clusterIP: None
+  publishNotReadyAddresses: true
 
 ---
 # ==================== Shard 1 ====================
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: mongo-shard1
   namespace: nitte
   labels:
     app: mongo-shard1
 spec:
+  serviceName: mongo-shard1
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: mongo-shard1
@@ -128,10 +137,15 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 15
           failureThreshold: 10
-      volumes:
-      - name: mongo-shard1-data
-        persistentVolumeClaim:
-          claimName: mongo-shard1-pvc
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-shard1-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 2Gi
 ---
 apiVersion: v1
 kind: Service
@@ -145,20 +159,20 @@ spec:
   - port: 27018
     targetPort: 27018
   clusterIP: None
+  publishNotReadyAddresses: true
 
 ---
 # ==================== Shard 2 ====================
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: mongo-shard2
   namespace: nitte
   labels:
     app: mongo-shard2
 spec:
+  serviceName: mongo-shard2
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: mongo-shard2
@@ -198,10 +212,15 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 15
           failureThreshold: 10
-      volumes:
-      - name: mongo-shard2-data
-        persistentVolumeClaim:
-          claimName: mongo-shard2-pvc
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-shard2-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 2Gi
 ---
 apiVersion: v1
 kind: Service
@@ -215,6 +234,7 @@ spec:
   - port: 27019
     targetPort: 27019
   clusterIP: None
+  publishNotReadyAddresses: true
 
 ---
 # ==================== Mongos Router ====================
@@ -240,7 +260,7 @@ spec:
         sidecar.istio.io/inject: "false"
     spec:
       initContainers:
-      # Initiate config server replica set, then wait for it to elect a primary
+      # Initiate config server replica set (stable DNS member), wait for primary
       - name: init-config-rs
         image: mongo:6.0
         imagePullPolicy: IfNotPresent
@@ -249,16 +269,16 @@ spec:
         - -c
         - |
           echo "Waiting for mongo-config to accept connections..."
-          until mongosh --host mongo-config --port 27017 --eval "db.runCommand({ping:1})" >/dev/null 2>&1; do
+          until mongosh --host mongo-config-0.mongo-config --port 27017 --eval "db.runCommand({ping:1})" >/dev/null 2>&1; do
             echo "mongo-config not ready, retrying in 3s..."
             sleep 3
           done
           echo "mongo-config is reachable!"
 
           echo "Initiating configRS replica set..."
-          mongosh --host mongo-config:27017 --eval '
+          mongosh --host mongo-config-0.mongo-config:27017 --eval '
             try {
-              rs.initiate({ _id: "configRS", configsvr: true, members: [{ _id: 0, host: "mongo-config:27017" }] });
+              rs.initiate({ _id: "configRS", configsvr: true, members: [{ _id: 0, host: "mongo-config-0.mongo-config:27017" }] });
               print("configRS initiated successfully");
             } catch(e) {
               print("configRS already initiated or error: " + e.message);
@@ -267,7 +287,7 @@ spec:
 
           echo "Waiting for configRS to elect a primary..."
           for i in $(seq 1 60); do
-            if mongosh --host mongo-config:27017 --eval 'rs.status().myState' 2>/dev/null | grep -q "1"; then
+            if mongosh --host mongo-config-0.mongo-config:27017 --eval 'rs.status().myState' 2>/dev/null | grep -q "1"; then
               echo "configRS has a primary!"
               exit 0
             fi
@@ -279,7 +299,7 @@ spec:
       - name: mongos
         image: mongo:6.0
         imagePullPolicy: IfNotPresent
-        command: ["mongos", "--configdb", "configRS/mongo-config:27017", "--port", "27017", "--bind_ip_all"]
+        command: ["mongos", "--configdb", "configRS/mongo-config-0.mongo-config:27017", "--port", "27017", "--bind_ip_all"]
         ports:
         - containerPort: 27017
         resources:
@@ -317,7 +337,7 @@ spec:
 
 ---
 # ==================== MongoDB Init Job ====================
-# Initializes replica sets, adds shards, and runs sharding-init.js
+# Initializes replica sets (stable DNS members), adds shards, runs sharding-init.js
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -344,9 +364,9 @@ spec:
           sleep 15
 
           echo "Initiating config server replica set..."
-          mongosh --host mongo-config:27017 --eval '
+          mongosh --host mongo-config-0.mongo-config:27017 --eval '
             try {
-              rs.initiate({ _id: "configRS", configsvr: true, members: [{ _id: 0, host: "mongo-config:27017" }] })
+              rs.initiate({ _id: "configRS", configsvr: true, members: [{ _id: 0, host: "mongo-config-0.mongo-config:27017" }] })
             } catch(e) {
               print("Config RS already initiated: " + e.message)
             }
@@ -354,9 +374,9 @@ spec:
           sleep 5
 
           echo "Initiating shard1 replica set..."
-          mongosh --host mongo-shard1:27018 --eval '
+          mongosh --host mongo-shard1-0.mongo-shard1:27018 --eval '
             try {
-              rs.initiate({ _id: "shard1", members: [{ _id: 0, host: "mongo-shard1:27018" }] })
+              rs.initiate({ _id: "shard1", members: [{ _id: 0, host: "mongo-shard1-0.mongo-shard1:27018" }] })
             } catch(e) {
               print("Shard1 RS already initiated: " + e.message)
             }
@@ -364,9 +384,9 @@ spec:
           sleep 5
 
           echo "Initiating shard2 replica set..."
-          mongosh --host mongo-shard2:27019 --eval '
+          mongosh --host mongo-shard2-0.mongo-shard2:27019 --eval '
             try {
-              rs.initiate({ _id: "shard2", members: [{ _id: 0, host: "mongo-shard2:27019" }] })
+              rs.initiate({ _id: "shard2", members: [{ _id: 0, host: "mongo-shard2-0.mongo-shard2:27019" }] })
             } catch(e) {
               print("Shard2 RS already initiated: " + e.message)
             }
@@ -375,8 +395,8 @@ spec:
 
           echo "Adding shards to the cluster via mongos..."
           mongosh --host mongodb:27017 --eval '
-            try { sh.addShard("shard1/mongo-shard1:27018") } catch(e) { print("Shard1 already added: " + e.message) }
-            try { sh.addShard("shard2/mongo-shard2:27019") } catch(e) { print("Shard2 already added: " + e.message) }
+            try { sh.addShard("shard1/mongo-shard1-0.mongo-shard1:27018") } catch(e) { print("Shard1 already added: " + e.message) }
+            try { sh.addShard("shard2/mongo-shard2-0.mongo-shard2:27019") } catch(e) { print("Shard2 already added: " + e.message) }
           '
           sleep 3
 
