@@ -921,9 +921,34 @@ Sharding by location on `orders` is lost when the config metadata resets (the
 collection comes back unsharded on the primary shard); re-run
 `sh.shardCollection("nitte_merch.orders", { <locationKey>: 1 })` to restore it.
 
-### 19.1 Durable fix (TODO, recommended)
-Convert `mongo-config` / `mongo-shard1` / `mongo-shard2` to **StatefulSets** with a
-**headless Service** so each pod gets stable DNS (`<pod>.<svc>`) that resolves to
-its own IP — mongod then recognises itself across restarts and the replica sets
-survive reboots without manual reconfig. Requires migrating the existing
-`*-pvc` data into the StatefulSet's `volumeClaimTemplates` PVCs.
+### 19.1 Durable fix (IMPLEMENTED) — StatefulSets with FQDN members
+`mongo-config`/`mongo-shard1`/`mongo-shard2` are now **StatefulSets** behind headless
+Services (`publishNotReadyAddresses: true`). Key points that make restarts self-heal:
+
+- **Replica-set members use the pod FQDN** (`<pod>-0.<svc>.<ns>.svc.cluster.local`),
+  which Kubernetes writes into the pod's own `/etc/hosts`. So mongod's one-shot
+  `isSelf` check resolves itself from a **local file — no DNS, no race**. (Using the
+  short Service name failed: at startup the headless record may not be published yet,
+  mongod gets `HostNotFound`, marks itself `REMOVED`, and a single-member set never
+  retries.) The init Job builds the FQDN at runtime from the pod namespace
+  (`/var/run/secrets/kubernetes.io/serviceaccount/namespace`).
+- **WiredTiger cache capped** `--wiredTigerCacheSizeGB 0.25` + limit `512Mi`. Without
+  the cap, mongod sizes its cache off the host's RAM (ignores the container limit) and
+  gets **OOMKilled**; an OOMKill of the config server corrupts/empties its metadata.
+- A `wait-for-self-dns` init container (defence-in-depth) blocks mongod until its name
+  resolves.
+- The StatefulSets are pinned to the env node via a `kind: StatefulSet` nodeSelector
+  patch in each overlay (the Deployment/Job/DaemonSet patches didn't cover them).
+- The `mongo-init` Job carries `argocd.argoproj.io/sync-options: Replace=true` — Job
+  pod templates are immutable, so ArgoCD must delete+recreate it on changes rather than
+  patch (otherwise the whole sync fails with "field is immutable").
+
+**Conversion gotchas (one-time):** changing Deployment→StatefulSet needs the old
+Deployments deleted manually (overlays use `prune: false`); local-path PVCs are pinned
+to the node they were first provisioned on, so after adding the nodeSelector you must
+delete mismatched `*-data-*-0` PVCs so they re-provision on the right node; and the
+mongos (`mongodb`) Deployment must be restarted after a config-server rebuild so it
+reconnects to the fresh `configRS`.
+
+Verified: deleting a shard pod, it returns and rejoins its replica set as PRIMARY
+automatically (FQDN via /etc/hosts), data intact on its StatefulSet PVC.
