@@ -18,9 +18,11 @@ data:
     deployment:
       view_only_mode: false
     istio_namespace: istio-system
-    # NOTE: keep Kiali's default web_root (/kiali). The addon's liveness/readiness
-    # probes hit /kiali/healthz, so overriding web_root to / makes them 404 and the
-    # pod restart-loops. Hitting kiali.nitte.local/ just redirects to /kiali.
+    server:
+      # Must match the addon deployment's probe path (/kiali/healthz). The stock
+      # addon ConfigMap sets this; since we replace the whole ConfigMap we must
+      # restate it or Kiali defaults to / and the probes 404 → restart loop.
+      web_root: /kiali
     external_services:
       prometheus:
         url: "http://prometheus.nitte-dev:9090"
