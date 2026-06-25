@@ -33,6 +33,21 @@ spec:
       annotations:
         sidecar.istio.io/inject: "false"
     spec:
+      initContainers:
+      # Block mongod until this pod's own DNS name resolves to its own IP, so the
+      # one-shot isSelf check at startup can't lose the race with CoreDNS after a
+      # reschedule (otherwise mongod marks itself REMOVED and never recovers).
+      - name: wait-for-self-dns
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          SELF="$(hostname).mongo-config"; MYIP="$(hostname -i)"
+          echo "Waiting for $SELF -> $MYIP ..."
+          until [ "$(getent hosts "$SELF" | awk '{print $1}' | head -n1)" = "$MYIP" ]; do sleep 2; done
+          echo "DNS ready: $SELF -> $MYIP"
       containers:
       - name: mongo-config
         image: mongo:6.0
@@ -108,6 +123,18 @@ spec:
       annotations:
         sidecar.istio.io/inject: "false"
     spec:
+      initContainers:
+      - name: wait-for-self-dns
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          SELF="$(hostname).mongo-shard1"; MYIP="$(hostname -i)"
+          echo "Waiting for $SELF -> $MYIP ..."
+          until [ "$(getent hosts "$SELF" | awk '{print $1}' | head -n1)" = "$MYIP" ]; do sleep 2; done
+          echo "DNS ready: $SELF -> $MYIP"
       containers:
       - name: mongo-shard1
         image: mongo:6.0
@@ -183,6 +210,18 @@ spec:
       annotations:
         sidecar.istio.io/inject: "false"
     spec:
+      initContainers:
+      - name: wait-for-self-dns
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          SELF="$(hostname).mongo-shard2"; MYIP="$(hostname -i)"
+          echo "Waiting for $SELF -> $MYIP ..."
+          until [ "$(getent hosts "$SELF" | awk '{print $1}' | head -n1)" = "$MYIP" ]; do sleep 2; done
+          echo "DNS ready: $SELF -> $MYIP"
       containers:
       - name: mongo-shard2
         image: mongo:6.0

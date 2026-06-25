@@ -64,3 +64,15 @@ patches:
           spec:
             nodeSelector:
               kubernetes.io/hostname: workervm1
+  - target:
+      kind: StatefulSet
+    patch: |-
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: ignored
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: workervm1
