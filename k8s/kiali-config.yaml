@@ -18,9 +18,9 @@ data:
     deployment:
       view_only_mode: false
     istio_namespace: istio-system
-    server:
-      # Served at the root of kiali.nitte.local via the Istio gateway.
-      web_root: /
+    # NOTE: keep Kiali's default web_root (/kiali). The addon's liveness/readiness
+    # probes hit /kiali/healthz, so overriding web_root to / makes them 404 and the
+    # pod restart-loops. Hitting kiali.nitte.local/ just redirects to /kiali.
     external_services:
       prometheus:
         url: "http://prometheus.nitte-dev:9090"
