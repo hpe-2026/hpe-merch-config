@@ -52,7 +52,7 @@ spec:
       - name: mongo-config
         image: mongo:6.0
         imagePullPolicy: IfNotPresent
-        command: ["mongod", "--configsvr", "--replSet", "configRS", "--port", "27017", "--bind_ip_all"]
+        command: ["mongod", "--configsvr", "--replSet", "configRS", "--port", "27017", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.25"]
         ports:
         - containerPort: 27017
         volumeMounts:
@@ -60,10 +60,10 @@ spec:
           mountPath: /data/db
         resources:
           requests:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "256Mi"
+            memory: "512Mi"
             cpu: "500m"
         readinessProbe:
           tcpSocket:
@@ -139,7 +139,7 @@ spec:
       - name: mongo-shard1
         image: mongo:6.0
         imagePullPolicy: IfNotPresent
-        command: ["mongod", "--shardsvr", "--replSet", "shard1", "--port", "27018", "--bind_ip_all"]
+        command: ["mongod", "--shardsvr", "--replSet", "shard1", "--port", "27018", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.25"]
         ports:
         - containerPort: 27018
         volumeMounts:
@@ -147,10 +147,10 @@ spec:
           mountPath: /data/db
         resources:
           requests:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "256Mi"
+            memory: "512Mi"
             cpu: "500m"
         readinessProbe:
           tcpSocket:
@@ -226,7 +226,7 @@ spec:
       - name: mongo-shard2
         image: mongo:6.0
         imagePullPolicy: IfNotPresent
-        command: ["mongod", "--shardsvr", "--replSet", "shard2", "--port", "27019", "--bind_ip_all"]
+        command: ["mongod", "--shardsvr", "--replSet", "shard2", "--port", "27019", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.25"]
         ports:
         - containerPort: 27019
         volumeMounts:
@@ -234,10 +234,10 @@ spec:
           mountPath: /data/db
         resources:
           requests:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "256Mi"
+            memory: "512Mi"
             cpu: "500m"
         readinessProbe:
           tcpSocket:
