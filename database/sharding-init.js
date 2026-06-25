@@ -9,14 +9,14 @@ db = db.getSiblingDB('admin');
 print('Adding shards to cluster...');
 
 try {
-  sh.addShard('shard1/mongo-shard1:27018');
+  sh.addShard('shard1/mongo-shard1-0.mongo-shard1:27018');
   print('✓ Shard 1 (South/West India) added');
 } catch (e) {
   print('✓ Shard 1 already exists');
 }
 
 try {
-  sh.addShard('shard2/mongo-shard2:27019');
+  sh.addShard('shard2/mongo-shard2-0.mongo-shard2:27019');
   print('✓ Shard 2 (North/East India) added');
 } catch (e) {
   print('✓ Shard 2 already exists');
