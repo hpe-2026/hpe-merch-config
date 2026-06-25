@@ -874,8 +874,11 @@ sudo systemctl enable --now rke2-agent
 ```
 > The stale `control-plane,etcd` labels on the worker node objects are cosmetic;
 > strip with `kubectl label node <n> node-role.kubernetes.io/etcd-` etc. if desired.
-> **Open item:** find what re-enables `rke2-server`/reverts `config.yaml` on the
-> workers (snapshot revert / Vagrant / cloud-init) or it can recur on reboot.
+> **Root cause (resolved):** the arcade **host was restarted**, rebooting all VMs; the
+> workers came up with `rke2-server` enabled (from initial provisioning) and cluster-
+> init'd rogue clusters. `systemctl mask rke2-server` on both workers makes this
+> impossible to recur — `rke2-server` cannot start on boot, so only `rke2-agent` runs
+> and rejoins mastervm. (No cloud-init/scripts re-enable it; cloud-init is disabled.)
 
 ---
 
