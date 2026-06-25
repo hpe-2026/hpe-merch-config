@@ -822,3 +822,108 @@ Ensure `rke2-server` stays disabled on the workers:
 ```bash
 systemctl is-enabled rke2-server rke2-agent   # expect: disabled / enabled
 ```
+
+---
+
+## 18. etcd quorum loss from workers running `rke2-server` (major outage)
+
+### 18.1 What happened
+The worker VMs were rebooting/reverting into a state with **`rke2-server` enabled**
+and a **bare `config.yaml`** (no `server:`/`token:`). Two distinct failure modes
+resulted:
+- With a join config present, `rke2-server` on a worker **joined mastervm as an
+  extra etcd/control-plane member**. The cluster had effectively become 3 etcd
+  members (mastervm + both workers — note the stale `control-plane,etcd` role
+  labels on the worker node objects).
+- When the workers were later rebuilt as agents, their etcd members vanished and
+  presented **untrusted certs**, so mastervm's etcd was left as **1 of 3 members
+  → no quorum**. Symptoms: `kubectl` hangs/times out, `rke2-server` on mastervm
+  crash-loops with `failed to reconcile with local datastore: context deadline
+  exceeded`, and the etcd container logs:
+  `prober detected unhealthy status ... x509: certificate signed by unknown
+  authority` + `failed to publish local member to cluster through raft`.
+
+### 18.2 Recovery — reset etcd to a single member (data preserved)
+```bash
+sudo systemctl stop rke2-server
+sudo /usr/local/bin/rke2-killall.sh        # clears stale etcd/apiserver containers
+sudo rke2 server --cluster-reset           # rewrites membership to THIS node only
+# wait for: "Managed etcd cluster membership has been reset, restart without
+#            --cluster-reset flag now" — it then exits on its own
+sudo systemctl start rke2-server
+kubectl get nodes                          # mastervm Ready; data intact
+```
+`--cluster-reset` keeps all etcd data (whole cluster state) — it only drops the
+dead peers so the survivor regains quorum.
+
+### 18.3 Make the workers stay agents (stop the recurrence)
+On **each worker** — the key addition is **masking** `rke2-server` so it can never
+take over again:
+```bash
+sudo systemctl disable --now rke2-server
+sudo systemctl mask rke2-server
+sudo rm -rf /var/lib/rancher/rke2/server
+sudo tee /etc/rancher/rke2/config.yaml <<'EOF'
+write-kubeconfig-mode: "0644"
+node-ip: "192.168.56.11"          # .12 on workervm2
+server: https://192.168.56.10:9345
+token: <mastervm node-token>
+EOF
+sudo systemctl enable --now rke2-agent
+# on mastervm, if "Node password rejected": kubectl delete secret <node>.node-password.rke2 -n kube-system
+```
+> The stale `control-plane,etcd` labels on the worker node objects are cosmetic;
+> strip with `kubectl label node <n> node-role.kubernetes.io/etcd-` etc. if desired.
+> **Open item:** find what re-enables `rke2-server`/reverts `config.yaml` on the
+> workers (snapshot revert / Vagrant / cloud-init) or it can recur on reboot.
+
+---
+
+## 19. MongoDB recovery after a full restart (config server + shards)
+
+Every pod restart re-breaks the sharded cluster because `mongo-config`/`mongo-shard*`
+are **Deployments** whose replica-set member host is the **Service name** (a
+ClusterIP) — mongod can't match that to its own pod IP at startup, so it ends up
+"not a member" with no primary. Recovery (preserves data; fix the **config server
+first** — shards block on it and crash-loop via their liveness probe until it's up):
+
+```bash
+# 1) config server (replSet configRS, configsvr, port 27017) -> PRIMARY on its pod IP
+kubectl exec -n nitte-dev deploy/mongo-config -- sh -c \
+  'IP=$(hostname -i); mongosh --quiet --port 27017 --eval "rs.reconfig({_id:\"configRS\",configsvr:true,members:[{_id:0,host:\"$IP:27017\"}]},{force:true})"'
+# (use rs.initiate(... configsvr:true ...) instead if it says "no replset config")
+
+# 2) shards -> PRIMARY on their pod IPs (they start listening once configRS is up)
+kubectl exec -n nitte-dev deploy/mongo-shard1 -- sh -c \
+  'IP=$(hostname -i); mongosh --quiet --port 27018 --eval "rs.reconfig({_id:\"shard1\",members:[{_id:0,host:\"$IP:27018\"}]},{force:true})"'
+kubectl exec -n nitte-dev deploy/mongo-shard2 -- sh -c \
+  'IP=$(hostname -i); mongosh --quiet --port 27019 --eval "rs.reconfig({_id:\"shard2\",members:[{_id:0,host:\"$IP:27019\"}]},{force:true})"'
+
+# 3) re-register shards with mongos (config metadata is empty after the break, so
+#    addShard re-imports the existing databases). shard1 holds nitte_merch
+#    (products/users); shard2's empty nitte_merch must be dropped to avoid conflict.
+S1=$(kubectl exec -n nitte-dev deploy/mongo-shard1 -- hostname -i)
+S2=$(kubectl exec -n nitte-dev deploy/mongo-shard2 -- hostname -i)
+kubectl exec -n nitte-dev deploy/mongodb -c mongos -- mongosh --quiet --port 27017 \
+  --eval "sh.addShard(\"shard1/$S1:27018\")"
+kubectl exec -n nitte-dev deploy/mongo-shard2 -- mongosh --quiet --port 27019 \
+  --eval 'db.getSiblingDB("nitte_merch").dropDatabase()'
+kubectl exec -n nitte-dev deploy/mongodb -c mongos -- mongosh --quiet --port 27017 \
+  --eval "sh.addShard(\"shard2/$S2:27019\")"
+
+# 4) verify + reconnect the app
+kubectl exec -n nitte-dev deploy/mongodb -c mongos -- mongosh --quiet --port 27017 \
+  --eval 'print("products="+db.getSiblingDB("nitte_merch").products.countDocuments())'
+kubectl rollout restart deployment node-backend -n nitte-dev
+```
+
+Sharding by location on `orders` is lost when the config metadata resets (the
+collection comes back unsharded on the primary shard); re-run
+`sh.shardCollection("nitte_merch.orders", { <locationKey>: 1 })` to restore it.
+
+### 19.1 Durable fix (TODO, recommended)
+Convert `mongo-config` / `mongo-shard1` / `mongo-shard2` to **StatefulSets** with a
+**headless Service** so each pod gets stable DNS (`<pod>.<svc>`) that resolves to
+its own IP — mongod then recognises itself across restarts and the replica sets
+survive reboots without manual reconfig. Requires migrating the existing
+`*-pvc` data into the StatefulSet's `volumeClaimTemplates` PVCs.
