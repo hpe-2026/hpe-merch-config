@@ -368,8 +368,13 @@ kind: Job
 metadata:
   name: mongo-init
   namespace: nitte
+  annotations:
+    # Job pod templates are immutable; tell ArgoCD to delete+recreate this Job
+    # on changes instead of patching it (which fails with "field is immutable").
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
   backoffLimit: 5
+  ttlSecondsAfterFinished: 600
   template:
     metadata:
       annotations:
