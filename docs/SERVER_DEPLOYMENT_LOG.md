@@ -686,3 +686,139 @@ crane push /tmp/x.tar $REGISTRY/<svc>:1.0.1 --insecure
   restart may require the 15.2 recovery.
 - Manual data bring-up (shards init, seed) is **not** in Git; only the workload
   manifests are GitOps-managed. Re-running on a fresh namespace needs these steps.
+
+---
+
+## 16. Observability / IAM exposure + Kiali
+
+### 16.1 Gateway hosts for the UIs
+Each UI is exposed on its own host through the Istio ingress gateway (NodePort
+**32367**), defined in `k8s/overlays/<env>/mesh.yaml` (Gateway `hosts:` + a
+`VirtualService` per host). Dev hosts use the `*.dev.nitte.local` suffix, prod
+uses `*.prod.nitte.local`:
+
+```
+keycloak.<env>.nitte.local    -> keycloak:8080
+grafana.<env>.nitte.local     -> grafana:3000
+prometheus.<env>.nitte.local  -> prometheus:9090
+jaeger.<env>.nitte.local      -> jaeger:16686
+minio.<env>.nitte.local       -> minio:9001
+```
+
+Quick routing test from mastervm:
+```bash
+for h in dev admin.dev merchant.dev keycloak.dev grafana.dev prometheus.dev jaeger.dev minio.dev; do
+  curl -s -o /dev/null -w "$h: %{http_code}\n" -H "Host: $h.nitte.local" http://192.168.56.10:32367/
+done
+```
+200 (or 302 for grafana/prometheus login redirects) means routing is good.
+
+### 16.2 Laptop access
+Add to laptop `/etc/hosts` (the SSH tunnel forwards `localhost:8080` -> gateway):
+```
+127.0.0.1 kiali.nitte.local
+127.0.0.1 keycloak.dev.nitte.local grafana.dev.nitte.local prometheus.dev.nitte.local jaeger.dev.nitte.local minio.dev.nitte.local
+127.0.0.1 keycloak.prod.nitte.local grafana.prod.nitte.local prometheus.prod.nitte.local jaeger.prod.nitte.local minio.prod.nitte.local
+```
+
+### 16.3 Keycloak admin console fix
+The admin console hung on "Loading the admin console" because the OIDC issuer/
+auth-server-url resolved to `localhost:8080`. Fixed with a strategic-merge patch
+in **both** overlays' `kustomization.yaml` (single `patches:` block — duplicate
+`patches:` keys silently override each other):
+```yaml
+env:
+  - name: KC_HOSTNAME_URL
+    value: "http://keycloak.<env>.nitte.local:8080"
+  - name: KC_PROXY
+    value: "edge"
+```
+
+### 16.4 Kiali (Istio mesh console, the ":20001" portal)
+Kiali is cluster-wide and lives in `istio-system` (outside ArgoCD's namespaces),
+so it is installed out-of-band like Istio itself. Only its gateway route is in
+Git (`k8s/overlays/dev/mesh.yaml`, host `kiali.nitte.local`, routed cross-ns to
+`kiali.istio-system.svc.cluster.local:20001`).
+
+```bash
+# install addon (matches istio 1.20)
+kubectl apply -f /tmp/istio-1.20.3/samples/addons/kiali.yaml   # or the release-1.20 raw URL
+# point Kiali at THIS cluster's prometheus/grafana/jaeger (they live in nitte-dev)
+kubectl apply -f k8s/kiali-config.yaml
+kubectl rollout restart deployment/kiali -n istio-system
+```
+Reachable at `http://kiali.nitte.local:8080/kiali` via the tunnel.
+
+**Gotcha:** `k8s/kiali-config.yaml` *replaces* the whole `kiali` ConfigMap, so it
+must restate `server.web_root: /kiali`. The addon's liveness/readiness probes hit
+`/kiali/healthz`; if web_root defaults to `/`, the probes 404 and the pod
+restart-loops (`0/1 Running`, "HTTP probe failed with statuscode: 404").
+
+**Note:** the `istiod /debug/syncz` 502 warnings in Kiali logs are the same
+kubelet-at-:10250 proxy quirk; non-fatal. Mesh graph traffic rates require
+Prometheus to scrape the Envoy sidecars.
+
+---
+
+## 17. Cluster recovery: rogue `rke2-server` on the agents (etcd split-brain)
+
+### 17.1 Symptom
+Both workers showed `NotReady` ("Kubelet stopped posting node status"); the
+ingress gateway and all worker-hosted services returned `000`. `kubectl` on
+mastervm kept working.
+
+### 17.2 Root cause
+mastervm is the **single server** (control-plane+etcd); workervm1/2 originally
+joined as **rke2-agents**. At some point `rke2-server` was enabled+started on
+both workers. With no `server:`/`token:` in their `config.yaml`, each
+`rke2-server` **cluster-init'd its own standalone single-node cluster**, hijacking
+the kubelet to point at `127.0.0.1:6443` (its rogue apiserver). Tell-tale:
+`sudo kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get nodes` on the worker
+shows only itself as `control-plane,etcd`, age ~= time since the freeze.
+
+### 17.3 Recovery (per worker)
+```bash
+sudo systemctl disable --now rke2-server
+sudo /usr/local/bin/rke2-killall.sh
+sudo rm -rf /var/lib/rancher/rke2/server
+sudo rm -rf /var/lib/rancher/rke2/agent/etcd /var/lib/rancher/rke2/agent/pod-manifests
+sudo rm -f /var/lib/rancher/rke2/agent/*.crt /var/lib/rancher/rke2/agent/*.key /var/lib/rancher/rke2/agent/*.kubeconfig
+# write the agent join config (token from: sudo cat /var/lib/rancher/rke2/server/node-token on mastervm)
+sudo tee /etc/rancher/rke2/config.yaml <<'EOF'
+write-kubeconfig-mode: "0644"
+node-ip: "192.168.56.11"          # .12 on workervm2
+server: https://192.168.56.10:9345
+token: <mastervm node-token>
+EOF
+sudo systemctl enable --now rke2-agent
+```
+
+### 17.4 Node-password rejection
+Agent log loops on: *"Node password rejected, duplicate hostname ... node-passwd
+entry"*. mastervm still holds the old node-password secret. Delete it so the
+agent re-registers:
+```bash
+kubectl delete secret <node>.node-password.rke2 -n kube-system
+```
+
+### 17.5 Restore the registry trust (lost in the rebuild)
+Recreate `/etc/rancher/rke2/registries.yaml` on each worker (section 3.3) and
+`sudo systemctl restart rke2-agent`. Without it, Nexus pulls fail with
+`http: server gave HTTP response to HTTPS client` (ImagePullBackOff on all
+`192.168.56.10:30082/*` images; public docker.io images are unaffected).
+
+### 17.6 Bring workloads back
+Once nodes are `Ready`, the istio injector webhook needs `istiod` up or pod
+creation fails cluster-wide with `no endpoints available for service "istiod"`
+(failurePolicy: Fail blocks even inject=false pods). With istiod healthy:
+```bash
+kubectl rollout restart deploy -n nitte-dev
+kubectl rollout restart deploy -n nitte-prod
+```
+Delete any `OutOfmemory` surge duplicates left by the restart.
+
+### 17.7 Prevent recurrence
+Ensure `rke2-server` stays disabled on the workers:
+```bash
+systemctl is-enabled rke2-server rke2-agent   # expect: disabled / enabled
+```
