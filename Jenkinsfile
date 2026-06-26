@@ -20,15 +20,13 @@ metadata:
   annotations:
     sidecar.istio.io/inject: "false"
 spec:
-  nodeSelector:
-    kubernetes.io/hostname: workervm1
   containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:v1.20.0-debug
     command: ["/busybox/cat"]
     tty: true
     resources:
-      requests: { memory: "512Mi", cpu: "250m" }
+      requests: { memory: "256Mi", cpu: "200m" }
       limits:   { memory: "1536Mi", cpu: "1000m" }
     volumeMounts:
     - name: docker-config
