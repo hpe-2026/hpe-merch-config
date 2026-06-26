@@ -60,6 +60,7 @@ spec:
         - "minio.dev.nitte.local"
         - "kiali.nitte.local"
         - "jenkins.nitte.local"
+        - "redoc.dev.nitte.local"
 ---
 # Storefront (+ shared API / auth / grafana)
 apiVersion: networking.istio.io/v1beta1
@@ -244,3 +245,23 @@ spec:
         - destination:
             host: jenkins.jenkins.svc.cluster.local
             port: { number: 8080 }
+---
+# Redoc API docs — /api proxied to backend so the spec loads same-origin.
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: redoc-routes
+spec:
+  hosts:
+    - "redoc.dev.nitte.local"
+  gateways:
+    - nitte-gateway
+  http:
+    - match:
+        - uri: { prefix: /api }
+      route:
+        - destination: { host: node-backend, port: { number: 3000 } }
+    - match:
+        - uri: { prefix: / }
+      route:
+        - destination: { host: redoc, port: { number: 80 } }

@@ -1,0 +1,52 @@
+# Redocly (Redoc) — OpenAPI documentation portal for the backend API.
+# Loads the spec same-origin from /api/v1/openapi.json (the Redoc host routes
+# /api to node-backend via the gateway, like the SPA hosts do).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redoc
+  namespace: nitte
+  labels:
+    app: redoc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redoc
+  template:
+    metadata:
+      labels:
+        app: redoc
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      containers:
+      - name: redoc
+        image: redocly/redoc:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: SPEC_URL
+          value: "/api/v1/openapi.json"
+        - name: PORT
+          value: "80"
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "20m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redoc
+  namespace: nitte
+spec:
+  selector:
+    app: redoc
+  ports:
+  - port: 80
+    targetPort: 80
