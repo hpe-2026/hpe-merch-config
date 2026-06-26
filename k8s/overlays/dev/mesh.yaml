@@ -33,6 +33,29 @@ spec:
   mtls:
     mode: PERMISSIVE
 ---
+# Kiali (istio-system, no sidecar) scrapes these in plaintext; allow it.
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: prometheus-permissive
+spec:
+  selector:
+    matchLabels:
+      app: prometheus
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: jaeger-permissive
+spec:
+  selector:
+    matchLabels:
+      app: jaeger
+  mtls:
+    mode: PERMISSIVE
+---
 # ───────────────────────── Ingress Gateway ─────────────────────────
 # Host-based routing so each SPA is served at the root of its own hostname
 # (avoids SPA base-path issues). Reach via the gateway NodePort, e.g.
