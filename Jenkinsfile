@@ -72,7 +72,7 @@ spec:
       steps {
         container('tools') {
           checkout scm
-          sh 'git rev-parse --short HEAD > .gitsha && echo "Building tag $TAG from $(cat .gitsha)"'
+          sh 'git config --global --add safe.directory "*"; git rev-parse --short HEAD > .gitsha && echo "Building tag $TAG from $(cat .gitsha)"'
         }
       }
     }
@@ -109,6 +109,7 @@ spec:
                                              passwordVariable: 'GH_TOKEN')]) {
             sh '''
               set -e
+              git config --global --add safe.directory "*"
               apk add --no-cache wget >/dev/null 2>&1 || true
               wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
               chmod +x /usr/local/bin/yq
