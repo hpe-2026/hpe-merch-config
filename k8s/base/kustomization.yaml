@@ -23,6 +23,7 @@ resources:
   - promtail.yaml
   - loki-rbac-proxy.yaml
   - jaeger.yaml
+  - redocly.yaml
 # Rewrite local image names to the Nexus registry
 images:
   - name: node-backend
