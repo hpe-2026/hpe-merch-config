@@ -1,6 +1,5 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 # All workload manifests for the NITTE platform (one full stack).
 # ConfigMaps and Secrets are bootstrapped out-of-band (not managed here).
 resources:
@@ -24,12 +23,11 @@ resources:
   - promtail.yaml
   - loki-rbac-proxy.yaml
   - jaeger.yaml
-
 # Rewrite local image names to the Nexus registry
 images:
   - name: node-backend
     newName: 192.168.56.10:30082/node-backend
-    newTag: "1.0.1"
+    newTag: "1.1.4"
   - name: python-service
     newName: 192.168.56.10:30082/python-service
   - name: frontend
@@ -45,7 +43,6 @@ images:
     newName: 192.168.56.10:30082/notification-service
   - name: loki-rbac-proxy
     newName: 192.168.56.10:30082/loki-rbac-proxy
-
 # Mount the correct nginx.conf (per app port) over the baked-in default
 patches:
   - path: patch-frontend-nginx.yaml
