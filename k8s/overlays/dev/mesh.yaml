@@ -59,6 +59,7 @@ spec:
         - "jaeger.dev.nitte.local"
         - "minio.dev.nitte.local"
         - "kiali.nitte.local"
+        - "jenkins.nitte.local"
 ---
 # Storefront (+ shared API / auth / grafana)
 apiVersion: networking.istio.io/v1beta1
@@ -227,3 +228,19 @@ spec:
         - destination:
             host: kiali.istio-system.svc.cluster.local
             port: { number: 20001 }
+---
+# Jenkins CI (lives in the `jenkins` namespace, Helm-installed). Cross-namespace route.
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: jenkins-routes
+spec:
+  hosts:
+    - "jenkins.nitte.local"
+  gateways:
+    - nitte-gateway
+  http:
+    - route:
+        - destination:
+            host: jenkins.jenkins.svc.cluster.local
+            port: { number: 8080 }
