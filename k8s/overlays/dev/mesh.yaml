@@ -61,6 +61,7 @@ spec:
         - "kiali.nitte.local"
         - "jenkins.nitte.local"
         - "redoc.dev.nitte.local"
+        - "goalert.nitte.local"
 ---
 # Storefront (+ shared API / auth / grafana)
 apiVersion: networking.istio.io/v1beta1
@@ -265,3 +266,19 @@ spec:
         - uri: { prefix: / }
       route:
         - destination: { host: redoc, port: { number: 80 } }
+---
+# GoAlert — central alerting/on-call (lives in the `goalert` namespace, out-of-band).
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: goalert-routes
+spec:
+  hosts:
+    - "goalert.nitte.local"
+  gateways:
+    - nitte-gateway
+  http:
+    - route:
+        - destination:
+            host: goalert.goalert.svc.cluster.local
+            port: { number: 8081 }

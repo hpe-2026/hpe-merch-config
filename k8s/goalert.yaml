@@ -1,0 +1,135 @@
+# GoAlert — on-call scheduling / alerting (central shared service).
+# Applied out-of-band (not in the per-env app overlays): one instance, own namespace,
+# pinned to workervm2 (most memory headroom). Alertmanager → GoAlert is wired after
+# first login (create a service + generic-API integration key, point Alertmanager at it).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: goalert
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: goalert-db
+  namespace: goalert
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goalert-db
+  namespace: goalert
+  labels: { app: goalert-db }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: goalert-db }
+  template:
+    metadata:
+      labels: { app: goalert-db }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: workervm2
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        imagePullPolicy: IfNotPresent
+        env:
+        - { name: POSTGRES_USER, value: "goalert" }
+        - { name: POSTGRES_PASSWORD, value: "goalert" }
+        - { name: POSTGRES_DB, value: "goalert" }
+        - { name: PGDATA, value: "/var/lib/postgresql/data/pgdata" }
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests: { memory: "128Mi", cpu: "50m" }
+          limits:   { memory: "384Mi", cpu: "500m" }
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: goalert-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: goalert-db
+  namespace: goalert
+spec:
+  selector: { app: goalert-db }
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goalert
+  namespace: goalert
+  labels: { app: goalert }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: goalert }
+  template:
+    metadata:
+      labels: { app: goalert }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: workervm2
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.35
+        imagePullPolicy: IfNotPresent
+        command: ['sh','-c','until nc -z goalert-db 5432; do echo waiting for db; sleep 3; done']
+      - name: migrate
+        image: goalert/goalert:latest
+        imagePullPolicy: IfNotPresent
+        command: ['goalert','migrate']
+        env:
+        - { name: GOALERT_DB_URL, value: "postgres://goalert:goalert@goalert-db:5432/goalert?sslmode=disable" }
+      - name: add-admin
+        image: goalert/goalert:latest
+        imagePullPolicy: IfNotPresent
+        command: ['sh','-c','goalert add-user --user admin --pass admin123 --admin || true']
+        env:
+        - { name: GOALERT_DB_URL, value: "postgres://goalert:goalert@goalert-db:5432/goalert?sslmode=disable" }
+      containers:
+      - name: goalert
+        image: goalert/goalert:latest
+        imagePullPolicy: IfNotPresent
+        args: ['goalert']
+        env:
+        - { name: GOALERT_DB_URL, value: "postgres://goalert:goalert@goalert-db:5432/goalert?sslmode=disable" }
+        - { name: GOALERT_LISTEN, value: "0.0.0.0:8081" }
+        - { name: GOALERT_DATA_ENCRYPTION_KEY, value: "nitte-goalert-lab-key-change-me" }
+        - { name: GOALERT_PUBLIC_URL, value: "http://goalert.nitte.local:8080" }
+        ports:
+        - containerPort: 8081
+        resources:
+          requests: { memory: "128Mi", cpu: "100m" }
+          limits:   { memory: "384Mi", cpu: "500m" }
+        readinessProbe:
+          httpGet: { path: /health, port: 8081 }
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          failureThreshold: 12
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: goalert
+  namespace: goalert
+spec:
+  selector: { app: goalert }
+  ports:
+  - port: 8081
+    targetPort: 8081
