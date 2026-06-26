@@ -955,3 +955,51 @@ reconnects to the fresh `configRS`.
 
 Verified: deleting a shard pod, it returns and rejoins its replica set as PRIMARY
 automatically (FQDN via /etc/hosts), data intact on its StatefulSet PVC.
+
+---
+
+## 20. CI/CD pipeline — Jenkins + Kaniko + ArgoCD
+
+Jenkins is the **Helm chart** install (`jenkins-0` StatefulSet in the `jenkins`
+namespace) — not the stale `k8s/jenkins.yaml` Deployment in the repo. The Kubernetes
+plugin is installed and the `jenkins` SA has `jenkins-schedule-agents` RBAC, so builds
+run in ephemeral agent pods. The cluster is **containerd (no Docker daemon)**, so images
+are built with **Kaniko**, not `docker build`.
+
+Flow (`Jenkinsfile` at repo root):
+```
+git push main → Jenkins nitte-ci → Kaniko build each service → push to Nexus
+   → yq bumps newTag in k8s/base/kustomization.yaml → git push main → ArgoCD deploys nitte-dev
+```
+
+### 20.1 One-time setup
+- Expose Jenkins via the gateway: host `jenkins.nitte.local` → `jenkins.jenkins.svc:8080`
+  (VirtualService in `k8s/overlays/dev/mesh.yaml`); add `127.0.0.1 jenkins.nitte.local`
+  to the laptop `/etc/hosts`. Admin creds:
+  `kubectl get secret jenkins -n jenkins -o jsonpath='{.data.jenkins-admin-password}' | base64 -d`.
+- **Kaniko → Nexus auth secret** (namespace `jenkins`):
+  ```bash
+  AUTH=$(printf 'admin:nexus-admin-123' | base64 | tr -d '\n')
+  kubectl create secret generic kaniko-docker-config -n jenkins \
+    --from-literal=config.json="{\"auths\":{\"192.168.56.10:30082\":{\"auth\":\"$AUTH\"}}}"
+  ```
+- **GitHub push token**: Jenkins → Manage Credentials → Username with password,
+  id `github-token`, username = GitHub user, password = a classic PAT with `repo` scope.
+- **Job**: New Item `nitte-ci` → Pipeline → "Pipeline script from SCM" → Git repo →
+  branch `*/main` → Script Path `Jenkinsfile`.
+
+### 20.2 Running
+`Build with Parameters` → `SERVICES` = `all` (all 7) or a space-separated subset
+(e.g. `node-backend`). Images are tagged `1.1.<BUILD_NUMBER>` (unique tag per build, so
+`imagePullPolicy: IfNotPresent` always pulls the new one). Kaniko pushes with
+`--insecure --skip-tls-verify --insecure-pull` (Nexus is plain HTTP).
+
+### 20.3 Gotchas hit during bring-up
+- **Agent unschedulable**: don't pin the CI pod to `workervm1` (it's memory-saturated
+  with the dev stack). The podTemplate has no nodeSelector so it lands on any node with
+  room (typically workervm2).
+- **`fatal: detected dubious ownership`**: the agent containers run as a different UID
+  than owns the workspace — every git-using `sh` step runs `git config --global --add
+  safe.directory "*"` first.
+- The CI commit lands on `main`, so **`git pull --rebase` on the laptop** before the next
+  manual edit/push to avoid divergence.
