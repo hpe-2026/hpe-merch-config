@@ -1055,6 +1055,31 @@ fragility class as the mongo/etcd issues).
 - **GoAlert** (`k8s/goalert.yaml`, out-of-band, namespace `goalert`, pinned workervm2):
   central on-call/alerting + small Postgres; gateway host `goalert.nitte.local`
   (admin/admin123). Alertmanager→GoAlert webhook wiring is a follow-up.
-- **WAF / SonarQube**: planned (WAF = Coraza WASM on the ingress gateway, no extra pods;
-  SonarQube = CI-plane, heavy, workervm2). **Rancher intentionally skipped** — management UI
-  doesn't belong on a prod-app node; kubectl/ArgoCD/Kiali already cover operations.
+- **Rancher / SonarQube**: intentionally **skipped** — Rancher (management UI) doesn't belong
+  on a prod-app node, and kubectl/ArgoCD/Kiali already cover operations; SonarQube dropped to
+  keep the memory-tight cluster stable.
+
+### 21.4 WAF — Coraza (OWASP CRS) as an Istio WasmPlugin
+`k8s/waf-coraza.yaml` (applied out-of-band into `istio-system`). Runs **inside the existing
+ingress-gateway Envoy** via WebAssembly — no extra pods/memory. Pulls
+`oci://ghcr.io/corazawaf/coraza-proxy-wasm:0.5.0` and loads the embedded OWASP Core Rule Set 4.0.
+
+```yaml
+spec:
+  selector: { matchLabels: { istio: ingressgateway } }
+  url: oci://ghcr.io/corazawaf/coraza-proxy-wasm:0.5.0
+  phase: AUTHN
+  pluginConfig:
+    directives_map:
+      default:
+        - "Include @recommended-conf"
+        - "Include @crs-setup-conf"
+        - "Include @owasp_crs/*.conf"
+        - "SecRuleEngine On"          # start with DetectionOnly, flip to On after verifying
+    default_directives: default
+```
+Verified: a SQLi probe (`?q=1' OR '1'='1`) is blocked with **403** (CRS rule `942100` →
+anomaly score → `949110`), while home/products/login return 200. Tune false positives by
+reading the offending rule id from the gateway logs
+(`kubectl logs -n istio-system -l istio=ingressgateway | grep -i coraza`) and adding a
+`SecRuleRemoveById <id>` directive rather than weakening the whole WAF.
