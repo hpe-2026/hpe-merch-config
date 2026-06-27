@@ -22,5 +22,5 @@ spec:
         - "Include @recommended-conf"
         - "Include @crs-setup-conf"
         - "Include @owasp_crs/*.conf"
-        - "SecRuleEngine DetectionOnly"
+        - "SecRuleEngine On"
     default_directives: default
