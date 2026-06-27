@@ -22,5 +22,9 @@ spec:
         - "Include @recommended-conf"
         - "Include @crs-setup-conf"
         - "Include @owasp_crs/*.conf"
+        # Disable the WAF for internal tooling/admin UIs (GraphQL/complex APIs that trip
+        # CRS, and they're behind the SSH tunnel). The public app hosts (dev, prod,
+        # admin.*, merchant.*) do NOT match this regex, so they stay fully protected.
+        - 'SecRule REQUEST_HEADERS:Host "@rx ^(goalert|kiali|jenkins|grafana|prometheus|jaeger|minio|keycloak|redoc)\." "id:1000,phase:1,t:lowercase,pass,nolog,ctl:ruleEngine=Off"'
         - "SecRuleEngine On"
     default_directives: default
