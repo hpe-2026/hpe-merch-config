@@ -1003,3 +1003,58 @@ git push main → Jenkins nitte-ci → Kaniko build each service → push to Nex
   safe.directory "*"` first.
 - The CI commit lands on `main`, so **`git pull --rebase` on the laptop** before the next
   manual edit/push to avoid divergence.
+
+---
+
+## 21. Extra components + email enablement + Kafka crash-loop fix
+
+### 21.1 Email / notification-service (SMTP via Gmail)
+notification-service consumes Kafka events (`order-events`, `product-events`,
+`user-activity`, `user-approved`, `user-rejected`) and sends mail/Slack. Config split:
+- ConfigMap `notification-service-config` (non-secret): `SMTP_HOST=smtp.gmail.com`,
+  `SMTP_PORT=587`, `SMTP_SECURE=false`, `SMTP_FROM`, `EMAIL_ENABLED=true`, `SLACK_ENABLED=true`.
+- Secret `notification-service-secrets` (per namespace, **out-of-band**): `SMTP_USER`,
+  `SMTP_PASS`, `SLACK_WEBHOOK_URL`, `KEYCLOAK_ADMIN_EMAILS`, `ADMIN_NOTIFICATION_EMAILS`.
+
+It was never sending because `SMTP_USER`/`SMTP_PASS` were **empty** (bootstrapped from a
+blank `.env`). Fix — patch the secret in dev **and** prod, then restart:
+```bash
+kubectl patch secret notification-service-secrets -n nitte-dev --type merge \
+  -p '{"stringData":{"SMTP_USER":"<gmail>","SMTP_PASS":"<gmail-app-password>","SLACK_WEBHOOK_URL":"<webhook>"}}'
+# repeat for -n nitte-prod
+kubectl rollout restart deployment notification-service -n nitte-dev -n nitte-prod
+```
+`SMTP_PASS` must be a Gmail **App Password** (2FA required), not the account password.
+Keep these out of Git (like `passwords.txt`); rotate if they ever leak.
+
+### 21.2 Kafka crash-loop: stale Zookeeper broker znode
+**Symptom:** Kafka `CrashLoopBackOff` (exit 1, ~16 restarts), notification-service consumer
+spammed `ECONNRESET` / "no leader for this topic-partition" and never consumed.
+**Root cause (kafka --previous logs):**
+```
+Exiting Kafka due to fatal exception during startup.
+KeeperException$NodeExistsException ... KafkaZkClient.registerBroker
+```
+After an unclean restart, the previous broker's **ephemeral znode `/brokers/ids/1`** was
+still in Zookeeper (session not yet expired), so the new broker couldn't register → exit →
+restart → race forever. (cp-zookeeper here has **no PVC**, so don't restart ZK — it'd drop
+topic metadata.) **Fix — delete the stale znode, bounce Kafka:**
+```bash
+kubectl exec -n nitte-dev deploy/zookeeper -- zookeeper-shell localhost:2181 delete /brokers/ids/1
+kubectl delete pod -n nitte-dev -l app=kafka
+```
+Kafka then registers cleanly (`[KafkaServer id=1] started`) and the consumer joins with its
+topic assignments. **Durable fix (TODO):** Kafka as a StatefulSet + larger
+`zookeeper.session.timeout.ms` so a restart can't lose the znode race (same data-layer
+fragility class as the mongo/etcd issues).
+
+### 21.3 Extra components deployed
+- **Redocly** (`k8s/base/redocly.yaml`): API docs portal; gateway host `redoc.dev.nitte.local`
+  with `/api` proxied to node-backend so the spec loads same-origin. (Dev-only access; a pod
+  also runs in prod but isn't routed there — keep prod lean.)
+- **GoAlert** (`k8s/goalert.yaml`, out-of-band, namespace `goalert`, pinned workervm2):
+  central on-call/alerting + small Postgres; gateway host `goalert.nitte.local`
+  (admin/admin123). Alertmanager→GoAlert webhook wiring is a follow-up.
+- **WAF / SonarQube**: planned (WAF = Coraza WASM on the ingress gateway, no extra pods;
+  SonarQube = CI-plane, heavy, workervm2). **Rancher intentionally skipped** — management UI
+  doesn't belong on a prod-app node; kubectl/ArgoCD/Kiali already cover operations.
