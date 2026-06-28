@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: keycloak-setup
-  namespace: nitte
+  namespace: identity-core
 spec:
   ttlSecondsAfterFinished: 300
   template:

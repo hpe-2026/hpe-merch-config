@@ -1,0 +1,66 @@
+# Admin Cluster Namespace Declarations
+# Apply first before any other admin-cluster manifests:
+#   kubectl apply -f admin-cluster/namespaces.yaml
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: identity-core
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+    cluster-role: admin
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage-system
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+    cluster-role: admin
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: system
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+    cluster-role: admin
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+    cluster-role: admin
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitops-system
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+    cluster-role: admin
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cattle-system
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+    cluster-role: admin
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: goalert
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+    cluster-role: admin

@@ -1,0 +1,123 @@
+# ArgoCD — Hub-and-Spoke GitOps engine on the Admin cluster (gitops-system namespace)
+# Manages declarative deployments to Dev (192.168.56.11) and Prod (192.168.56.12).
+
+---
+# Step 1: Install ArgoCD from upstream manifests
+# Run once: kubectl apply -n gitops-system -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.0/manifests/install.yaml
+
+---
+# ArgoCD Ingress — exposed via nip.io for browser access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server
+  namespace: gitops-system
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "256k"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: argocd.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: argocd-server
+            port:
+              number: 443
+
+---
+# ArgoCD Application — deploy downstream-clusters/apps to Dev cluster
+# After registering Dev cluster in ArgoCD:
+#   argocd cluster add dev-context --name dev
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: downstream-dev
+  namespace: gitops-system
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    targetRevision: main
+    path: downstream-clusters/apps
+  destination:
+    server: https://192.168.56.11:6443
+    namespace: nitte
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+
+---
+# ArgoCD Application — deploy downstream-clusters/apps to Prod cluster
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: downstream-prod
+  namespace: gitops-system
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    targetRevision: main
+    path: downstream-clusters/apps
+  destination:
+    server: https://192.168.56.12:6443
+    namespace: nitte
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+
+---
+# ArgoCD Application — deploy monitoring agents to Dev cluster
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-agents-dev
+  namespace: gitops-system
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    targetRevision: main
+    path: downstream-clusters/monitoring-agents
+  destination:
+    server: https://192.168.56.11:6443
+    namespace: nitte
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+---
+# ArgoCD Application — deploy monitoring agents to Prod cluster
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-agents-prod
+  namespace: gitops-system
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    targetRevision: main
+    path: downstream-clusters/monitoring-agents
+  destination:
+    server: https://192.168.56.12:6443
+    namespace: nitte
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

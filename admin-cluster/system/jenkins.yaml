@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jenkins
-  namespace: nitte
+  namespace: system
   labels:
     app: jenkins
 spec:
@@ -19,7 +19,7 @@ spec:
       - name: wait-for-keycloak
         image: busybox:1.35
         imagePullPolicy: IfNotPresent
-        command: ['sh', '-c', 'until nc -z keycloak 8080; do echo "waiting for keycloak"; sleep 5; done']
+        command: ['sh', '-c', 'until nc -z keycloak.identity-core.svc.cluster.local 8080; do echo "waiting for keycloak"; sleep 5; done']
       containers:
       - name: jenkins
         image: nitte-jenkins:1.0.0
@@ -89,7 +89,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: jenkins
-  namespace: nitte
+  namespace: system
 spec:
   selector:
     app: jenkins

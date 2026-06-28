@@ -1,0 +1,33 @@
+# Ingress resources for all admin-cluster services
+# Prerequisites: RKE2 bundled NGINX Ingress Controller, .nip.io wildcard DNS
+# Admin node IP: 192.168.56.10
+#
+# Large proxy buffer annotations required for Keycloak/OAuth2 JWT cookies
+# (prevents 502 errors when SSO tokens exceed standard buffer limits)
+
+---
+# identity-core namespace
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  namespace: identity-core
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "256k"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: keycloak.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: keycloak
+            port:
+              number: 8080

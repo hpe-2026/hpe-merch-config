@@ -1,0 +1,292 @@
+# Thanos Receiver — receives remote_write metrics from downstream Dev and Prod clusters
+# Thanos Store Gateway — serves long-term metrics from MinIO to Thanos Query
+# Thanos Compactor  — downsamples and archives metrics blocks to MinIO
+# Thanos Query      — unified query frontend for Grafana
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: thanos-bucket-config
+  namespace: observability
+data:
+  bucket.yml: |
+    type: s3
+    config:
+      bucket: thanos-metrics
+      endpoint: minio.storage-system.svc.cluster.local:9000
+      access_key: thanos-user
+      secret_key: ThanosPassword99!
+      insecure: true
+
+---
+# Thanos Receiver — ingests metrics via remote_write from downstream Prometheus agents
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-receiver
+  namespace: observability
+  labels:
+    app: thanos-receiver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thanos-receiver
+  template:
+    metadata:
+      labels:
+        app: thanos-receiver
+    spec:
+      containers:
+      - name: thanos-receiver
+        image: quay.io/thanos/thanos:v0.35.1
+        imagePullPolicy: IfNotPresent
+        args:
+        - receive
+        - --tsdb.path=/data/receiver
+        - --tsdb.retention=6h
+        - --receive.replication-factor=1
+        - --label=receive_cluster="admin"
+        - --grpc-address=0.0.0.0:10901
+        - --http-address=0.0.0.0:10902
+        - --remote-write.address=0.0.0.0:19291
+        - --objstore.config-file=/etc/thanos/bucket.yml
+        ports:
+        - name: grpc
+          containerPort: 10901
+        - name: http
+          containerPort: 10902
+        - name: remote-write
+          containerPort: 19291
+        volumeMounts:
+        - name: data
+          mountPath: /data/receiver
+        - name: bucket-config
+          mountPath: /etc/thanos
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: data
+        emptyDir: {}
+      - name: bucket-config
+        configMap:
+          name: thanos-bucket-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-receiver
+  namespace: observability
+spec:
+  selector:
+    app: thanos-receiver
+  ports:
+  - name: grpc
+    port: 10901
+    targetPort: 10901
+  - name: http
+    port: 10902
+    targetPort: 10902
+  - name: remote-write
+    port: 19291
+    targetPort: 19291
+  type: ClusterIP
+
+---
+# Thanos Store Gateway — serves historical metrics from MinIO for querying
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-store
+  namespace: observability
+  labels:
+    app: thanos-store
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thanos-store
+  template:
+    metadata:
+      labels:
+        app: thanos-store
+    spec:
+      containers:
+      - name: thanos-store
+        image: quay.io/thanos/thanos:v0.35.1
+        imagePullPolicy: IfNotPresent
+        args:
+        - store
+        - --grpc-address=0.0.0.0:10901
+        - --http-address=0.0.0.0:10902
+        - --data-dir=/data/store
+        - --objstore.config-file=/etc/thanos/bucket.yml
+        ports:
+        - name: grpc
+          containerPort: 10901
+        - name: http
+          containerPort: 10902
+        volumeMounts:
+        - name: data
+          mountPath: /data/store
+        - name: bucket-config
+          mountPath: /etc/thanos
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: data
+        emptyDir: {}
+      - name: bucket-config
+        configMap:
+          name: thanos-bucket-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-store
+  namespace: observability
+spec:
+  selector:
+    app: thanos-store
+  ports:
+  - name: grpc
+    port: 10901
+    targetPort: 10901
+  - name: http
+    port: 10902
+    targetPort: 10902
+  type: ClusterIP
+
+---
+# Thanos Compactor — downsamples and archives metrics blocks to MinIO
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-compactor
+  namespace: observability
+  labels:
+    app: thanos-compactor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thanos-compactor
+  template:
+    metadata:
+      labels:
+        app: thanos-compactor
+    spec:
+      containers:
+      - name: thanos-compactor
+        image: quay.io/thanos/thanos:v0.35.1
+        imagePullPolicy: IfNotPresent
+        args:
+        - compact
+        - --wait
+        - --http-address=0.0.0.0:10902
+        - --data-dir=/data/compact
+        - --objstore.config-file=/etc/thanos/bucket.yml
+        - --retention.resolution-raw=30d
+        - --retention.resolution-5m=90d
+        - --retention.resolution-1h=365d
+        ports:
+        - name: http
+          containerPort: 10902
+        volumeMounts:
+        - name: data
+          mountPath: /data/compact
+        - name: bucket-config
+          mountPath: /etc/thanos
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: data
+        emptyDir: {}
+      - name: bucket-config
+        configMap:
+          name: thanos-bucket-config
+
+---
+# Thanos Query — federated query frontend aggregating Receiver + Store data
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-query
+  namespace: observability
+  labels:
+    app: thanos-query
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thanos-query
+  template:
+    metadata:
+      labels:
+        app: thanos-query
+    spec:
+      containers:
+      - name: thanos-query
+        image: quay.io/thanos/thanos:v0.35.1
+        imagePullPolicy: IfNotPresent
+        args:
+        - query
+        - --http-address=0.0.0.0:9090
+        - --grpc-address=0.0.0.0:10901
+        - --query.replica-label=receive_cluster
+        - --store=thanos-receiver.observability.svc.cluster.local:10901
+        - --store=thanos-store.observability.svc.cluster.local:10901
+        ports:
+        - name: http
+          containerPort: 9090
+        - name: grpc
+          containerPort: 10901
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-query
+  namespace: observability
+spec:
+  selector:
+    app: thanos-query
+  ports:
+  - name: http
+    port: 9090
+    targetPort: 9090
+  type: ClusterIP
