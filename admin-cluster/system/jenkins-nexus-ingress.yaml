@@ -1,0 +1,55 @@
+# Ingress resources for Jenkins and Nexus (system namespace)
+# Nexus traffic MUST route through oauth2-proxy — direct Nexus port must never be exposed.
+# The sidecar pattern enforces RUT (Remote User Token) authentication.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jenkins
+  namespace: system
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "256k"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: jenkins.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: jenkins
+            port:
+              number: 8080
+---
+# Nexus routes to oauth2-proxy (port 4180) — NOT directly to Nexus (8081)
+# This enforces the RUT proxy chain: Ingress → oauth2-proxy → Nexus (localhost)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nexus
+  namespace: system
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "256k"
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: nexus.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nexus-oauth2-proxy    # Routes to the oauth2-proxy sidecar service
+            port:
+              number: 4182

@@ -1,0 +1,154 @@
+# Ingress resources for observability stack (observability namespace)
+# Prometheus and Jaeger are protected by oauth2-proxy (in system namespace).
+# Grafana, Loki, AlertManager, Thanos Query exposed directly.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: observability
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "256k"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: grafana.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: alertmanager
+  namespace: observability
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: alertmanager.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: alertmanager
+            port:
+              number: 9093
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: thanos-query
+  namespace: observability
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: thanos.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: thanos-query
+            port:
+              number: 9090
+---
+# Loki RBAC Proxy — also exposed as NodePort 30200 for Promtail agents on downstream clusters
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: loki
+  namespace: observability
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: loki.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: loki-rbac-proxy
+            port:
+              number: 3200
+---
+# Loki RBAC Proxy NodePort — allows downstream Promtail agents to push logs
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki-rbac-proxy-nodeport
+  namespace: observability
+spec:
+  selector:
+    app: loki-rbac-proxy
+  ports:
+  - port: 3200
+    targetPort: 3200
+    nodePort: 30200
+  type: NodePort
+---
+# Prometheus (behind oauth2-proxy in system namespace) — Ingress on system namespace
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus
+  namespace: system
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "256k"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: prometheus.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: oauth2-proxy-prometheus
+            port:
+              number: 4180
+---
+# Jaeger (behind oauth2-proxy in system namespace) — Ingress on system namespace
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jaeger
+  namespace: system
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "256k"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: jaeger.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: oauth2-proxy-jaeger
+            port:
+              number: 4181

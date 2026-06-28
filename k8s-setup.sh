@@ -22,7 +22,7 @@ cd "$SCRIPT_DIR"
 
 NS="nitte"
 PF_PIDS_FILE="$SCRIPT_DIR/.k8s-pf.pids"
-K8S_DIR="$SCRIPT_DIR/k8s"
+K8S_DIR="$SCRIPT_DIR/downstream-clusters/apps"
 
 # Flag: skip Istio for low-resource machines (set via --no-istio)
 NO_ISTIO="${NO_ISTIO:-0}"
@@ -79,10 +79,10 @@ check_prereqs() {
   ok "kubectl: $(kubectl version --client --short 2>/dev/null || kubectl version --client | head -1)"
 
   if [[ ! -d "$K8S_DIR" ]]; then
-    err "k8s/ manifest directory not found in $SCRIPT_DIR"
+    err "downstream-clusters/apps/ manifest directory not found in $SCRIPT_DIR"
     exit 1
   fi
-  ok "k8s/ manifests directory present"
+  ok "downstream-clusters/apps/ manifests directory present"
 }
 
 # ---------- Minikube startup -------------------------------------------------
@@ -250,9 +250,9 @@ install_istio() {
 deploy_istio_config() {
   header "Deploying Istio Configuration"
 
-  local istio_dir="$K8S_DIR/istio"
+  local istio_dir="$SCRIPT_DIR/downstream-clusters/overlays/istio"
   if [[ ! -d "$istio_dir" ]]; then
-    info "No istio/ directory found — skipping Istio config"
+    info "No downstream-clusters/overlays/istio/ directory found — skipping Istio config"
     return 0
   fi
 
@@ -376,39 +376,39 @@ deploy_manifests() {
   header "Deploying Kubernetes Manifests"
 
   local manifests=(
-    "namespace.yaml"
-    "secrets.yaml"
-    "pvcs.yaml"
-    "mongodb.yaml"
-    "keycloak.yaml"
-    "keycloak-setup.yaml"
-    "kafka.yaml"
-    "minio.yaml"
-    "minio-init.yaml"
-    "python-service.yaml"
-    "node-backend.yaml"
-    "frontend.yaml"
-    "admin-dashboard.yaml"
-    "merchant-portal.yaml"
-    "notification-service.yaml"
-    "seed-products.yaml"
-    "mongo-backup.yaml"
-    "jaeger.yaml"
-    "alertmanager.yaml"
-    "loki.yaml"
-    "promtail-rbac.yaml"
-    "promtail.yaml"
-    "prometheus.yaml"
-    "grafana.yaml"
-    "loki-rbac-proxy.yaml"
-    "oauth2-proxies.yaml"
-    "jenkins.yaml"
-    "nexus.yaml"
+    "downstream-clusters/apps/namespace.yaml"
+    "downstream-clusters/apps/secrets.yaml"
+    "downstream-clusters/apps/pvcs.yaml"
+    "downstream-clusters/apps/mongodb.yaml"
+    "admin-cluster/identity-core/keycloak.yaml"
+    "admin-cluster/identity-core/keycloak-setup.yaml"
+    "downstream-clusters/apps/kafka.yaml"
+    "admin-cluster/storage-system/minio.yaml"
+    "admin-cluster/storage-system/minio-init.yaml"
+    "downstream-clusters/apps/python-service.yaml"
+    "downstream-clusters/apps/node-backend.yaml"
+    "downstream-clusters/apps/frontend.yaml"
+    "downstream-clusters/apps/admin-dashboard.yaml"
+    "downstream-clusters/apps/merchant-portal.yaml"
+    "downstream-clusters/apps/notification-service.yaml"
+    "downstream-clusters/apps/seed-products.yaml"
+    "downstream-clusters/apps/mongo-backup.yaml"
+    "admin-cluster/observability/jaeger.yaml"
+    "admin-cluster/observability/alertmanager.yaml"
+    "admin-cluster/observability/loki.yaml"
+    "downstream-clusters/monitoring-agents/promtail-rbac.yaml"
+    "downstream-clusters/monitoring-agents/promtail.yaml"
+    "admin-cluster/observability/prometheus.yaml"
+    "admin-cluster/observability/grafana.yaml"
+    "admin-cluster/observability/loki-rbac-proxy.yaml"
+    "admin-cluster/system/oauth2-proxies.yaml"
+    "admin-cluster/system/jenkins.yaml"
+    "admin-cluster/system/nexus.yaml"
   )
 
   for manifest in "${manifests[@]}"; do
     step "Applying $manifest…"
-    kubectl apply -f "$K8S_DIR/$manifest" >/dev/null
+    kubectl apply -f "$SCRIPT_DIR/$manifest" >/dev/null
     ok "Applied: $manifest"
   done
 }

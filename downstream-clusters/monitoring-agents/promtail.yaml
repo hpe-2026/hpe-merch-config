@@ -14,7 +14,8 @@ data:
       filename: /tmp/positions.yaml
 
     clients:
-      - url: http://loki-rbac-proxy:3200/loki/api/v1/push
+      - url: http://192.168.56.10:30200/loki/api/v1/push
+        # 30200 = NodePort of loki-rbac-proxy on Admin cluster (see observability-ingress.yaml)
         tenant_id: default
         headers:
           X-Promtail-Api-Key: promtail-loki-secret

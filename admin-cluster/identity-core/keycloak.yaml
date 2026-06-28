@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: keycloak
-  namespace: nitte
+  namespace: identity-core
   labels:
     app: keycloak
 spec:
@@ -16,6 +16,11 @@ spec:
         app: keycloak
         promtail.io/scrape: "true"
     spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.35
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nc -z postgres-keycloak 5432; do echo "waiting for postgres"; sleep 3; done']
       containers:
       - name: keycloak
         image: quay.io/keycloak/keycloak:20.0.0
@@ -35,21 +40,30 @@ spec:
               name: nitte-secrets
               key: KEYCLOAK_ADMIN_PASSWORD
         - name: KC_DB
-          value: dev-file
-        - name: KC_DB_URL_PROPERTIES
-          value: ";DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1"
+          value: postgres
+        - name: KC_DB_URL
+          value: jdbc:postgresql://postgres-keycloak:5432/keycloak
+        - name: KC_DB_USERNAME
+          value: keycloak
+        - name: KC_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: admin-secrets
+              key: POSTGRES_KEYCLOAK_PASSWORD
         - name: KC_FEATURES
           value: import-realm
-        - name: KEYCLOAK_IMPORT
-          value: /opt/keycloak/data/import/nitte-realm.json
+        - name: KEYCLOAK_JWKS_URL
+          value: http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/certs
         - name: KC_HOSTNAME_URL
-          value: http://localhost:8080
+          value: https://keycloak.192.168.56.10.nip.io
         - name: KC_HOSTNAME_STRICT
           value: "false"
         - name: KC_HOSTNAME_STRICT_HTTPS
           value: "false"
+        - name: KC_PROXY
+          value: edge
         - name: NOTIFICATION_SERVICE_URL
-          value: http://notification-service:9100/api/v1/events
+          value: http://notification-service.nitte.svc.cluster.local:9100/api/v1/events
         - name: NOTIFICATION_TIMEOUT_SECONDS
           value: "5"
         - name: QUARKUS_LOG_FILE_ENABLE
@@ -142,7 +156,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: keycloak
-  namespace: nitte
+  namespace: identity-core
 spec:
   selector:
     app: keycloak

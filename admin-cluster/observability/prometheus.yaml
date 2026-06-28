@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
-  namespace: nitte
+  namespace: observability
   labels:
     app: prometheus
 spec:
@@ -15,11 +15,7 @@ spec:
       labels:
         app: prometheus
     spec:
-      initContainers:
-      - name: wait-for-backend
-        image: busybox:1.35
-        imagePullPolicy: IfNotPresent
-        command: ['sh', '-c', 'until nc -z node-backend 3000; do echo "waiting for backend"; sleep 2; done']
+      # No initContainers — Admin Prometheus scrapes only local admin-cluster services
       containers:
       - name: prometheus
         image: prom/prometheus:v2.48.0
@@ -71,7 +67,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: prometheus
-  namespace: nitte
+  namespace: observability
 spec:
   selector:
     app: prometheus
