@@ -23,7 +23,7 @@ spec:
   description: "Admin cluster — self-managed infrastructure (Keycloak, MinIO, Thanos, Grafana, ArgoCD, Jenkins)"
   # Only allow pulls from this repo
   sourceRepos:
-    - https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    - https://github.com/hpe-2026/hpe-merch-config.git
   destinations:
     # Admin cluster itself (in-cluster)
     - server: https://kubernetes.default.svc
@@ -48,7 +48,7 @@ metadata:
 spec:
   description: "Downstream clusters — Dev and Prod application workloads"
   sourceRepos:
-    - https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    - https://github.com/hpe-2026/hpe-merch-config.git
   destinations:
     - server: https://192.168.56.11:6443
       namespace: "*"
@@ -79,7 +79,7 @@ metadata:
 spec:
   project: admin-cluster
   source:
-    repoURL: https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    repoURL: https://github.com/hpe-2026/hpe-merch-config.git
     targetRevision: main
     path: admin-cluster
     # Kustomize picks up admin-cluster/kustomization.yaml automatically
@@ -151,7 +151,7 @@ metadata:
 spec:
   project: downstream
   source:
-    repoURL: https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    repoURL: https://github.com/hpe-2026/hpe-merch-config.git
     targetRevision: main
     path: downstream-clusters/overlays/dev
   destination:
@@ -175,7 +175,7 @@ metadata:
 spec:
   project: downstream
   source:
-    repoURL: https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    repoURL: https://github.com/hpe-2026/hpe-merch-config.git
     targetRevision: main
     path: downstream-clusters/overlays/prod
   destination:
@@ -199,7 +199,7 @@ metadata:
 spec:
   project: downstream
   source:
-    repoURL: https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    repoURL: https://github.com/hpe-2026/hpe-merch-config.git
     targetRevision: main
     path: downstream-clusters/monitoring-agents
   destination:
@@ -220,7 +220,7 @@ metadata:
 spec:
   project: downstream
   source:
-    repoURL: https://github.com/<YOUR_ORG>/HPE-merchendise-config.git
+    repoURL: https://github.com/hpe-2026/hpe-merch-config.git
     targetRevision: main
     path: downstream-clusters/monitoring-agents
   destination:
