@@ -1,21 +1,39 @@
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: argocd-application-controller-podtemplates
-rules:
-- apiGroups: [""]
-  resources: ["podtemplates"]
-  verbs: ["get", "list", "watch"]
----
+# Patch to correct the namespace of the ArgoCD ClusterRoleBindings.
+# By default, upstream ArgoCD manifests hardcode the namespace to 'argocd'.
+# Since we deployed ArgoCD in 'gitops-system', we must patch these bindings
+# to point to the correct ServiceAccounts in the 'gitops-system' namespace.
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: argocd-application-controller-podtemplates-binding
+  name: argocd-application-controller
+  labels:
+    app.kubernetes.io/component: application-controller
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/part-of: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-application-controller
 subjects:
 - kind: ServiceAccount
   name: argocd-application-controller
   namespace: gitops-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-server
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
 roleRef:
-  kind: ClusterRole
-  name: argocd-application-controller-podtemplates
   apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-server
+subjects:
+- kind: ServiceAccount
+  name: argocd-server
+  namespace: gitops-system
