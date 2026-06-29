@@ -1,0 +1,42 @@
+# admin-cluster/kustomization.yaml
+# ArgoCD points to this path (admin-cluster/) and Kustomize assembles everything.
+# Secrets are excluded here — they are applied out-of-band before ArgoCD bootstrap.
+# ArgoCD Application: admin-cluster-apps -> path: admin-cluster/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # --- Foundation ---
+  - namespaces.yaml
+
+  # --- Storage ---
+  - storage-system/minio.yaml
+  - storage-system/minio-init.yaml
+  - storage-system/minio-ingress.yaml
+
+  # --- Identity ---
+  - identity-core/postgres-keycloak.yaml
+  - identity-core/keycloak.yaml
+  - identity-core/keycloak-setup.yaml
+  - identity-core/keycloak-ingress.yaml
+
+  # --- Observability ---
+  - observability/prometheus.yaml
+  - observability/thanos.yaml
+  - observability/loki.yaml
+  - observability/loki-rbac-proxy.yaml
+  - observability/grafana.yaml
+  - observability/alertmanager.yaml
+  - observability/jaeger.yaml
+  - observability/goalert.yaml
+  - observability/observability-ingress.yaml
+
+  # --- GitOps Engine ---
+  - gitops-system/argocd.yaml
+
+  # --- System Tools ---
+  - system/jenkins.yaml
+  - system/nexus.yaml
+  - system/oauth2-proxies.yaml
+  - system/jenkins-nexus-ingress.yaml
