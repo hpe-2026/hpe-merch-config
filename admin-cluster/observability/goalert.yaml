@@ -3,11 +3,6 @@
 # pinned to workervm2 (most memory headroom). Alertmanager → GoAlert is wired after
 # first login (create a service + generic-API integration key, point Alertmanager at it).
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: goalert
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: goalert-db
