@@ -112,10 +112,10 @@ Git push → GitHub → ArgoCD polls every 3 min → kubectl apply (via Kustomiz
 
 | # | Command | What it does | Status |
 |---|---------|-------------|--------|
-| 1 | `kubectl apply -f admin-cluster/namespaces.yaml` | Creates all namespaces | ⬜ TODO |
-| 2 | `kubectl apply -f admin-cluster/secrets.yaml` | Cluster-wide secrets (out-of-band, never GitOps) | ⬜ TODO |
-| 3 | Fill in `argocd-repo-secret.yaml` with your GitHub PAT/SSH key | Repo credentials | ⬜ TODO |
-| 4 | `kubectl apply -f admin-cluster/gitops-system/argocd-repo-secret.yaml` | Register repo in ArgoCD (out-of-band) | ⬜ TODO |
+| 1 | `kubectl apply -f admin-cluster/namespaces.yaml` | Creates all namespaces | ✅ DONE |
+| 2 | `kubectl apply -f admin-cluster/secrets.yaml` | Cluster-wide secrets (out-of-band, never GitOps) | ✅ DONE |
+| 3 | Fill in `argocd-repo-secret.yaml` with your GitHub PAT/SSH key | Repo credentials | ⚠️ SKIPPED (Public Repo) |
+| 4 | `kubectl apply -f admin-cluster/gitops-system/argocd-repo-secret.yaml` | Register repo in ArgoCD (out-of-band) | ⚠️ SKIPPED (Public Repo) |
 | 5 | `kubectl apply -n gitops-system -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.0/manifests/install.yaml` | Install ArgoCD | ⬜ TODO |
 | 6 | Wait for ArgoCD pods: `kubectl get pods -n gitops-system` | All Running | ⬜ TODO |
 | 7 | `kubectl apply -f admin-cluster/gitops-system/argocd.yaml` | Apply AppProjects + Applications (ArgoCD takes over) | ⬜ TODO |
