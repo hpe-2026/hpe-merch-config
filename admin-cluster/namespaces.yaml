@@ -64,3 +64,16 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: kubectl
     cluster-role: admin
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: metallb-system
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+    cluster-role: admin
+    # MetalLB speaker needs privileged pod security
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged

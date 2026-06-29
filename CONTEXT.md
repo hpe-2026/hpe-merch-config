@@ -186,4 +186,5 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 | 2026-06-29 | GitOps setup added | `admin-cluster/kustomization.yaml` + `argocd-repo-secret.yaml` + `argocd.yaml` rewritten with self-managing `admin-cluster-apps` Application |
 | 2026-06-29 | Standardized Secrets & RBAC Fixes | Standardized manifests to use `admin-secrets`, configured public GitHub URL, and added `argocd-rbac-patch.yaml` to fix podtemplates caching error. |
 | 2026-06-29 | Installed Storage Class & Added PVCs | Installed local-path-provisioner storage class and created `admin-cluster/pvcs.yaml` for minio, jenkins, nexus, loki, prometheus, and grafana. |
+| 2026-06-30 | Added MetalLB config | Created `admin-cluster/network-system/metallb-config.yaml` (L2 IPAddressPool `192.168.56.240-250` + L2Advertisement), added `metallb-system` namespace (privileged PSA), wired into kustomization. Operator install is out-of-band (`metallb-native.yaml`). |
 

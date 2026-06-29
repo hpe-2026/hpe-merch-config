@@ -1,0 +1,33 @@
+# MetalLB Configuration (metallb-system namespace)
+#
+# These are MetalLB *config* CRs only. They require the MetalLB controller +
+# speaker (and their CRDs) to be installed first. Like ArgoCD and the
+# local-path-provisioner, install MetalLB out-of-band BEFORE ArgoCD syncs this:
+#
+#   kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml
+#   kubectl wait --namespace metallb-system \
+#     --for=condition=ready pod --selector=app=metallb --timeout=120s
+#
+# Layer 2 mode is used (no BGP) — suitable for the 192.168.56.0/24 lab network.
+# Node IPs in use: .10 (admin), .11 (dev), .12 (prod). The pool below avoids them.
+# Adjust the range if any of these addresses are claimed elsewhere on the LAN.
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: admin-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 192.168.56.240-192.168.56.250
+  autoAssign: true
+  avoidBuggyIPs: true
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: admin-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - admin-pool
