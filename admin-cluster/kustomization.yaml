@@ -11,6 +11,9 @@ resources:
   - namespaces.yaml
   - pvcs.yaml
 
+  # --- Networking (MetalLB config — operator installed out-of-band) ---
+  - network-system/metallb-config.yaml
+
   # --- Storage ---
   - storage-system/minio.yaml
   - storage-system/minio-init.yaml
