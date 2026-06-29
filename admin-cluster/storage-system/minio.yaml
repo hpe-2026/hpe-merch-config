@@ -28,7 +28,7 @@ spec:
         - name: MINIO_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: nitte-secrets
+              name: admin-secrets
               key: MINIO_ROOT_PASSWORD
         command:
         - minio

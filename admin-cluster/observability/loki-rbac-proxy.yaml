@@ -40,7 +40,7 @@ spec:
         - name: PROMTAIL_API_KEY
           valueFrom:
             secretKeyRef:
-              name: nitte-secrets
+              name: admin-secrets
               key: PROMTAIL_API_KEY
         - name: ADMIN_ROLE
           value: keycloak-admin

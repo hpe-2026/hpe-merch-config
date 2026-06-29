@@ -32,7 +32,7 @@ spec:
         - name: NEXUS_SECURITY_INITIAL_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: nitte-secrets
+              name: admin-secrets
               key: NEXUS_INITIAL_PASSWORD
         - name: KEYCLOAK_SERVER_URL
           value: "http://keycloak.identity-core.svc.cluster.local:8080"
