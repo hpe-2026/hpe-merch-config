@@ -9,6 +9,7 @@ kind: Kustomization
 resources:
   # --- Foundation ---
   - namespaces.yaml
+  - pvcs.yaml
 
   # --- Storage ---
   - storage-system/minio.yaml
