@@ -1,0 +1,118 @@
+apiVersion: v1
+data:
+  alerts.yml: |
+    groups:
+      - name: nitte-shop-availability
+        interval: 30s
+        rules:
+          - alert: BackendDown
+            expr: up{job="node-backend"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Backend API is down"
+              description: "The node-backend service has been unreachable for more than 1 minute."
+
+          - alert: PythonServiceDown
+            expr: up{job="python-service"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Python service is down"
+              description: "The python-service has been unreachable for more than 2 minutes."
+
+      - name: nitte-shop-errors
+        interval: 30s
+        rules:
+          - alert: HighErrorRate
+            expr: |
+              sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total[5m])) > 0.05
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High HTTP 5xx error rate"
+              description: "5xx error rate is {{ humanizePercentage $value }} over the last 5 minutes."
+
+          - alert: ElevatedErrorRate
+            expr: |
+              sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total[5m])) > 0.01
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Elevated HTTP 5xx error rate"
+              description: "5xx error rate is {{ humanizePercentage $value }} over the last 5 minutes."
+
+          - alert: HighAPIErrorCount
+            expr: rate(api_errors_total[5m]) > 0.5
+            for: 3m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High API error count"
+              description: "API errors are firing at {{ humanize $value }} errors/s."
+
+      - name: nitte-shop-latency
+        interval: 30s
+        rules:
+          - alert: HighLatencyP95
+            expr: |
+              histogram_quantile(0.95,
+                sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+              ) > 2
+            for: 3m
+            labels:
+              severity: critical
+            annotations:
+              summary: "p95 latency above 2s"
+              description: "95th percentile response time is {{ humanizeDuration $value }}."
+
+          - alert: ElevatedLatencyP95
+            expr: |
+              histogram_quantile(0.95,
+                sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+              ) > 1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "p95 latency above 1s"
+              description: "95th percentile response time is {{ humanizeDuration $value }}."
+
+      - name: nitte-shop-auth
+        interval: 60s
+        rules:
+          - alert: HighAuthFailureRate
+            expr: |
+              sum(rate(auth_attempts_total{success="false"}[5m]))
+              /
+              sum(rate(auth_attempts_total[5m])) > 0.3
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High authentication failure rate"
+              description: "{{ humanizePercentage $value }} of auth attempts are failing — possible brute force."
+
+      - name: nitte-shop-business
+        interval: 60s
+        rules:
+          - alert: NoOrdersRecently
+            expr: rate(orders_created_total[30m]) == 0
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: "No orders placed in 30 minutes"
+              description: "Zero orders have been created in the last 30 minutes during business hours."
+kind: ConfigMap
+metadata:
+  name: prometheus-rules-config
+  namespace: observability
