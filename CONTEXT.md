@@ -85,7 +85,7 @@ downstream-clusters/          # Managed by ArgoCD from admin cluster
 ```
 
 ---
-z
+
 ## 🗺️ Planned Deployment Order (Admin Cluster Bootstrap)
 
 Apply in this exact order — each step depends on the previous.
@@ -105,6 +105,7 @@ Git push → GitHub → ArgoCD polls every 3 min → kubectl apply (via Kustomiz
 - `admin-cluster/kustomization.yaml` — Kustomize entrypoint for the whole admin cluster
 - `admin-cluster/gitops-system/argocd-repo-secret.yaml` — Git credentials (fill in, apply out-of-band)
 - `admin-cluster/gitops-system/argocd.yaml` — updated with `AppProject` + self-managing `admin-cluster-apps` Application
+- `admin-cluster/gitops-system/argocd-rbac-patch.yaml` — RBAC patch for podtemplates
 
 ---
 
@@ -116,9 +117,10 @@ Git push → GitHub → ArgoCD polls every 3 min → kubectl apply (via Kustomiz
 | 2 | `kubectl apply -f admin-cluster/secrets.yaml` | Cluster-wide secrets (out-of-band, never GitOps) | ✅ DONE |
 | 3 | Fill in `argocd-repo-secret.yaml` with your GitHub PAT/SSH key | Repo credentials | ⚠️ SKIPPED (Public Repo) |
 | 4 | `kubectl apply -f admin-cluster/gitops-system/argocd-repo-secret.yaml` | Register repo in ArgoCD (out-of-band) | ⚠️ SKIPPED (Public Repo) |
-| 5 | `kubectl apply -n gitops-system -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.0/manifests/install.yaml` | Install ArgoCD | ⬜ TODO |
-| 6 | Wait for ArgoCD pods: `kubectl get pods -n gitops-system` | All Running | ⬜ TODO |
-| 7 | `kubectl apply -f admin-cluster/gitops-system/argocd.yaml` | Apply AppProjects + Applications (ArgoCD takes over) | ⬜ TODO |
+| 5 | `kubectl apply -n gitops-system -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.0/manifests/install.yaml` | Install ArgoCD | ✅ DONE |
+| 6 | Wait for ArgoCD pods: `kubectl get pods -n gitops-system` | All Running | ✅ DONE |
+| 7 | `kubectl apply -f admin-cluster/gitops-system/argocd.yaml` | Apply AppProjects + Applications (ArgoCD takes over) | ✅ DONE |
+| 7.5 | `kubectl apply -f admin-cluster/gitops-system/argocd-rbac-patch.yaml` | Apply RBAC patch for `podtemplates` cache error | ⬜ IN PROGRESS |
 | 8 | **ArgoCD auto-syncs `admin-cluster/` — all services deploy automatically** | ✨ GitOps active | ⬜ TODO |
 
 > **After step 7, you never manually `kubectl apply` admin-cluster manifests again.**
@@ -181,3 +183,4 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 |------|--------|--------|
 | 2026-06-29 | Session started — cluster at clean kube-system state | RKE2 running, NGINX ingress up, no app namespaces |
 | 2026-06-29 | GitOps setup added | `admin-cluster/kustomization.yaml` + `argocd-repo-secret.yaml` + `argocd.yaml` rewritten with self-managing `admin-cluster-apps` Application |
+| 2026-06-29 | Standardized Secrets & RBAC Fixes | Standardized manifests to use `admin-secrets`, configured public GitHub URL, and added `argocd-rbac-patch.yaml` to fix podtemplates caching error. |
