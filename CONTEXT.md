@@ -120,8 +120,9 @@ Git push → GitHub → ArgoCD polls every 3 min → kubectl apply (via Kustomiz
 | 5 | `kubectl apply -n gitops-system -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.0/manifests/install.yaml` | Install ArgoCD | ✅ DONE |
 | 6 | Wait for ArgoCD pods: `kubectl get pods -n gitops-system` | All Running | ✅ DONE |
 | 7 | `kubectl apply -f admin-cluster/gitops-system/argocd.yaml` | Apply AppProjects + Applications (ArgoCD takes over) | ✅ DONE |
-| 7.5 | `kubectl apply -f admin-cluster/gitops-system/argocd-rbac-patch.yaml` | Apply RBAC patch for ClusterRoleBinding namespaces | ⬜ IN PROGRESS |
-| 8 | **ArgoCD auto-syncs `admin-cluster/` — all services deploy automatically** | ✨ GitOps active | ⬜ TODO |
+| 7.5 | `kubectl apply -f admin-cluster/gitops-system/argocd-rbac-patch.yaml` | Apply RBAC patch for ClusterRoleBinding namespaces | ✅ DONE |
+| 7.6 | `kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.36/deploy/local-path-storage.yaml` | Install Local Path Storage Class | ✅ DONE |
+| 8 | **ArgoCD auto-syncs `admin-cluster/` — all services deploy automatically** | ✨ GitOps active | ⬜ IN PROGRESS |
 
 > **After step 7, you never manually `kubectl apply` admin-cluster manifests again.**
 > Edit files → `git push` → ArgoCD applies within 3 minutes.
@@ -184,3 +185,5 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 | 2026-06-29 | Session started — cluster at clean kube-system state | RKE2 running, NGINX ingress up, no app namespaces |
 | 2026-06-29 | GitOps setup added | `admin-cluster/kustomization.yaml` + `argocd-repo-secret.yaml` + `argocd.yaml` rewritten with self-managing `admin-cluster-apps` Application |
 | 2026-06-29 | Standardized Secrets & RBAC Fixes | Standardized manifests to use `admin-secrets`, configured public GitHub URL, and added `argocd-rbac-patch.yaml` to fix podtemplates caching error. |
+| 2026-06-29 | Installed Storage Class & Added PVCs | Installed local-path-provisioner storage class and created `admin-cluster/pvcs.yaml` for minio, jenkins, nexus, loki, prometheus, and grafana. |
+
