@@ -105,7 +105,7 @@ Git push → GitHub → ArgoCD polls every 3 min → kubectl apply (via Kustomiz
 - `admin-cluster/kustomization.yaml` — Kustomize entrypoint for the whole admin cluster
 - `admin-cluster/gitops-system/argocd-repo-secret.yaml` — Git credentials (fill in, apply out-of-band)
 - `admin-cluster/gitops-system/argocd.yaml` — updated with `AppProject` + self-managing `admin-cluster-apps` Application
-- `admin-cluster/gitops-system/argocd-rbac-patch.yaml` — RBAC patch for podtemplates
+- `admin-cluster/gitops-system/argocd-rbac-patch.yaml` — RBAC patch for ClusterRoleBinding namespaces
 
 ---
 
@@ -120,7 +120,7 @@ Git push → GitHub → ArgoCD polls every 3 min → kubectl apply (via Kustomiz
 | 5 | `kubectl apply -n gitops-system -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.0/manifests/install.yaml` | Install ArgoCD | ✅ DONE |
 | 6 | Wait for ArgoCD pods: `kubectl get pods -n gitops-system` | All Running | ✅ DONE |
 | 7 | `kubectl apply -f admin-cluster/gitops-system/argocd.yaml` | Apply AppProjects + Applications (ArgoCD takes over) | ✅ DONE |
-| 7.5 | `kubectl apply -f admin-cluster/gitops-system/argocd-rbac-patch.yaml` | Apply RBAC patch for `podtemplates` cache error | ⬜ IN PROGRESS |
+| 7.5 | `kubectl apply -f admin-cluster/gitops-system/argocd-rbac-patch.yaml` | Apply RBAC patch for ClusterRoleBinding namespaces | ⬜ IN PROGRESS |
 | 8 | **ArgoCD auto-syncs `admin-cluster/` — all services deploy automatically** | ✨ GitOps active | ⬜ TODO |
 
 > **After step 7, you never manually `kubectl apply` admin-cluster manifests again.**
