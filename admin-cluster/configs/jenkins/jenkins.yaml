@@ -1,0 +1,46 @@
+jenkins:
+  numExecutors: 2
+  systemMessage: "NITTE Alumni Shop — Jenkins CI/CD | Authenticated via Keycloak SSO"
+
+  securityRealm:
+    oic:
+      clientId: "jenkins-client"
+      clientSecret: "jenkins-client-secret"
+      userNameField: "preferred_username"
+      fullNameFieldName: "name"
+      emailFieldName: "email"
+      logoutFromOpenidProvider: true
+      postLogoutRedirectUrl: "http://localhost:8081"
+      properties:
+        - escapeHatch:
+            username: "local-admin"
+            secret: "LocalAdmin@123"
+            group: ""
+      serverConfiguration:
+        manual:
+          issuer: "http://localhost:8080/realms/nitte-realm"
+          authorizationServerUrl: "http://localhost:8080/realms/nitte-realm/protocol/openid-connect/auth"
+          tokenServerUrl: "http://keycloak:8080/realms/nitte-realm/protocol/openid-connect/token"
+          userInfoServerUrl: "http://keycloak:8080/realms/nitte-realm/protocol/openid-connect/userinfo"
+          jwksServerUrl: "http://keycloak:8080/realms/nitte-realm/protocol/openid-connect/certs"
+          endSessionUrl: "http://localhost:8080/realms/nitte-realm/protocol/openid-connect/logout"
+          scopes: "openid profile email"
+
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              id: nexus-credentials
+              username: admin
+              password: "nexus-admin-123"
+              description: "Nexus Repository Manager admin credentials"
+              scope: GLOBAL
+
+unclassified:
+  location:
+    url: "http://localhost:8081/"

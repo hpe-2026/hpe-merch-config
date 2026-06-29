@@ -17,12 +17,22 @@ resources:
   - storage-system/minio-ingress.yaml
 
   # --- Identity ---
+  - identity-core/keycloak-realm-config.yaml
+  - identity-core/keycloak-bootstrap-config.yaml
+  - identity-core/promtail-keycloak-config.yaml
+  - identity-core/keycloak-spi-config.yaml
   - identity-core/postgres-keycloak.yaml
   - identity-core/keycloak.yaml
   - identity-core/keycloak-setup.yaml
   - identity-core/keycloak-ingress.yaml
 
   # --- Observability ---
+  - observability/prometheus-main-config.yaml
+  - observability/prometheus-rules-config.yaml
+  - observability/alertmanager-config.yaml
+  - observability/loki-config-map.yaml
+  - observability/grafana-datasources-config.yaml
+  - observability/grafana-dashboards-config.yaml
   - observability/prometheus.yaml
   - observability/thanos.yaml
   - observability/loki.yaml
@@ -38,6 +48,7 @@ resources:
   - gitops-system/argocd-rbac-patch.yaml
 
   # --- System Tools ---
+  - system/jenkins-casc-config.yaml
   - system/jenkins.yaml
   - system/nexus.yaml
   - system/oauth2-proxies.yaml

@@ -1,0 +1,43 @@
+apiVersion: v1
+data:
+  prometheus.yml: |
+    apiVersion: 1
+
+    datasources:
+      # Thanos Query — unified metrics from Admin + Dev + Prod (via remote_write)
+      - name: Thanos
+        type: prometheus
+        access: proxy
+        url: http://thanos-query.observability.svc.cluster.local:9090
+        isDefault: true
+        jsonData:
+          timeInterval: "15s"
+          queryTimeout: "60s"
+          httpMethod: POST
+
+      # Local Prometheus — Admin cluster control-plane metrics only
+      - name: Prometheus (Admin)
+        type: prometheus
+        access: proxy
+        url: http://prometheus.observability.svc.cluster.local:9090
+        isDefault: false
+
+      # Loki — log aggregation from all clusters (via loki-rbac-proxy)
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki-rbac-proxy.observability.svc.cluster.local:3200
+        jsonData:
+          httpHeaderName1: "X-Promtail-Api-Key"
+        secureJsonData:
+          httpHeaderValue1: "promtail-loki-secret"
+
+      # Jaeger — distributed traces from Dev/Prod microservices
+      - name: Jaeger
+        type: jaeger
+        access: proxy
+        url: http://jaeger.observability.svc.cluster.local:16686
+kind: ConfigMap
+metadata:
+  name: grafana-datasources-config
+  namespace: observability
