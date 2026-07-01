@@ -1,0 +1,160 @@
+# ============================================================================
+# Unleash — Open Source Feature Flag Service
+# Role-based feature flags for the NITTE Merchandise Shop, driven by
+# Keycloak realm roles (merchant-admin, alumni-verified, admin-internal, etc.)
+# ============================================================================
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: unleash-db-secret
+  namespace: nitte-dev
+type: Opaque
+stringData:
+  POSTGRES_USER: unleash
+  POSTGRES_PASSWORD: unleash
+  POSTGRES_DB: unleash
+  DATABASE_URL: "postgres://unleash:unleash@unleash-db:5432/unleash?sslmode=disable"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: unleash-db-pvc
+  namespace: nitte-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unleash-db
+  namespace: nitte-dev
+  labels:
+    app: unleash-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unleash-db
+  template:
+    metadata:
+      labels:
+        app: unleash-db
+    spec:
+      containers:
+        - name: unleash-db
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: unleash-db-secret
+          volumeMounts:
+            - name: unleash-db-storage
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "unleash"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+      volumes:
+        - name: unleash-db-storage
+          persistentVolumeClaim:
+            claimName: unleash-db-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unleash-db
+  namespace: nitte-dev
+spec:
+  selector:
+    app: unleash-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unleash
+  namespace: nitte-dev
+  labels:
+    app: unleash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unleash
+  template:
+    metadata:
+      labels:
+        app: unleash
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - until pg_isready -h unleash-db -p 5432 -U unleash; do echo waiting for db; sleep 2; done
+      containers:
+        - name: unleash
+          image: unleashorg/unleash-server:latest
+          ports:
+            - containerPort: 4242
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: unleash-db-secret
+                  key: DATABASE_URL
+            - name: INIT_ADMIN_API_TOKENS
+              value: "*:*.unleash-insecure-api-token"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 4242
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4242
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unleash
+  namespace: nitte-dev
+spec:
+  selector:
+    app: unleash
+  ports:
+    - port: 4242
+      targetPort: 4242

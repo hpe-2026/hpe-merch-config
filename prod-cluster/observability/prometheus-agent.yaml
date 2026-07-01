@@ -1,0 +1,157 @@
+# Prometheus Agent for Dev cluster — scrapes locally, remote-writes to Admin Thanos
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-agent-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      external_labels:
+        cluster: "prod"
+        environment: "prod"
+
+    remote_write:
+      - url: http://192.168.56.10:19291/api/v1/receive
+        queue_config:
+          max_samples_per_send: 1000
+          max_shards: 5
+          capacity: 2500
+        metadata_config:
+          send: true
+
+    scrape_configs:
+      - job_name: node-backend
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['node-backend:3000']
+            labels:
+              service: node-backend
+
+      - job_name: python-service
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['python-service:8000']
+            labels:
+              service: python-service
+
+      - job_name: notification-service
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['notification-service:9100']
+            labels:
+              service: notification-service
+
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-agent
+  labels:
+    app: prometheus-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-agent
+  template:
+    metadata:
+      labels:
+        app: prometheus-agent
+    spec:
+      serviceAccountName: prometheus-agent
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.48.0
+        imagePullPolicy: IfNotPresent
+        args:
+        - '--enable-feature=agent'
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.agent.path=/prometheus-agent'
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: prometheus-agent-config
+          mountPath: /etc/prometheus/prometheus.yml
+          subPath: prometheus.yml
+          readOnly: true
+        - name: agent-data
+          mountPath: /prometheus-agent
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
+      volumes:
+      - name: prometheus-agent-config
+        configMap:
+          name: prometheus-agent-config
+      - name: agent-data
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-agent
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-agent
+rules:
+- apiGroups: [""]
+  resources: [nodes, nodes/proxy, services, endpoints, pods]
+  verbs: [get, list, watch]
+- apiGroups: [extensions]
+  resources: [ingresses]
+  verbs: [get, list, watch]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-agent
+subjects:
+- kind: ServiceAccount
+  name: prometheus-agent
+  namespace: nitte-prod
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-agent
+spec:
+  selector:
+    app: prometheus-agent
+  ports:
+  - port: 9090
+    targetPort: 9090
+  type: ClusterIP

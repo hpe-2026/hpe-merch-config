@@ -1,0 +1,439 @@
+# MongoDB Sharded Cluster for Kubernetes (StatefulSets)
+#   - Config server (replica set: configRS, port 27017)
+#   - Shard 1 (replica set: shard1, port 27018)
+#   - Shard 2 (replica set: shard2, port 27019)
+#   - Mongos Router (connects to config server, port 27017)
+#   - Init Job (initializes replica sets + sharding + users)
+#
+# Each mongod runs as a StatefulSet behind a headless Service with
+# publishNotReadyAddresses: true, so every pod gets STABLE DNS
+# (<pod>-0.<svc>) that resolves to its own IP even before it is Ready.
+# Replica-set members use that stable DNS, so the cluster re-forms itself
+# across restarts/reschedules with NO manual reconfig.
+
+---
+# ==================== Config Server ====================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-config
+  namespace: nitte-prod
+  labels:
+    app: mongo-config
+spec:
+  serviceName: mongo-config
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-config
+  template:
+    metadata:
+      labels:
+        app: mongo-config
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      initContainers:
+      # Block mongod until this pod's own DNS name resolves to its own IP, so the
+      # one-shot isSelf check at startup can't lose the race with CoreDNS after a
+      # reschedule (otherwise mongod marks itself REMOVED and never recovers).
+      - name: wait-for-self-dns
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          SELF="$(hostname).mongo-config"; MYIP="$(hostname -i)"
+          echo "Waiting for $SELF -> $MYIP ..."
+          until [ "$(getent hosts "$SELF" | awk '{print $1}' | head -n1)" = "$MYIP" ]; do sleep 2; done
+          echo "DNS ready: $SELF -> $MYIP"
+      containers:
+      - name: mongo-config
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command: ["mongod", "--configsvr", "--replSet", "configRS", "--port", "27017", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.25"]
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: mongo-config-data
+          mountPath: /data/db
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          tcpSocket:
+            port: 27017
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 30
+        livenessProbe:
+          tcpSocket:
+            port: 27017
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          failureThreshold: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-config-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-config
+  namespace: nitte-prod
+spec:
+  selector:
+    app: mongo-config
+  ports:
+  - port: 27017
+    targetPort: 27017
+  clusterIP: None
+  publishNotReadyAddresses: true
+
+---
+# ==================== Shard 1 ====================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-shard1
+  namespace: nitte-prod
+  labels:
+    app: mongo-shard1
+spec:
+  serviceName: mongo-shard1
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-shard1
+  template:
+    metadata:
+      labels:
+        app: mongo-shard1
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      initContainers:
+      - name: wait-for-self-dns
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          SELF="$(hostname).mongo-shard1"; MYIP="$(hostname -i)"
+          echo "Waiting for $SELF -> $MYIP ..."
+          until [ "$(getent hosts "$SELF" | awk '{print $1}' | head -n1)" = "$MYIP" ]; do sleep 2; done
+          echo "DNS ready: $SELF -> $MYIP"
+      containers:
+      - name: mongo-shard1
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command: ["mongod", "--shardsvr", "--replSet", "shard1", "--port", "27018", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.25"]
+        ports:
+        - containerPort: 27018
+        volumeMounts:
+        - name: mongo-shard1-data
+          mountPath: /data/db
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          tcpSocket:
+            port: 27018
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 30
+        livenessProbe:
+          tcpSocket:
+            port: 27018
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          failureThreshold: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-shard1-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-shard1
+  namespace: nitte-prod
+spec:
+  selector:
+    app: mongo-shard1
+  ports:
+  - port: 27018
+    targetPort: 27018
+  clusterIP: None
+  publishNotReadyAddresses: true
+
+---
+# ==================== Shard 2 ====================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-shard2
+  namespace: nitte-prod
+  labels:
+    app: mongo-shard2
+spec:
+  serviceName: mongo-shard2
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-shard2
+  template:
+    metadata:
+      labels:
+        app: mongo-shard2
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      initContainers:
+      - name: wait-for-self-dns
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          SELF="$(hostname).mongo-shard2"; MYIP="$(hostname -i)"
+          echo "Waiting for $SELF -> $MYIP ..."
+          until [ "$(getent hosts "$SELF" | awk '{print $1}' | head -n1)" = "$MYIP" ]; do sleep 2; done
+          echo "DNS ready: $SELF -> $MYIP"
+      containers:
+      - name: mongo-shard2
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command: ["mongod", "--shardsvr", "--replSet", "shard2", "--port", "27019", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.25"]
+        ports:
+        - containerPort: 27019
+        volumeMounts:
+        - name: mongo-shard2-data
+          mountPath: /data/db
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          tcpSocket:
+            port: 27019
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 30
+        livenessProbe:
+          tcpSocket:
+            port: 27019
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          failureThreshold: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-shard2-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-shard2
+  namespace: nitte-prod
+spec:
+  selector:
+    app: mongo-shard2
+  ports:
+  - port: 27019
+    targetPort: 27019
+  clusterIP: None
+  publishNotReadyAddresses: true
+
+---
+# ==================== Mongos Router ====================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: nitte-prod
+  labels:
+    app: mongodb
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      initContainers:
+      # Initiate config server replica set (stable DNS member), wait for primary
+      - name: init-config-rs
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          NS=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace 2>/dev/null || echo nitte)
+          CFG="mongo-config-0.mongo-config.${NS}.svc.cluster.local:27017"
+          echo "Waiting for config server ($CFG)..."
+          until mongosh --host "$CFG" --eval "db.runCommand({ping:1})" >/dev/null 2>&1; do
+            echo "mongo-config not ready, retrying in 3s..."; sleep 3
+          done
+          echo "Initiating configRS with FQDN member..."
+          mongosh --host "$CFG" --eval "try{ rs.initiate({_id:'configRS',configsvr:true,members:[{_id:0,host:'$CFG'}]}); print('configRS initiated'); }catch(e){ print('configRS: '+e.message); }"
+          for i in $(seq 1 60); do
+            mongosh --host "$CFG" --eval 'rs.status().myState' 2>/dev/null | grep -q "1" && { echo "configRS primary ready"; exit 0; }
+            echo "waiting for configRS primary ($i/60)"; sleep 3
+          done
+          echo "configRS primary (or timeout — mongos will retry)"
+      containers:
+      - name: mongos
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command: ["mongos", "--configdb", "configRS/mongo-config-0.mongo-config:27017", "--port", "27017", "--bind_ip_all"]
+        ports:
+        - containerPort: 27017
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        readinessProbe:
+          tcpSocket:
+            port: 27017
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          failureThreshold: 30
+        livenessProbe:
+          tcpSocket:
+            port: 27017
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: nitte-prod
+spec:
+  selector:
+    app: mongodb
+  ports:
+  - port: 27017
+    targetPort: 27017
+  type: ClusterIP
+
+---
+# ==================== MongoDB Init Job ====================
+# Initializes replica sets (stable DNS members), adds shards, runs sharding-init.js
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongo-init
+  namespace: nitte-prod
+  annotations:
+    # Job pod templates are immutable; tell ArgoCD to delete+recreate this Job
+    # on changes instead of patching it (which fails with "field is immutable").
+    argocd.argoproj.io/sync-options: Replace=true
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: mongo-init
+        image: mongo:6.0
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set +e
+          NS=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace 2>/dev/null || echo nitte)
+          CFG="mongo-config-0.mongo-config.${NS}.svc.cluster.local:27017"
+          S1="mongo-shard1-0.mongo-shard1.${NS}.svc.cluster.local:27018"
+          S2="mongo-shard2-0.mongo-shard2.${NS}.svc.cluster.local:27019"
+          echo "Namespace=$NS — using FQDN replica-set members"
+          sleep 15
+
+          echo "Initiating configRS..."
+          mongosh --host "$CFG" --eval "try{ rs.initiate({_id:'configRS',configsvr:true,members:[{_id:0,host:'$CFG'}]}) }catch(e){ print('configRS: '+e.message) }"
+          sleep 5
+
+          echo "Initiating shard1..."
+          mongosh --host "$S1" --eval "try{ rs.initiate({_id:'shard1',members:[{_id:0,host:'$S1'}]}) }catch(e){ print('shard1: '+e.message) }"
+          sleep 5
+
+          echo "Initiating shard2..."
+          mongosh --host "$S2" --eval "try{ rs.initiate({_id:'shard2',members:[{_id:0,host:'$S2'}]}) }catch(e){ print('shard2: '+e.message) }"
+          sleep 5
+
+          echo "Adding shards via mongos..."
+          mongosh --host mongodb:27017 --eval "try{ sh.addShard('shard1/$S1') }catch(e){ print('shard1 add: '+e.message) }; try{ sh.addShard('shard2/$S2') }catch(e){ print('shard2 add: '+e.message) }"
+          sleep 3
+
+          echo "Running sharding initialization script..."
+          mongosh --host mongodb:27017 /scripts/sharding-init.js
+
+          echo "MongoDB sharded cluster initialization complete!"
+          exit 0
+        volumeMounts:
+        - name: sharding-init
+          mountPath: /scripts/sharding-init.js
+          subPath: sharding-init.js
+          readOnly: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+      volumes:
+      - name: sharding-init
+        configMap:
+          name: mongo-sharding-init-config
+          items:
+          - key: sharding-init.js
+            path: sharding-init.js

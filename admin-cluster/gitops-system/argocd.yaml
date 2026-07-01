@@ -139,21 +139,21 @@ spec:
 # ──────────────────────────────────────────────────────────────────────────────
 # Downstream Applications — ArgoCD manages dev and prod clusters from here
 # Register clusters first:  argocd cluster add <context-name> --name dev
-#                           argocd cluster add <context-name> --name prod-app
+#                           argocd cluster add <context-name> --name prod
 # ──────────────────────────────────────────────────────────────────────────────
 
-# App workloads → Dev cluster
+# Dev cluster — full stack (apps + networking + observability)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: downstream-dev
+  name: dev-cluster-apps
   namespace: gitops-system
 spec:
   project: downstream
   source:
     repoURL: https://github.com/hpe-2026/hpe-merch-config.git
     targetRevision: main
-    path: downstream-clusters/overlays/dev
+    path: dev-cluster
   destination:
     server: https://192.168.56.11:6443
     namespace: nitte-dev
@@ -164,69 +164,39 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        maxDuration: 3m
+        factor: 2
 
 ---
-# App workloads → Prod cluster
+# Prod cluster — full stack (apps + networking + observability)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: downstream-prod
+  name: prod-cluster-apps
   namespace: gitops-system
 spec:
   project: downstream
   source:
     repoURL: https://github.com/hpe-2026/hpe-merch-config.git
     targetRevision: main
-    path: downstream-clusters/overlays/prod
+    path: prod-cluster
   destination:
     server: https://192.168.56.12:6443
     namespace: nitte-prod
   syncPolicy:
     automated:
-      prune: false      # manual promotion gate for prod
+      prune: false       # production safety — manual prune
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-
----
-# Monitoring agents → Dev cluster
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: monitoring-agents-dev
-  namespace: gitops-system
-spec:
-  project: downstream
-  source:
-    repoURL: https://github.com/hpe-2026/hpe-merch-config.git
-    targetRevision: main
-    path: downstream-clusters/monitoring-agents
-  destination:
-    server: https://192.168.56.11:6443
-    namespace: nitte-dev
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-
----
-# Monitoring agents → Prod cluster
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: monitoring-agents-prod
-  namespace: gitops-system
-spec:
-  project: downstream
-  source:
-    repoURL: https://github.com/hpe-2026/hpe-merch-config.git
-    targetRevision: main
-    path: downstream-clusters/monitoring-agents
-  destination:
-    server: https://192.168.56.12:6443
-    namespace: nitte-prod
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        maxDuration: 3m
+        factor: 2

@@ -1,0 +1,139 @@
+# Promtail for Dev cluster — ships logs to Admin Loki via NodePort 30200
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: promtail-clusterrole
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes", "nodes/proxy", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: promtail-clusterrolebinding
+subjects:
+- kind: ServiceAccount
+  name: promtail
+  namespace: nitte-dev
+roleRef:
+  kind: ClusterRole
+  name: promtail-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-k8s-config
+data:
+  config.yml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+      log_level: info
+
+    positions:
+      filename: /tmp/positions.yaml
+
+    clients:
+      - url: http://192.168.56.10:30200/loki/api/v1/push
+        tenant_id: default
+        headers:
+          X-Promtail-Api-Key: promtail-loki-secret
+
+    scrape_configs:
+      - job_name: pod-logs
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: pod-logs
+              cluster: dev
+              __path__: /var/log/pods/*/*/*.log
+        pipeline_stages:
+          - cri: {}
+          - regex:
+              expression: '/var/log/pods/(?P<namespace>[^_]+)_(?P<service>[a-z][-a-z0-9]*?)(?:-[a-z0-9]{5,10}){1,2}_[^/]+/(?P<container>[^/]+)/'
+          - labels:
+              namespace:
+              service:
+              container:
+          - labeldrop:
+              - filename
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  labels:
+    app: promtail
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  template:
+    metadata:
+      labels:
+        app: promtail
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      serviceAccountName: promtail
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: promtail
+        image: grafana/promtail:2.9.4
+        imagePullPolicy: IfNotPresent
+        args: ["-config.file=/etc/promtail/config.yml"]
+        ports:
+        - containerPort: 9080
+        volumeMounts:
+        - name: promtail-config
+          mountPath: /etc/promtail/config.yml
+          subPath: config.yml
+          readOnly: true
+        - name: pods-logs
+          mountPath: /var/log/pods
+          readOnly: true
+        - name: containers-logs
+          mountPath: /var/log/containers
+          readOnly: true
+        - name: docker-containers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+      volumes:
+      - name: promtail-config
+        configMap:
+          name: promtail-k8s-config
+          items:
+          - key: config.yml
+            path: config.yml
+      - name: pods-logs
+        hostPath:
+          path: /var/log/pods
+      - name: containers-logs
+        hostPath:
+          path: /var/log/containers
+      - name: docker-containers
+        hostPath:
+          path: /var/lib/docker/containers

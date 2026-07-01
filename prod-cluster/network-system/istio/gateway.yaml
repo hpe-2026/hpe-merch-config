@@ -1,0 +1,23 @@
+# Istio Ingress Gateway for Prod cluster
+# Host-based routing — each SPA served at root of its own hostname
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: nitte-gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "prod.nitte.local"
+        - "admin.prod.nitte.local"
+        - "merchant.prod.nitte.local"
+        - "keycloak.prod.nitte.local"
+        - "grafana.prod.nitte.local"
+        - "prometheus.prod.nitte.local"
+        - "jaeger.prod.nitte.local"
+        - "minio.prod.nitte.local"

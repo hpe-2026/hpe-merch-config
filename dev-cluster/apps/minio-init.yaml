@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+  namespace: nitte-dev
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: minio-init
+        image: minio/mc:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MINIO_ROOT_USER
+          value: minioadmin
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nitte-secrets
+              key: MINIO_ROOT_PASSWORD
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for MinIO to be ready..."
+          sleep 10
+          
+          # Configure MinIO client
+          mc alias set local http://minio:9000 minioadmin $MINIO_ROOT_PASSWORD
+          
+          # Create buckets
+          echo "Creating buckets..."
+          mc mb local/nitte-products || true
+          mc mb local/nitte-users || true
+          mc mb local/nitte-backups || true
+          
+          # Set public access for thumbnails
+          echo "Setting public access for thumbnails..."
+          mc anonymous set download local/nitte-products/thumbnails || true
+          
+          echo "MinIO buckets created successfully"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

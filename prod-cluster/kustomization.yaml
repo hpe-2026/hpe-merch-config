@@ -1,0 +1,73 @@
+# prod-cluster/kustomization.yaml
+# ArgoCD Application: prod-cluster-apps -> path: prod-cluster/
+# Destination: https://192.168.56.12:6443 (Prod cluster)
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # --- Foundation ---
+  - pvcs.yaml
+
+  # --- Networking ---
+  - network-system/metallb-config.yaml
+  - network-system/istio/gateway.yaml
+  - network-system/istio/virtual-services.yaml
+  - network-system/istio/peer-authentication.yaml
+  - network-system/istio/authorization-policies.yaml
+  - network-system/istio/destination-rules.yaml
+  - network-system/istio/rate-limiting.yaml
+  - network-system/istio/service-entries.yaml
+
+  # --- Security ---
+  - security/waf-coraza.yaml
+
+  # --- Data Layer ---
+  - apps/mongodb.yaml
+  - apps/kafka.yaml
+
+  # --- Identity ---
+  - apps/keycloak.yaml
+
+  # --- Application Services ---
+  - apps/node-backend.yaml
+  - apps/python-service.yaml
+  - apps/frontend.yaml
+  - apps/admin-dashboard.yaml
+  - apps/merchant-portal.yaml
+  - apps/notification-service.yaml
+  - apps/unleash.yaml
+  - apps/minio.yaml
+  - apps/minio-init.yaml
+  - apps/redocly.yaml
+
+  # --- Observability (local agents — ship to admin cluster) ---
+  - observability/prometheus-agent.yaml
+  - observability/promtail.yaml
+  - observability/promtail-keycloak.yaml
+  - observability/jaeger.yaml
+  - observability/loki.yaml
+  - observability/loki-rbac-proxy.yaml
+  - observability/grafana.yaml
+  - observability/alertmanager.yaml
+
+# Rewrite local image names to the Nexus registry on admin cluster
+images:
+  - name: node-backend
+    newName: 192.168.56.10:30082/node-backend
+    newTag: "1.1.4"
+  - name: python-service
+    newName: 192.168.56.10:30082/python-service
+  - name: frontend
+    newName: 192.168.56.10:30082/frontend
+    newTag: "1.0.1"
+  - name: admin-dashboard
+    newName: 192.168.56.10:30082/admin-dashboard
+    newTag: "1.0.2"
+  - name: merchant-portal
+    newName: 192.168.56.10:30082/merchant-portal
+    newTag: "1.0.1"
+  - name: notification-service
+    newName: 192.168.56.10:30082/notification-service
+  - name: loki-rbac-proxy
+    newName: 192.168.56.10:30082/loki-rbac-proxy

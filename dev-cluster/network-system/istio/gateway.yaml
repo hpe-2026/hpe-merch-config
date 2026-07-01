@@ -1,0 +1,25 @@
+# Istio Ingress Gateway for Dev cluster
+# Host-based routing — each SPA served at root of its own hostname
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: nitte-gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "dev.nitte.local"
+        - "admin.dev.nitte.local"
+        - "merchant.dev.nitte.local"
+        - "keycloak.dev.nitte.local"
+        - "grafana.dev.nitte.local"
+        - "prometheus.dev.nitte.local"
+        - "jaeger.dev.nitte.local"
+        - "minio.dev.nitte.local"
+        - "kiali.nitte.local"
+        - "redoc.dev.nitte.local"

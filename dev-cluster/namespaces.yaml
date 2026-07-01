@@ -1,0 +1,31 @@
+# Dev Cluster Namespace Declarations
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nitte-dev
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    cluster-role: dev
+    istio-injection: enabled
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    cluster-role: dev
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: metallb-system
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    cluster-role: dev
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged

@@ -1,0 +1,113 @@
+# Destination Rules
+# Configure load balancing, circuit breaking, and connection pools
+
+# Backend API — circuit breaker + connection pool
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: node-backend-dr
+  namespace: nitte-prod
+spec:
+  host: node-backend
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        h2UpgradePolicy: DEFAULT
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 60s
+      maxEjectionPercent: 50
+---
+# Python Service — circuit breaker
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: python-service-dr
+  namespace: nitte-prod
+spec:
+  host: python-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 50
+      http:
+        http1MaxPendingRequests: 25
+        http2MaxRequests: 50
+        maxRetries: 2
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+---
+# Frontend — simple load balancing
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: frontend-dr
+  namespace: nitte-prod
+spec:
+  host: frontend
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 200
+      http:
+        http1MaxPendingRequests: 100
+---
+# Keycloak — higher limits for auth traffic
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: keycloak-dr
+  namespace: nitte-prod
+spec:
+  host: keycloak
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 150
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 150
+        maxRetries: 3
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 60s
+      baseEjectionTime: 120s
+      maxEjectionPercent: 30
+---
+# MongoDB — TCP connection pool
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: mongodb-dr
+  namespace: nitte-prod
+spec:
+  host: mongodb
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 10s
+---
+# Kafka — TCP connection pool
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: kafka-dr
+  namespace: nitte-prod
+spec:
+  host: kafka
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 50
+        connectTimeout: 10s

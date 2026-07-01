@@ -1,0 +1,130 @@
+# Authorization Policies
+# Fine-grained access control for service-to-service communication
+
+# Allow frontend services to access only the backend API
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: backend-api-access
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: node-backend
+  rules:
+  # Allow from frontend, admin-dashboard, merchant-portal
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/nitte/sa/default"
+    to:
+    - operation:
+        ports: ["3000"]
+  # Allow from istio ingress gateway (external traffic)
+  - from:
+    - source:
+        namespaces: ["istio-system"]
+    to:
+    - operation:
+        ports: ["3000"]
+---
+# Allow node-backend to access MongoDB
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: mongodb-access
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: mongodb
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/nitte/sa/default"
+    to:
+    - operation:
+        ports: ["27017"]
+---
+# Allow node-backend to access Kafka
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: kafka-access
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: kafka
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/nitte/sa/default"
+    to:
+    - operation:
+        ports: ["9092"]
+---
+# Allow node-backend and python-service to access each other
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: python-service-access
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: python-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/nitte/sa/default"
+    to:
+    - operation:
+        ports: ["8000"]
+---
+# Allow all services to reach Keycloak (auth is needed by everyone)
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: keycloak-access
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: keycloak
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/nitte/sa/default"
+    to:
+    - operation:
+        ports: ["8080"]
+  - from:
+    - source:
+        namespaces: ["istio-system"]
+    to:
+    - operation:
+        ports: ["8080"]
+---
+# Allow Prometheus to scrape all services
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: prometheus-scrape
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: prometheus
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/nitte/sa/default"
+  - from:
+    - source:
+        namespaces: ["istio-system"]

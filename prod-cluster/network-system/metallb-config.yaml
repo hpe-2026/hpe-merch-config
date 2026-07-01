@@ -1,0 +1,23 @@
+# MetalLB Configuration for Prod cluster (192.168.56.12)
+# Operator installed out-of-band:
+#   kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: prod-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 192.168.56.120-192.168.56.130
+  autoAssign: true
+  avoidBuggyIPs: true
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: prod-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - prod-pool

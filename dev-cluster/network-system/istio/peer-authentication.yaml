@@ -1,0 +1,125 @@
+# PeerAuthentication for Dev cluster — mTLS policies
+---
+# Default: STRICT mTLS for all meshed services
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+spec:
+  mtls:
+    mode: STRICT
+---
+# MongoDB (raw TCP, no sidecar)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mongodb-permissive
+spec:
+  selector:
+    matchLabels:
+      app: mongodb
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mongo-config-permissive
+spec:
+  selector:
+    matchLabels:
+      app: mongo-config
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mongo-shard1-permissive
+spec:
+  selector:
+    matchLabels:
+      app: mongo-shard1
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mongo-shard2-permissive
+spec:
+  selector:
+    matchLabels:
+      app: mongo-shard2
+  mtls:
+    mode: PERMISSIVE
+---
+# Kafka + Zookeeper (raw TCP)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: kafka-permissive
+spec:
+  selector:
+    matchLabels:
+      app: kafka
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: zookeeper-permissive
+spec:
+  selector:
+    matchLabels:
+      app: zookeeper
+  mtls:
+    mode: PERMISSIVE
+---
+# Loki (accepts plaintext from promtail)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: loki-permissive
+spec:
+  selector:
+    matchLabels:
+      app: loki
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: loki-rbac-proxy-permissive
+spec:
+  selector:
+    matchLabels:
+      app: loki-rbac-proxy
+  mtls:
+    mode: PERMISSIVE
+---
+# Prometheus (scraped by Kiali without sidecar)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: prometheus-permissive
+spec:
+  selector:
+    matchLabels:
+      app: prometheus-agent
+  mtls:
+    mode: PERMISSIVE
+---
+# Jaeger (scraped by Kiali without sidecar)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: jaeger-permissive
+spec:
+  selector:
+    matchLabels:
+      app: jaeger
+  mtls:
+    mode: PERMISSIVE

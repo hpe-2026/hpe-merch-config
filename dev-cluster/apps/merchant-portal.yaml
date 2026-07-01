@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: merchant-portal
+  namespace: nitte-dev
+  labels:
+    app: merchant-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: merchant-portal
+  template:
+    metadata:
+      labels:
+        app: merchant-portal
+    spec:
+      containers:
+      - name: merchant-portal
+        image: merchant-portal:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5175
+        env:
+        - name: VITE_API_BASE
+          value: http://node-backend:3000
+        - name: VITE_MINIO_BASE
+          value: http://minio:9000
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "192Mi"
+            cpu: "300m"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5175
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5175
+          initialDelaySeconds: 20
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: merchant-portal
+  namespace: nitte-dev
+spec:
+  selector:
+    app: merchant-portal
+  ports:
+  - port: 5175
+    targetPort: 5175
+  type: ClusterIP
