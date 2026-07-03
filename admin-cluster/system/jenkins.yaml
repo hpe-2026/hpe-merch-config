@@ -41,11 +41,6 @@ spec:
           mountPath: /var/jenkins_home/casc/jenkins.yaml
           subPath: jenkins.yaml
           readOnly: true
-        - name: docker-sock
-          mountPath: /var/run/docker.sock
-        - name: workspace-repo
-          mountPath: /workspace/repo
-          readOnly: true
         resources:
           requests:
             memory: "256Mi"
@@ -78,14 +73,6 @@ spec:
           items:
           - key: jenkins.yaml
             path: jenkins.yaml
-      - name: docker-sock
-        hostPath:
-          path: /var/run/docker.sock
-          type: Socket
-      - name: workspace-repo
-        hostPath:
-          path: /workspace/repo
-          type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
