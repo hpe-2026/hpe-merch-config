@@ -45,7 +45,7 @@ spec:
           mountPath: /nexus-data
         resources:
           requests:
-            memory: "768Mi"
+            memory: "384Mi"
             cpu: "200m"
           limits:
             memory: "1536Mi"
