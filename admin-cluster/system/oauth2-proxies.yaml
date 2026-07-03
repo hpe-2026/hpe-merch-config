@@ -6,7 +6,7 @@ metadata:
   labels:
     app: oauth2-proxy-prometheus
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: oauth2-proxy-prometheus
@@ -32,11 +32,11 @@ spec:
         - --provider=oidc
         - --client-id=observability-proxy
         - --client-secret=observability-proxy-secret
-        - --oidc-issuer-url=https://keycloak.192.168.56.10.nip.io/realms/nitte-realm
-        - --login-url=https://keycloak.192.168.56.10.nip.io/realms/nitte-realm/protocol/openid-connect/auth
+        - --oidc-issuer-url=https://keycloak.192.168.56.12.nip.io/realms/nitte-realm
+        - --login-url=https://keycloak.192.168.56.12.nip.io/realms/nitte-realm/protocol/openid-connect/auth
         - --redeem-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/token
         - --validate-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/userinfo
-        - --redirect-url=https://prometheus.192.168.56.10.nip.io/oauth2/callback
+        - --redirect-url=https://prometheus.192.168.56.12.nip.io/oauth2/callback
         - --upstream=http://prometheus.observability.svc.cluster.local:9090
         - --http-address=0.0.0.0:4180
         - --cookie-secret=T2JzZXJ2YWJpbGl0eVByb3h5U2VjcmV0
@@ -44,6 +44,7 @@ spec:
         - --cookie-name=_oauth2_prometheus
         - --email-domain=nitte.ac.in
         - --insecure-oidc-skip-issuer-verification=true
+        - --ssl-insecure-skip-verify=true
         - --skip-provider-button=true
         ports:
         - containerPort: 4180
@@ -82,7 +83,7 @@ metadata:
   labels:
     app: oauth2-proxy-jaeger
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: oauth2-proxy-jaeger
@@ -108,11 +109,11 @@ spec:
         - --provider=oidc
         - --client-id=observability-proxy
         - --client-secret=observability-proxy-secret
-        - --oidc-issuer-url=https://keycloak.192.168.56.10.nip.io/realms/nitte-realm
-        - --login-url=https://keycloak.192.168.56.10.nip.io/realms/nitte-realm/protocol/openid-connect/auth
+        - --oidc-issuer-url=https://keycloak.192.168.56.12.nip.io/realms/nitte-realm
+        - --login-url=https://keycloak.192.168.56.12.nip.io/realms/nitte-realm/protocol/openid-connect/auth
         - --redeem-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/token
         - --validate-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/userinfo
-        - --redirect-url=https://jaeger.192.168.56.10.nip.io/oauth2/callback
+        - --redirect-url=https://jaeger.192.168.56.12.nip.io/oauth2/callback
         - --upstream=http://jaeger.observability.svc.cluster.local:16686
         - --http-address=0.0.0.0:4181
         - --cookie-secret=T2JzZXJ2YWJpbGl0eVByb3h5U2VjcmV0
@@ -120,6 +121,7 @@ spec:
         - --cookie-name=_oauth2_jaeger
         - --email-domain=nitte.ac.in
         - --insecure-oidc-skip-issuer-verification=true
+        - --ssl-insecure-skip-verify=true
         - --skip-provider-button=true
         ports:
         - containerPort: 4181

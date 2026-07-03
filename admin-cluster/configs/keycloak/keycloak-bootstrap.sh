@@ -3,7 +3,7 @@
 # Runs as a separate keycloak-setup container after Keycloak is healthy.
 # Safe to run repeatedly (idempotent).
 
-KC_URL="http://nitte-keycloak:8080"
+KC_URL="http://keycloak:8080"
 KCADM="/opt/keycloak/bin/kcadm.sh"
 
 echo "[bootstrap] Waiting for Keycloak token endpoint to accept credentials..."
