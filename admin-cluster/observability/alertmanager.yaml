@@ -22,7 +22,7 @@ spec:
         args:
         - '--config.file=/etc/alertmanager/alertmanager.yml'
         - '--storage.path=/alertmanager'
-        - '--web.external-url=http://alertmanager.192.168.56.10.nip.io'
+        - '--web.external-url=http://alertmanager.192.168.56.12.nip.io'
         ports:
         - containerPort: 9093
         volumeMounts:
