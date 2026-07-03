@@ -1,5 +1,0 @@
-# Vanilla Jenkins - no custom plugins
-# Add plugins manually via UI after first login
-# Or uncomment below to add specific plugins:
-# git
-# matrix-auth
