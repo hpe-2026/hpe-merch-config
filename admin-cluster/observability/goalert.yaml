@@ -29,8 +29,6 @@ spec:
     metadata:
       labels: { app: goalert-db }
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: workervm2
       containers:
       - name: postgres
         image: postgres:15-alpine
@@ -78,8 +76,6 @@ spec:
     metadata:
       labels: { app: goalert }
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: workervm2
       initContainers:
       - name: wait-for-db
         image: busybox:1.35
