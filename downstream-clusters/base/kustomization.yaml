@@ -24,6 +24,7 @@ resources:
   - loki-rbac-proxy.yaml
   - jaeger.yaml
   - redocly.yaml
+  - unleash.yaml
 # Rewrite local image names to the Nexus registry
 images:
   - name: node-backend
