@@ -192,64 +192,6 @@ First run: ~30-40 minutes. Subsequent runs: ~5-10 minutes.
 | MongoDB | http://localhost:8083 | MongoDB web UI (Docker only) |
 | **Kiali** | http://localhost:20001 | Istio mesh dashboard (K8s only) |
 
----
-
-## Demo Credentials
-
-### Storefront (http://localhost:5173)
-
-| Role | Username | Password |
-|---|---|---|
-| Platform Admin | `admin@nitte.edu` | `admin@123` |
-| Verified Alumni | `alumni@nitte.edu` | `alumni@123` |
-| Non-Alumni Guest | `guest_user@alumni-shop.local` | `Guest@123` |
-
-### Admin Console (http://localhost:5174)
-
-| Role | Username | Password |
-|---|---|---|
-| Platform Admin | `admin@nitte.edu` | `admin@123` |
-
-### Merchant Portal (http://localhost:5175)
-
-| Role | Username | Password |
-|---|---|---|
-| NITTE Merchant | `merchant-admin@nitte.edu` | `MerchantAdmin@123` |
-| Amazon Merchant | `amazon-merchant@amazon.com` | `Amazon@123` |
-| Flipkart Merchant | `flipkart-merchant@flipkart.com` | `Flipkart@123` |
-
-### Internal DevOps (Jenkins, Grafana, Prometheus, Jaeger)
-
-| Role | Username | Password | Notes |
-|---|---|---|---|
-| Internal Admin | `internal-admin@nitte.ac.in` | `InternalAdmin@123` | Full access, 2FA required |
-| Internal User | `internal-user@nitte.ac.in` | `InternalUser@123` | Read-only |
-| Jenkins Fallback | `local-admin` | `LocalAdmin@123` | Offline fallback |
-
-### Infrastructure
-
-| Service | Username | Password |
-|---|---|---|
-| Keycloak Admin | `admin` | `admin` |
-| Grafana (local) | `admin` | `admin123` |
-| Nexus | `admin` | `nexus-admin-123` |
-| MinIO | `minioadmin` | `minioadmin123` |
-
----
-
-## MongoDB Sharded Cluster
-
-Production-like geo-sharded setup:
-
-- **Config Server**: Stores cluster metadata (replica set: `configRS`)
-- **Shard 1** (port 27018): South/West India orders
-- **Shard 2** (port 27019): North/East India orders
-- **Mongos Router** (port 27017): Application connection point
-- **Shard Key**: `orders.region` — zone-based routing
-- **Backup**: Daily CronJob → compressed archive → MinIO (7-day retention)
-
----
-
 ## Keycloak Integration
 
 ### Authentication Flows
