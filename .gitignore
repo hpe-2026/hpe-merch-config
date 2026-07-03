@@ -100,3 +100,7 @@ build/
 # Maven / Java
 target/
 *.class
+
+# Container image archives — load directly into containerd on the cluster node
+# Never commit these to Git (GitHub 100MB file size limit + binary blobs have no place in GitOps)
+*.tar
