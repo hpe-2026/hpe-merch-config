@@ -152,7 +152,7 @@ spec:
   project: downstream
   source:
     repoURL: https://github.com/hpe-2026/hpe-merch-config.git
-    targetRevision: main
+    targetRevision: dev
     path: downstream-clusters/overlays/dev
   destination:
     server: https://192.168.56.11:6443
@@ -176,7 +176,7 @@ spec:
   project: downstream
   source:
     repoURL: https://github.com/hpe-2026/hpe-merch-config.git
-    targetRevision: main
+    targetRevision: prod
     path: downstream-clusters/overlays/prod
   destination:
     server: https://192.168.56.12:6443
