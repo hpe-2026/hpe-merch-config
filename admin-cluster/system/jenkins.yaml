@@ -5,49 +5,69 @@ metadata:
   namespace: system
   labels:
     app: jenkins
+
 spec:
   replicas: 1
+
   strategy:
     type: Recreate
+
   selector:
     matchLabels:
       app: jenkins
+
   template:
     metadata:
       labels:
         app: jenkins
+
     spec:
       initContainers:
       - name: wait-for-keycloak
         image: busybox:1.35
         imagePullPolicy: IfNotPresent
-        command: ['sh', '-c', 'until nc -z keycloak.identity-core.svc.cluster.local 8080; do echo "waiting for keycloak"; sleep 5; done']
+        command:
+          - sh
+          - -c
+          - |
+            until nc -z keycloak.identity-core.svc.cluster.local 8080; do
+              echo "waiting for keycloak"
+              sleep 5
+            done
+
       containers:
       - name: jenkins
         image: nitte-jenkins:1.0.0
         imagePullPolicy: Never
+
         ports:
         - containerPort: 8080
         - containerPort: 50000
+
         env:
         - name: JAVA_OPTS
           value: "-Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true"
+
         - name: CASC_JENKINS_CONFIG
           value: "/var/jenkins_home/casc/jenkins.yaml"
+
         volumeMounts:
         - name: jenkins-data
           mountPath: /var/jenkins_home
+
         - name: jenkins-casc
           mountPath: /var/jenkins_home/casc/jenkins.yaml
           subPath: jenkins.yaml
           readOnly: true
+
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "150m"
-          limits:
+            cpu: "500m"
             memory: "1Gi"
-            cpu: "750m"
+          limits:
+            cpu: "2"
+            memory: "3Gi"
+
         livenessProbe:
           httpGet:
             path: /login
@@ -56,37 +76,47 @@ spec:
           periodSeconds: 20
           timeoutSeconds: 5
           failureThreshold: 10
+
         readinessProbe:
           httpGet:
             path: /login
             port: 8080
           initialDelaySeconds: 90
           periodSeconds: 10
+          timeoutSeconds: 1
           failureThreshold: 15
+
       volumes:
       - name: jenkins-data
         persistentVolumeClaim:
           claimName: jenkins-pvc
+
       - name: jenkins-casc
         configMap:
           name: jenkins-casc-config
           items:
           - key: jenkins.yaml
             path: jenkins.yaml
+
 ---
 apiVersion: v1
 kind: Service
+
 metadata:
   name: jenkins
   namespace: system
+
 spec:
   selector:
     app: jenkins
+
   ports:
   - name: web
     port: 8080
     targetPort: 8080
+
   - name: agent
     port: 50000
     targetPort: 50000
+
   type: ClusterIP
