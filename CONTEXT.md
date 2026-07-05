@@ -1,44 +1,74 @@
 # HPE Merchandise Config — Live Context
 
-> **Last updated:** 2026-06-29
-> **Working cluster:** `prod` (currently called `prod`, will be renamed to `admin` after successful setup)
-> **Cluster node:** `workervm2` (single-node RKE2)
+> **Last updated:** 2026-07-05
+> **Working cluster:** `admin` (single-node RKE2 on `mastervm`)
 > **Cluster IP:** `192.168.56.10` (admin hub in the hub-and-spoke plan)
 
 ---
 
 ## 🎯 Objective
 
-Bootstrap this RKE2 node as the **Admin cluster** by applying all manifests under `admin-cluster/`.
-
-On success → rename the cluster context from `prod` → `admin`.
-
-Future clusters:
-- `dev`  → `192.168.56.11`
-- `prod` → `192.168.56.12`
+Multi-cluster RKE2 hub-and-spoke architecture:
+- **Admin cluster** (`192.168.56.10`) — GitOps engine, CI/CD, observability, identity
+- **Dev cluster** (`192.168.56.11`) — application workloads, watched by ArgoCD from `dev` branch
+- **Prod cluster** (`192.168.56.12`) — application workloads, watched by ArgoCD from `prod` branch
 
 ---
 
-## 🖥️ Current Cluster State (as of 2026-06-29)
+## 🔄 GitOps & CI/CD Architecture
+
+### Branch-Based Deployment Model
 
 ```
-NAMESPACE     NAME                                                    READY   STATUS
-kube-system   cloud-controller-manager-workervm2                      1/1     Running
-kube-system   etcd-workervm2                                          1/1     Running
-kube-system   kube-apiserver-workervm2                                1/1     Running
-kube-system   kube-controller-manager-workervm2                       1/1     Running
-kube-system   kube-proxy-workervm2                                    1/1     Running
-kube-system   kube-scheduler-workervm2                                1/1     Running
-kube-system   rke2-canal-5kbm2                                        2/2     Running
-kube-system   rke2-coredns-...                                        1/1     Running
-kube-system   rke2-ingress-nginx-controller-ssg6l                     1/1     Running
-kube-system   rke2-metrics-server-...                                 1/1     Running
-kube-system   rke2-snapshot-controller-...                            1/1     Running
+                  ┌──────────────┐
+                  │  GitHub Repo │
+                  │  (hpe-merch- │
+                  │   config)    │
+                  └──┬───┬───┬──┘
+                     │   │   │
+              main ──┘   │   └── prod
+              (admin)    │       (prod cluster)
+                      dev ──
+                      (dev cluster)
 ```
 
-**NGINX Ingress** ✅ already running (rke2-ingress-nginx)
-**CoreDNS** ✅ already running
-**No application namespaces yet** — clean slate
+| Branch | ArgoCD Application | Target Cluster | Purpose |
+|--------|-------------------|----------------|---------|
+| `main` | `admin-cluster-apps` | `192.168.56.10` (admin) | Admin infrastructure (Jenkins, Nexus, Keycloak, observability) |
+| `dev` | `downstream-dev` | `192.168.56.11` (dev) | App workloads — auto-synced on push |
+| `prod` | `downstream-prod` | `192.168.56.12` (prod) | App workloads — only updated via merge from `dev` (promotion gate) |
+
+### CI/CD Flow (Jenkins → ArgoCD)
+
+```
+Developer pushes code → PR to dev branch
+  → Jenkins pipeline triggers (on admin cluster)
+    → SonarQube analysis
+    → Build container images
+    → Push images to Nexus registry
+    → Update image tags in downstream-clusters/base/kustomization.yaml
+    → Commit tag bump to dev branch
+  → ArgoCD detects change on dev branch → deploys to dev cluster
+
+Promotion to production:
+  → Merge dev → prod branch (manual PR review)
+  → ArgoCD detects change on prod branch → deploys to prod cluster
+  → Uses existing images already in Nexus (no rebuild)
+```
+
+### Jenkins Build Architecture
+
+Jenkins runs as a **stock controller** (`jenkins/jenkins:lts-jdk17`) with the Kubernetes plugin.
+Builds run in **ephemeral pod agents** — no tools are baked into the Jenkins image:
+
+| Build Stage | Pod Agent Image | Purpose |
+|------------|----------------|---------|
+| Node.js | `node:20-alpine` | Frontend builds, npm test |
+| Python | `python:3.11-slim` | Backend builds, pip install |
+| Docker | `docker:24-dind` | Container image builds |
+| kubectl | `bitnami/kubectl` | Manifest updates |
+
+> **Status:** Pod agent templates need to be configured in `jenkins-casc-config.yaml`.
 
 ---
 
@@ -46,66 +76,58 @@ kube-system   rke2-snapshot-controller-...                            1/1     Ru
 
 ```
 admin-cluster/
-├── namespaces.yaml          # Step 1 — create all namespaces
-├── secrets.yaml             # Step 2 — cluster-wide secrets
+├── kustomization.yaml       # Kustomize entrypoint (ArgoCD reads this)
+├── namespaces.yaml          # All namespaces
+├── secrets.yaml             # Cluster-wide secrets (applied out-of-band)
+├── pvcs.yaml                # PVCs for minio, jenkins, nexus, loki, prometheus, grafana
+├── configs/                 # ConfigMaps (jenkins-casc, etc.)
 ├── storage-system/
-│   ├── minio.yaml           # MinIO object store (Thanos + Loki backend)
-│   ├── minio-init.yaml      # MinIO bucket init job
-│   └── minio-ingress.yaml   # Ingress for MinIO console
+│   ├── minio.yaml           # MinIO object store (minio/minio:RELEASE.2025-09-07T16-13-09Z)
+│   ├── minio-init.yaml      # Bucket init job (minio/mc:RELEASE.2025-08-13T08-35-41Z)
+│   └── minio-ingress.yaml
 ├── identity-core/
-│   ├── postgres-keycloak.yaml  # Postgres DB for Keycloak
-│   ├── keycloak.yaml           # Keycloak deployment
-│   ├── keycloak-setup.yaml     # Realm bootstrap job
-│   └── keycloak-ingress.yaml   # Ingress for Keycloak
+│   ├── postgres-keycloak.yaml
+│   ├── keycloak.yaml
+│   ├── keycloak-setup.yaml
+│   └── keycloak-ingress.yaml
 ├── observability/
-│   ├── prometheus.yaml         # Prometheus (central)
-│   ├── thanos.yaml             # Thanos (receiver, store, compactor, query)
-│   ├── loki.yaml               # Loki log aggregator
-│   ├── loki-rbac-proxy.yaml    # Loki RBAC proxy
-│   ├── grafana.yaml            # Grafana dashboards
-│   ├── alertmanager.yaml       # Alertmanager
-│   ├── jaeger.yaml             # Jaeger tracing
-│   ├── goalert.yaml            # GoAlert on-call scheduler
+│   ├── prometheus.yaml
+│   ├── thanos.yaml          # Receiver, store, compactor, query
+│   ├── loki.yaml
+│   ├── loki-rbac-proxy.yaml # Custom Node.js JWT→tenant proxy (loki-rbac-proxy:1.0.0)
+│   ├── grafana.yaml
+│   ├── alertmanager.yaml
+│   ├── jaeger.yaml
+│   ├── goalert.yaml         # goalert/goalert:v0.30.0
 │   └── observability-ingress.yaml
 ├── gitops-system/
-│   ├── argocd.yaml             # ArgoCD (hub GitOps engine)
-│   ├── rancher-install.sh      # Rancher install (optional)
+│   ├── argocd.yaml          # AppProjects + Applications (admin, dev, prod)
+│   ├── argocd-repo-secret.yaml
+│   ├── argocd-rbac-patch.yaml
 │   └── GITOPS.md
+├── network-system/
+│   └── metallb-config.yaml  # L2 IPAddressPool 192.168.56.240-250
 └── system/
-    ├── jenkins.yaml            # Jenkins CI/CD
-    ├── nexus.yaml              # Nexus artifact registry
-    ├── oauth2-proxies.yaml     # OAuth2 proxy sidecars
+    ├── jenkins.yaml          # jenkins/jenkins:lts-jdk17 (stock image)
+    ├── jenkins-casc-config.yaml
+    ├── nexus.yaml            # sonatype/nexus3:3.72.0 (stock image)
+    ├── oauth2-proxies.yaml
     └── jenkins-nexus-ingress.yaml
 
 downstream-clusters/          # Managed by ArgoCD from admin cluster
-├── apps/                     # App manifests pushed to dev/prod
-├── base/
-├── monitoring-agents/        # Promtail + Prometheus agents on each cluster
+├── base/                     # Shared manifests (Kustomize base)
+│   ├── kustomization.yaml    # Image tag overrides (Jenkins updates these)
+│   ├── grafana.yaml
+│   ├── minio.yaml            # minio/minio:RELEASE.2025-09-07T16-13-09Z
+│   ├── minio-init.yaml       # minio/mc:RELEASE.2025-08-13T08-35-41Z
+│   ├── redocly.yaml          # redocly/redoc:v2.1.5
+│   ├── unleash.yaml          # unleashorg/unleash-server:v6.6
+│   └── ...                   # MongoDB, Kafka, Node backend, Python, frontends
+├── monitoring-agents/        # Promtail + Prometheus agents per cluster
 └── overlays/
+    ├── dev/                  # Dev-specific overrides
+    └── prod/                 # Prod-specific overrides
 ```
-
----
-
-## 🗺️ Planned Deployment Order (Admin Cluster Bootstrap)
-
-Apply in this exact order — each step depends on the previous.
-
-## 🔄 GitOps Flow (New — ArgoCD self-manages the admin cluster)
-
-Once ArgoCD is bootstrapped, **Git is the source of truth**. Any push to `admin-cluster/` is automatically applied by ArgoCD — no more manual `kubectl apply`.
-
-```
-Git push → GitHub → ArgoCD polls every 3 min → kubectl apply (via Kustomize)
-                                               ↓
-                                    admin-cluster/kustomization.yaml
-                                    (assembles all manifests in order)
-```
-
-**New files added:**
-- `admin-cluster/kustomization.yaml` — Kustomize entrypoint for the whole admin cluster
-- `admin-cluster/gitops-system/argocd-repo-secret.yaml` — Git credentials (fill in, apply out-of-band)
-- `admin-cluster/gitops-system/argocd.yaml` — updated with `AppProject` + self-managing `admin-cluster-apps` Application
-- `admin-cluster/gitops-system/argocd-rbac-patch.yaml` — RBAC patch for ClusterRoleBinding namespaces
 
 ---
 
@@ -120,9 +142,9 @@ Git push → GitHub → ArgoCD polls every 3 min → kubectl apply (via Kustomiz
 | 5 | `kubectl apply -n gitops-system -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.0/manifests/install.yaml` | Install ArgoCD | ✅ DONE |
 | 6 | Wait for ArgoCD pods: `kubectl get pods -n gitops-system` | All Running | ✅ DONE |
 | 7 | `kubectl apply -f admin-cluster/gitops-system/argocd.yaml` | Apply AppProjects + Applications (ArgoCD takes over) | ✅ DONE |
-| 7.5 | `kubectl apply -f admin-cluster/gitops-system/argocd-rbac-patch.yaml` | Apply RBAC patch for ClusterRoleBinding namespaces | ✅ DONE |
+| 7.5 | `kubectl apply -f admin-cluster/gitops-system/argocd-rbac-patch.yaml` | RBAC patch for ClusterRoleBinding namespaces | ✅ DONE |
 | 7.6 | `kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.36/deploy/local-path-storage.yaml` | Install Local Path Storage Class | ✅ DONE |
-| 8 | **ArgoCD auto-syncs `admin-cluster/` — all services deploy automatically** | ✨ GitOps active | ⬜ IN PROGRESS |
+| 8 | **ArgoCD auto-syncs `admin-cluster/` — all services deploy automatically** | ✨ GitOps active | 🔄 IN PROGRESS |
 
 > **After step 7, you never manually `kubectl apply` admin-cluster manifests again.**
 > Edit files → `git push` → ArgoCD applies within 3 minutes.
@@ -135,27 +157,43 @@ Git push → GitHub → ArgoCD polls every 3 min → kubectl apply (via Kustomiz
 
 ---
 
-## ✅ Success Criteria (before renaming to "admin")
+## 🐳 Container Image Audit (completed 2026-07-05)
 
-- [ ] All namespaces present: `kubectl get ns`
-- [ ] MinIO pods Running + buckets created
-- [ ] Keycloak UI accessible via `keycloak.192.168.56.10.nip.io`
-- [ ] Grafana accessible and connected to Thanos + Loki datasources
-- [ ] ArgoCD UI accessible via `argocd.192.168.56.10.nip.io`
-- [ ] ArgoCD can connect to downstream cluster contexts
+All images have been audited, pinned to specific versions, and custom images replaced:
+
+| Image | Version | Notes |
+|-------|---------|-------|
+| `jenkins/jenkins` | `lts-jdk17` | ✅ Replaced custom `nitte-jenkins:1.0.0` |
+| `sonatype/nexus3` | `3.72.0` | ✅ Replaced custom `nitte-nexus:1.0.0` |
+| `minio/minio` | `RELEASE.2025-09-07T16-13-09Z` | ✅ Pinned (last official Docker Hub release) |
+| `minio/mc` | `RELEASE.2025-08-13T08-35-41Z` | ✅ Pinned |
+| `goalert/goalert` | `v0.30.0` | ✅ Pinned |
+| `redocly/redoc` | `v2.1.5` | ✅ Pinned |
+| `unleashorg/unleash-server` | `v6.6` | ✅ Pinned |
+| `loki-rbac-proxy` | `1.0.0` | ⚠️ Custom — genuinely custom code, no stock replacement |
+
+> **MinIO caveat:** MinIO discontinued publishing community Docker images in Oct 2025.
+> The pinned release is the last available tag. For future upgrades, consider Chainguard images
+> (`cgr.dev/chainguard/minio`) or building from source.
+
+> **`imagePullPolicy: Never`** has been removed from all images except `loki-rbac-proxy:1.0.0`
+> (custom image loaded via containerd). This will be migrated to Nexus registry pulls once the
+> CI pipeline is fully operational.
 
 ---
 
-## 🔄 Rename Cluster Context
+## ✅ Success Criteria (before full operational status)
 
-Once all checks pass:
-```bash
-# Rename kubeconfig context from prod → admin
-kubectl config rename-context prod admin
-
-# Verify
-kubectl config get-contexts
-```
+- [x] All namespaces present
+- [x] ArgoCD UI accessible and syncing admin-cluster manifests
+- [ ] MinIO pods Running + buckets created
+- [ ] Keycloak UI accessible via `keycloak.192.168.56.10.nip.io`
+- [ ] Jenkins Running with Kubernetes plugin + CasC configured
+- [ ] Nexus Running with Docker registry accessible
+- [ ] Grafana accessible and connected to Thanos + Loki datasources
+- [ ] Dev cluster (`192.168.56.11`) registered in ArgoCD
+- [ ] Prod cluster (`192.168.56.12`) registered in ArgoCD
+- [ ] End-to-end CI/CD: code push → Jenkins build → Nexus push → ArgoCD deploy
 
 ---
 
@@ -178,6 +216,22 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 
 ---
 
+## 📋 Remaining Work
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Stabilize admin cluster pods (MinIO, Nexus, Keycloak) | 🔴 High | In Progress |
+| Configure Jenkins CasC with Kubernetes pod agent templates | 🔴 High | Not Started |
+| Provision Dev cluster on `192.168.56.11` | 🟡 Medium | Not Started |
+| Provision Prod cluster on `192.168.56.12` | 🟡 Medium | Not Started |
+| Register dev/prod clusters with ArgoCD | 🟡 Medium | Not Started |
+| Wire Keycloak SSO into Jenkins, Grafana, Nexus | 🟡 Medium | Not Started |
+| Wire observability stack (Thanos receiver, Promtail→Loki, Grafana datasources) | 🟡 Medium | Not Started |
+| Configure Istio service mesh on downstream clusters | 🟢 Low | Not Started |
+| End-to-end CI/CD pipeline testing | 🟢 Low | Not Started |
+
+---
+
 ## 📝 Change Log
 
 | Date | Action | Result |
@@ -186,5 +240,10 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 | 2026-06-29 | GitOps setup added | `admin-cluster/kustomization.yaml` + `argocd-repo-secret.yaml` + `argocd.yaml` rewritten with self-managing `admin-cluster-apps` Application |
 | 2026-06-29 | Standardized Secrets & RBAC Fixes | Standardized manifests to use `admin-secrets`, configured public GitHub URL, and added `argocd-rbac-patch.yaml` to fix podtemplates caching error. |
 | 2026-06-29 | Installed Storage Class & Added PVCs | Installed local-path-provisioner storage class and created `admin-cluster/pvcs.yaml` for minio, jenkins, nexus, loki, prometheus, and grafana. |
-| 2026-06-30 | Added MetalLB config | Created `admin-cluster/network-system/metallb-config.yaml` (L2 IPAddressPool `192.168.56.240-250` + L2Advertisement), added `metallb-system` namespace (privileged PSA), wired into kustomization. Operator install is out-of-band (`metallb-native.yaml`). |
-
+| 2026-06-30 | Added MetalLB config | Created `admin-cluster/network-system/metallb-config.yaml` (L2 IPAddressPool `192.168.56.240-250` + L2Advertisement), added `metallb-system` namespace (privileged PSA), wired into kustomization. |
+| 2026-07-05 | Decoupled dev/prod GitOps branches | Updated ArgoCD Applications: `downstream-dev` watches `dev` branch, `downstream-prod` watches `prod` branch. Creates promotion gate for production deployments. |
+| 2026-07-05 | Replaced custom Jenkins image | Swapped `nitte-jenkins:1.0.0` → `jenkins/jenkins:lts-jdk17`. Jenkins is now a stock controller; builds will run in ephemeral K8s pod agents. |
+| 2026-07-05 | Replaced custom Nexus image | Swapped `nitte-nexus:1.0.0` → `sonatype/nexus3:3.72.0`. Added `strategy: Recreate` to prevent PVC lock deadlocks. |
+| 2026-07-05 | Full image audit + version pinning | Pinned all `:latest` tags across the repo (MinIO, mc, GoAlert, Redoc, Unleash). Zero `:latest` tags remaining. |
+| 2026-07-05 | Deleted orphaned `downstream-clusters/apps/` | Legacy folder unused in current hub-and-spoke architecture. |
+| 2026-07-05 | Fixed MinIO image tag | Changed to `RELEASE.2025-09-07T16-13-09Z` (confirmed available on Docker Hub). Added `strategy: Recreate` to prevent PVC deadlock. |
