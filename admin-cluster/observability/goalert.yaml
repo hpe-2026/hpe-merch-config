@@ -82,20 +82,20 @@ spec:
         imagePullPolicy: IfNotPresent
         command: ['sh','-c','until nc -z goalert-db 5432; do echo waiting for db; sleep 3; done']
       - name: migrate
-        image: goalert/goalert:latest
+        image: goalert/goalert:v0.30.0
         imagePullPolicy: IfNotPresent
         command: ['goalert','migrate']
         env:
         - { name: GOALERT_DB_URL, value: "postgres://goalert:goalert@goalert-db:5432/goalert?sslmode=disable" }
       - name: add-admin
-        image: goalert/goalert:latest
+        image: goalert/goalert:v0.30.0
         imagePullPolicy: IfNotPresent
         command: ['sh','-c','goalert add-user --user admin --pass admin123 --admin || true']
         env:
         - { name: GOALERT_DB_URL, value: "postgres://goalert:goalert@goalert-db:5432/goalert?sslmode=disable" }
       containers:
       - name: goalert
-        image: goalert/goalert:latest
+        image: goalert/goalert:v0.30.0
         imagePullPolicy: IfNotPresent
         args: ['goalert']
         env:

@@ -22,8 +22,8 @@ spec:
         command: ['sh', '-c', 'until nc -z keycloak.identity-core.svc.cluster.local 8080; do echo "waiting for keycloak"; sleep 5; done']
       containers:
       - name: nexus
-        image: nitte-nexus:1.0.0
-        imagePullPolicy: Never
+        image: sonatype/nexus3:3.72.0
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8081
         env:

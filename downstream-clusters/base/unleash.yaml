@@ -115,7 +115,7 @@ spec:
             - until pg_isready -h unleash-db -p 5432 -U unleash; do echo waiting for db; sleep 2; done
       containers:
         - name: unleash
-          image: unleashorg/unleash-server:latest
+          image: unleashorg/unleash-server:v6.6
           ports:
             - containerPort: 4242
           env:
