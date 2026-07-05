@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: redoc
-        image: redocly/redoc:latest
+        image: redocly/redoc:v2.1.5
         imagePullPolicy: IfNotPresent
         env:
         - name: SPEC_URL

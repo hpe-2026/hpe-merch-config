@@ -39,8 +39,8 @@ spec:
 
       containers:
       - name: jenkins
-        image: nitte-jenkins:1.0.0
-        imagePullPolicy: Never
+        image: jenkins/jenkins:lts-jdk17
+        imagePullPolicy: IfNotPresent
 
         ports:
         - containerPort: 8080
