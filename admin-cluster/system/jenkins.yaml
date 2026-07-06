@@ -1,3 +1,57 @@
+# ── ServiceAccount — Jenkins controller runs as this SA ──────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins
+  namespace: system
+
+---
+# ── Role — permissions Jenkins needs in its own namespace ────────────────────
+# Required by the Kubernetes plugin to create/delete ephemeral build-agent pods.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jenkins-agent-role
+  namespace: system
+rules:
+  # Pod lifecycle — create agent pods, watch their status, delete on completion.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Pod logs — stream build output back to the controller.
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list", "watch"]
+  # Pod exec — used by the Kubernetes plugin for interactive agent communication.
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["get", "create"]
+  # Secrets — read nexus-docker-config + other secrets mounted in agent pods.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  # ConfigMaps — read CasC + any agent-mounted config maps.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+
+---
+# ── RoleBinding — bind the Role to the jenkins ServiceAccount ─────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jenkins-agent-rolebinding
+  namespace: system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jenkins-agent-role
+subjects:
+  - kind: ServiceAccount
+    name: jenkins
+    namespace: system
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
