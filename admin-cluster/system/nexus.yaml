@@ -27,7 +27,15 @@ spec:
         image: sonatype/nexus3:3.72.0
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 8081
+        # REST API / Web UI
+        - name: http
+          containerPort: 8081
+        # Docker hosted registry (configured inside Nexus UI: Administration →
+        # Repositories → Create repository → docker (hosted) → HTTP port: 8082).
+        # IMPORTANT: You MUST create this repo in the Nexus UI before running
+        # the Jenkins pipeline. See docs/CICD_PIPELINE.md for steps.
+        - name: docker-registry
+          containerPort: 8082
         env:
         - name: INSTALL4J_ADD_VM_PARAMS
           value: "-Xms512m -Xmx1g -XX:MaxDirectMemorySize=512m"
@@ -71,7 +79,9 @@ spec:
       - name: nexus-data
         persistentVolumeClaim:
           claimName: nexus-pvc
+
 ---
+# ── ClusterIP service — internal REST API access (port 8081) ──────────────────
 apiVersion: v1
 kind: Service
 metadata:
@@ -81,6 +91,34 @@ spec:
   selector:
     app: nexus
   ports:
-  - port: 8081
+  - name: http
+    port: 8081
     targetPort: 8081
   type: ClusterIP
+
+---
+# ── NodePort service — Docker registry exposed to ALL clusters ────────────────
+# The NodePort (30082) is reachable at 192.168.56.10:30082 from:
+#   - Kaniko running inside the admin cluster (pushes images)
+#   - Dev cluster nodes (192.168.56.11) pulling images for deployment
+#   - Prod cluster nodes (192.168.56.12) pulling images for deployment
+#
+# The image address 192.168.56.10:30082 must match exactly in:
+#   - Jenkinsfile: NEXUS_REGISTRY
+#   - downstream-clusters/base/kustomization.yaml: newName fields
+#   - nexus-docker-config.json: auths key
+#   - RKE2 registries.yaml on ALL nodes: insecure registry config
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus-docker
+  namespace: system
+spec:
+  selector:
+    app: nexus
+  ports:
+  - name: docker-registry
+    port: 8082
+    targetPort: 8082
+    nodePort: 30082
+  type: NodePort

@@ -1,7 +1,8 @@
 # Ingress resources for Jenkins and Nexus (system namespace)
-# Nexus traffic MUST route through oauth2-proxy — direct Nexus port must never be exposed.
-# The sidecar pattern enforces RUT (Remote User Token) authentication.
+# Both services are on the ADMIN cluster (192.168.56.10) — all hostnames must
+# use 192.168.56.10.nip.io, not 192.168.56.12.nip.io.
 ---
+# ── Jenkins Ingress ───────────────────────────────────────────────────────────
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -26,9 +27,12 @@ spec:
             name: jenkins
             port:
               number: 8080
+
 ---
-# Nexus routes to oauth2-proxy (port 4180) — NOT directly to Nexus (8081)
-# This enforces the RUT proxy chain: Ingress → oauth2-proxy → Nexus (localhost)
+# ── Nexus Web UI Ingress ──────────────────────────────────────────────────────
+# Routes to oauth2-proxy (port 4180) to enforce Keycloak authentication.
+# The oauth2-proxy → Nexus sidecar pattern (RUT proxy) means the user's
+# identity is forwarded via the X-Forwarded-User header.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -50,6 +54,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: nexus-oauth2-proxy    # Routes to the oauth2-proxy sidecar service
+            name: nexus-oauth2-proxy   # Routes through oauth2-proxy → Nexus
             port:
               number: 4182
