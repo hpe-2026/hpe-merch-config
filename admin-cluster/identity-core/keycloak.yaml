@@ -55,7 +55,7 @@ spec:
         - name: KEYCLOAK_JWKS_URL
           value: http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/certs
         - name: KC_HOSTNAME_URL
-          value: https://keycloak.192.168.56.12.nip.io
+          value: https://keycloak.192.168.56.10.nip.io
         - name: KC_HOSTNAME_STRICT
           value: "false"
         - name: KC_HOSTNAME_STRICT_HTTPS
