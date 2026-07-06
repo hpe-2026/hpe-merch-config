@@ -31,7 +31,8 @@ images:
     newName: 192.168.56.10:30082/node-backend
     newTag: "1.1.4"
   - name: python-service
-    newName: 192.168.56.10:30082/python-service
+    newName: 192.168.56.10:30082/merch-docker/python-service
+    newTag: 25-069947c
   - name: frontend
     newName: 192.168.56.10:30082/frontend
     newTag: "1.0.1"
