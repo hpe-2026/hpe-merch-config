@@ -8,76 +8,53 @@ data:
     jenkins:
       # Zero executors on the controller — all builds run in ephemeral K8s pods.
       numExecutors: 0
-      systemMessage: "NITTE Merch — Jenkins CI/CD | Keycloak SSO | K8s Pod Agents"
+      systemMessage: "NITTE Merch — Jenkins CI/CD | K8s Pod Agents"
 
-      # ── Security / SSO ─────────────────────────────────────────────────────
+      # ── Security — LOCAL user database ────────────────────────────────────
+      # Using local security realm so Jenkins starts reliably without requiring
+      # Keycloak to be running. Keycloak SSO can be re-enabled once the pipeline
+      # is stable (see docs/CICD_PIPELINE.md for the OIC CasC snippet).
       securityRealm:
-        oic:
-          clientId: "jenkins-client"
-          clientSecret: "jenkins-client-secret"
-          userNameField: "preferred_username"
-          fullNameFieldName: "name"
-          emailFieldName: "email"
-          logoutFromOpenidProvider: true
-          postLogoutRedirectUrl: "http://jenkins.192.168.56.10.nip.io"
-          properties:
-            - escapeHatch:
-                username: "local-admin"
-                secret: "LocalAdmin@123"
-                group: ""
-          serverConfiguration:
-            manual:
-              # Issuer and auth/end-session use the external nip.io address
-              # (browser redirects — must be reachable from the user's browser).
-              issuer: "http://keycloak.192.168.56.10.nip.io/realms/nitte-realm"
-              authorizationServerUrl: "http://keycloak.192.168.56.10.nip.io/realms/nitte-realm/protocol/openid-connect/auth"
-              endSessionUrl: "http://keycloak.192.168.56.10.nip.io/realms/nitte-realm/protocol/openid-connect/logout"
-              # Token / userinfo / JWKS use internal cluster DNS (pod-to-pod, no ingress hop).
-              tokenServerUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/token"
-              userInfoServerUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/userinfo"
-              jwksServerUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/certs"
-              scopes: "openid profile email"
+        local:
+          allowsSignup: false
+          enableCaptcha: false
+          users:
+            - id: "local-admin"
+              name: "Local Admin"
+              password: "LocalAdmin@123"
+              properties:
+                - "apiTokenProperty"
+                - "mailer"
+                - preferredProvider:
+                    providerId: "default"
 
       authorizationStrategy:
         loggedInUsersCanDoAnything:
           allowAnonymousRead: false
 
       # ── Kubernetes Cloud — ephemeral pod agents ───────────────────────────
+      # The devops-agent pod template is used by Jenkinsfile:
+      #   agent { kubernetes { inheritFrom 'devops-agent' } }
       clouds:
         - kubernetes:
             name: "kubernetes"
-            # In-cluster address — no token/cert needed when running inside the cluster.
             serverUrl: "https://kubernetes.default.svc"
-            # Namespace where Jenkins runs AND where agent pods are spawned.
             namespace: "system"
-            # Jenkins controller URL reachable from inside the cluster.
             jenkinsUrl: "http://jenkins.system.svc.cluster.local:8080"
-            # JNLP agent → controller tunnel (TCP 50000).
             jenkinsTunnel: "jenkins.system.svc.cluster.local:50000"
             connectTimeout: 10
             readTimeout: 20
-            maxRequestsPerHostStr: "32"
-            # ── Pod Templates ───────────────────────────────────────────────
             templates:
               - name: "devops-agent"
                 namespace: "system"
-                # Jobs that declare  agent { kubernetes { inheritFrom 'devops-agent' } }
-                # will match this template.
                 label: "devops-agent"
                 serviceAccount: "jenkins"
-                # EXCLUSIVE: only jobs that explicitly request this agent run here.
                 nodeUsageMode: EXCLUSIVE
-                # Delete the pod immediately after the build completes.
                 idleMinutes: 0
-                # ── Containers ─────────────────────────────────────────────
                 containers:
-                  # ── devops ─────────────────────────────────────────────
-                  # Runs: checkout, install, build, test, git operations, yq.
-                  # node:20-alpine ships with node/npm. git, python3, curl, yq
-                  # are installed by the "Setup Tools" stage in the Jenkinsfile.
+                  # devops container: node:20-alpine + tools installed by Setup Tools stage
                   - name: "devops"
                     image: "node:20-alpine"
-                    # Keep alive until Jenkins explicitly terminates the pod.
                     command: "sleep"
                     args: "99d"
                     workingDir: "/home/jenkins/agent"
@@ -86,11 +63,8 @@ data:
                     resourceRequestMemory: "512Mi"
                     resourceLimitCpu: "2"
                     resourceLimitMemory: "2Gi"
-
-                  # ── kaniko ─────────────────────────────────────────────
-                  # Runs: container image builds + push to Nexus Docker registry.
-                  # The :debug tag includes a shell (/busybox/sh) so "sleep 99d" works.
-                  # Docker auth is injected via the nexus-docker-config secret volume.
+                  # kaniko container: builds and pushes Docker images to Nexus
+                  # Uses :debug tag which ships /busybox/sh so "sleep 99d" works
                   - name: "kaniko"
                     image: "gcr.io/kaniko-project/executor:debug"
                     command: "sleep"
@@ -100,16 +74,10 @@ data:
                     resourceRequestMemory: "1Gi"
                     resourceLimitCpu: "2"
                     resourceLimitMemory: "2Gi"
-
-                # ── Volumes ───────────────────────────────────────────────
                 volumes:
-                  # Mounts the nexus-docker-config Secret at /kaniko/.docker so
-                  # kaniko can authenticate to the Nexus Docker registry.
-                  # Secret must contain a key "config.json" with Docker auth JSON.
-                  # CREATE OUT-OF-BAND (not in Git):
-                  #   kubectl create secret generic nexus-docker-config \
-                  #     --from-file=config.json=./nexus-docker-config.json \
-                  #     -n system
+                  # Docker auth secret mounted at /kaniko/.docker/config.json
+                  # Create out-of-band: kubectl create secret generic nexus-docker-config
+                  #   --from-file=config.json=/tmp/nexus-docker-config.json -n system
                   - secretVolume:
                       secretName: "nexus-docker-config"
                       mountPath: "/kaniko/.docker"
@@ -119,35 +87,20 @@ data:
       system:
         domainCredentials:
           - credentials:
-              # Nexus admin credentials — used by pipeline to authenticate docker push.
               - usernamePassword:
                   id: "nexus-creds"
                   username: "admin"
-                  # ⚠  Replace with your actual Nexus admin password after first login.
                   password: "nexus-admin-123"
-                  description: "Nexus Repository Manager — admin"
+                  description: "Nexus admin credentials"
                   scope: GLOBAL
-
-              # GitHub PAT — used by pipeline to git clone + push to hpe-merch-config.
-              # ⚠  REPLACE these placeholder values with real credentials BEFORE
-              #    running the pipeline for the first time.
               - usernamePassword:
                   id: "github-pat"
                   username: "hpe-2026-bot"
                   password: "ghp_REPLACE_WITH_REAL_PAT"
-                  description: "GitHub PAT — push access to hpe-merch-config"
+                  description: "GitHub PAT for hpe-merch-config push"
                   scope: GLOBAL
 
-              # SonarQube token — placeholder, pipeline skips SonarQube by default.
-              # Fill in once SonarQube is deployed and a token is generated.
-              - string:
-                  id: "sonarqube-token"
-                  secret: "REPLACE_WITH_SONAR_TOKEN"
-                  description: "SonarQube analysis token (inactive — SonarQube not deployed)"
-                  scope: GLOBAL
-
-    # ── Unclassified / Global Config ─────────────────────────────────────────
+    # ── Unclassified ──────────────────────────────────────────────────────────
     unclassified:
       location:
-        # Public URL of the Jenkins controller (used in build notifications, webhooks).
         url: "http://jenkins.192.168.56.10.nip.io/"
