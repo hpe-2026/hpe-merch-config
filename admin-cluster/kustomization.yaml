@@ -54,6 +54,5 @@ resources:
   - system/jenkins-casc-config.yaml
   - system/jenkins.yaml
   - system/nexus.yaml
-  - system/sonarqube.yaml
   - system/oauth2-proxies.yaml
   - system/jenkins-nexus-ingress.yaml
