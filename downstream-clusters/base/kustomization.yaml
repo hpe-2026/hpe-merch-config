@@ -32,7 +32,7 @@ images:
     newTag: "1.1.4"
   - name: python-service
     newName: 192.168.56.10:30082/merch-docker/python-service
-    newTag: 25-069947c
+    newTag: 26-8883ccf
   - name: frontend
     newName: 192.168.56.10:30082/frontend
     newTag: "1.0.1"
