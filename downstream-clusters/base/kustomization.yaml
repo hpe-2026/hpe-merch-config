@@ -28,22 +28,23 @@ resources:
 # Rewrite local image names to the Nexus registry
 images:
   - name: node-backend
-    newName: 192.168.56.10:30082/node-backend
-    newTag: "1.1.4"
+    newName: 192.168.56.10:30082/merch-docker/node-backend
+    newTag: "50-3c8ee99"
   - name: python-service
     newName: 192.168.56.10:30082/merch-docker/python-service
-    newTag: 26-8883ccf
+    newTag: 50-3c8ee99
   - name: frontend
-    newName: 192.168.56.10:30082/frontend
-    newTag: "1.0.1"
+    newName: 192.168.56.10:30082/merch-docker/frontend
+    newTag: "50-3c8ee99"
   - name: admin-dashboard
-    newName: 192.168.56.10:30082/admin-dashboard
-    newTag: "1.0.2"
+    newName: 192.168.56.10:30082/merch-docker/admin-dashboard
+    newTag: "50-3c8ee99"
   - name: merchant-portal
-    newName: 192.168.56.10:30082/merchant-portal
-    newTag: "1.0.1"
+    newName: 192.168.56.10:30082/merch-docker/merchant-portal
+    newTag: "50-3c8ee99"
   - name: notification-service
-    newName: 192.168.56.10:30082/notification-service
+    newName: 192.168.56.10:30082/merch-docker/notification-service
+    newTag: 50-3c8ee99
   - name: loki-rbac-proxy
     newName: 192.168.56.10:30082/loki-rbac-proxy
 # Mount the correct nginx.conf (per app port) over the baked-in default
