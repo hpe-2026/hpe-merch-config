@@ -1,6 +1,6 @@
 # Ingress resources for observability stack (observability namespace)
-# Prometheus and Jaeger are protected by oauth2-proxy (in system namespace).
-# Grafana, Loki, AlertManager, Thanos Query exposed directly.
+# All observability tools exposed directly (oauth2-proxy disabled, replicas=0).
+# Grafana, Loki, AlertManager, Thanos Query, Prometheus, Jaeger exposed directly.
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -105,7 +105,7 @@ spec:
     nodePort: 30200
   type: NodePort
 ---
-# Prometheus (behind oauth2-proxy in system namespace) — Ingress on system namespace
+# Prometheus — exposed directly (oauth2-proxy bypassed)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -129,7 +129,7 @@ spec:
             port:
               number: 9090
 ---
-# Jaeger (behind oauth2-proxy in system namespace) — Ingress on system namespace
+# Jaeger — exposed directly (oauth2-proxy bypassed)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -149,6 +149,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: oauth2-proxy-jaeger
+            name: jaeger
             port:
-              number: 4181
+              number: 16686
