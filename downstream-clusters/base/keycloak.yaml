@@ -124,8 +124,6 @@ spec:
             path: nitte-realm.json
       - name: keycloak-logs
         emptyDir: {}
-          - key: keycloak-event-listener-1.0.0.jar
-            path: keycloak-event-listener-1.0.0.jar
       - name: promtail-keycloak-config
         configMap:
           name: promtail-keycloak-config
