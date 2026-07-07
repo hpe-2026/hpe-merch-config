@@ -15,6 +15,7 @@ resources:
   - node-backend.yaml
   - python-service.yaml
   - frontend.yaml
+  - nginx-configmaps.yaml
   - admin-dashboard.yaml
   - merchant-portal.yaml
   - notification-service.yaml
