@@ -76,3 +76,74 @@ patches:
           spec:
             nodeSelector:
               kubernetes.io/hostname: workervm1
+  # ── Scale down observability services that already run on admin cluster ──
+  - target:
+      kind: Deployment
+      name: grafana
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: grafana
+      spec:
+        replicas: 0
+  - target:
+      kind: Deployment
+      name: loki
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: loki
+      spec:
+        replicas: 0
+  - target:
+      kind: Deployment
+      name: loki-rbac-proxy
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: loki-rbac-proxy
+      spec:
+        replicas: 0
+  - target:
+      kind: Deployment
+      name: alertmanager
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: alertmanager
+      spec:
+        replicas: 0
+  - target:
+      kind: Deployment
+      name: prometheus
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: prometheus
+      spec:
+        replicas: 0
+  - target:
+      kind: Deployment
+      name: unleash
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: unleash
+      spec:
+        replicas: 0
+  - target:
+      kind: Deployment
+      name: unleash-db
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: unleash-db
+      spec:
+        replicas: 0
