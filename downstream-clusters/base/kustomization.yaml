@@ -42,7 +42,7 @@ images:
     newTag: "52-c6db235"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/merch-docker/admin-dashboard
-    newTag: "52-c6db235"
+    newTag: "53-cec7396"
   - name: merchant-portal
     newName: 192.168.56.10:30082/merch-docker/merchant-portal
     newTag: "52-c6db235"
