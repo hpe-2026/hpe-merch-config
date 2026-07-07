@@ -9,7 +9,8 @@ kind: ConfigMap
 metadata:
   name: keycloak-spi-config
   namespace: nitte
-data: {}
+data:
+  keycloak-event-listener-1.0.0.jar: ""
 # NOTE: The keycloak-event-listener JAR cannot be stored in a ConfigMap
 # (binary file). This empty ConfigMap satisfies the volume mount.
 # To enable the SPI, build the JAR and use an init container or bake it
