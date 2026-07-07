@@ -6,6 +6,7 @@ data:
     datasources:
       # Thanos Query — unified metrics from Admin + Dev + Prod (via remote_write)
       - name: Thanos
+        uid: thanos-ds
         type: prometheus
         access: proxy
         url: http://thanos-query.observability.svc.cluster.local:9090
@@ -17,6 +18,7 @@ data:
 
       # Local Prometheus — Admin cluster control-plane metrics only
       - name: Prometheus (Admin)
+        uid: prometheus-admin-ds
         type: prometheus
         access: proxy
         url: http://prometheus.observability.svc.cluster.local:9090
@@ -24,6 +26,7 @@ data:
 
       # Loki — log aggregation from all clusters (via loki-rbac-proxy)
       - name: Loki
+        uid: loki-ds
         type: loki
         access: proxy
         url: http://loki-rbac-proxy.observability.svc.cluster.local:3200
@@ -34,6 +37,7 @@ data:
 
       # Jaeger — distributed traces from Dev/Prod microservices
       - name: Jaeger
+        uid: jaeger-ds
         type: jaeger
         access: proxy
         url: http://jaeger.observability.svc.cluster.local:16686
