@@ -25,7 +25,7 @@ patches:
               - name: keycloak
                 env:
                   - name: KC_HOSTNAME_URL
-                    value: "http://keycloak.dev.nitte.local:8080"
+                    value: "http://keycloak.192.168.56.200.nip.io"
                   - name: KC_PROXY
                     value: "edge"
   - target:
