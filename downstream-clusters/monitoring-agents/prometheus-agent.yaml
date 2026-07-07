@@ -32,21 +32,21 @@ data:
       - job_name: node-backend
         metrics_path: /metrics
         static_configs:
-          - targets: ['node-backend.nitte.svc.cluster.local:3000']
+          - targets: ['node-backend.nitte-dev.svc.cluster.local:3000']
             labels:
               service: node-backend
 
       - job_name: python-service
         metrics_path: /metrics
         static_configs:
-          - targets: ['python-service.nitte.svc.cluster.local:8000']
+          - targets: ['python-service.nitte-dev.svc.cluster.local:8000']
             labels:
               service: python-service
 
       - job_name: notification-service
         metrics_path: /metrics
         static_configs:
-          - targets: ['notification-service.nitte.svc.cluster.local:9100']
+          - targets: ['notification-service.nitte-dev.svc.cluster.local:9100']
             labels:
               service: notification-service
 
@@ -54,7 +54,7 @@ data:
         kubernetes_sd_configs:
           - role: pod
             namespaces:
-              names: [nitte]
+              names: [nitte-dev]
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep
