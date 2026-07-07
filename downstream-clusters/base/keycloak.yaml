@@ -65,10 +65,6 @@ spec:
           readOnly: true
         - name: keycloak-logs
           mountPath: /opt/keycloak/log
-        - name: keycloak-spi
-          mountPath: /opt/keycloak/providers/keycloak-event-listener-1.0.0.jar
-          subPath: keycloak-event-listener-1.0.0.jar
-          readOnly: true
         resources:
           requests:
             memory: "512Mi"
@@ -128,10 +124,6 @@ spec:
             path: nitte-realm.json
       - name: keycloak-logs
         emptyDir: {}
-      - name: keycloak-spi
-        configMap:
-          name: keycloak-spi-config
-          items:
           - key: keycloak-event-listener-1.0.0.jar
             path: keycloak-event-listener-1.0.0.jar
       - name: promtail-keycloak-config
