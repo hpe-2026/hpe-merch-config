@@ -23,8 +23,9 @@ resources:
   - grafana.yaml
   - alertmanager.yaml
   - loki.yaml
-  - promtail-rbac.yaml
-  - promtail.yaml
+  # promtail (DaemonSet + RBAC + config) is owned exclusively by the
+  # monitoring-agents-dev/prod ArgoCD app. Declaring it here too caused a
+  # SharedResourceWarning tug-of-war that kept downstream-dev OutOfSync/Progressing.
   - loki-rbac-proxy.yaml
   - jaeger.yaml
   - redocly.yaml
