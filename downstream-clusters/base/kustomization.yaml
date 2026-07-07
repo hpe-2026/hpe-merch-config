@@ -40,13 +40,13 @@ images:
     newTag: 52-c6db235
   - name: frontend
     newName: 192.168.56.10:30082/merch-docker/frontend
-    newTag: "54-86ff000"
+    newTag: "55-d27081c"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/merch-docker/admin-dashboard
-    newTag: "54-86ff000"
+    newTag: "55-d27081c"
   - name: merchant-portal
     newName: 192.168.56.10:30082/merch-docker/merchant-portal
-    newTag: "54-86ff000"
+    newTag: "55-d27081c"
   - name: notification-service
     newName: 192.168.56.10:30082/merch-docker/notification-service
     newTag: 52-c6db235
