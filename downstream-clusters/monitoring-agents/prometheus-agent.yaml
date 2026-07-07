@@ -19,7 +19,7 @@ data:
 
     # Remote write to Thanos Receiver on Admin cluster (192.168.56.10)
     remote_write:
-      - url: http://192.168.56.10:31439/api/v1/receive
+      - url: http://192.168.56.10:31480/api/v1/receive
         # Write-Ahead Log buffers metrics during network disconnect
         queue_config:
           max_samples_per_send: 1000
