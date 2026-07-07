@@ -54,6 +54,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: nexus-oauth2-proxy   # Routes through oauth2-proxy → Nexus
+            name: nexus   # Direct to Nexus (oauth2-proxy not deployed)
             port:
-              number: 4182
+              number: 8081
