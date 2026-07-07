@@ -73,6 +73,14 @@ spec:
   - host: redoc.192.168.56.200.nip.io
     http:
       paths:
+      # /api -> node-backend so Redoc can load /api/v1/openapi.json same-origin
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
       - path: /
         pathType: Prefix
         backend:
