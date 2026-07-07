@@ -170,6 +170,15 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  # Secret data is managed out-of-band (SMTP/Slack creds, nitte-secrets).
+  # Ignore /data so selfHeal never reverts manually-set credentials to the
+  # empty placeholders committed in Git.
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
 
 ---
 # App workloads → Prod cluster
