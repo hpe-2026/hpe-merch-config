@@ -44,7 +44,7 @@ images:
     newTag: "56-9b522be"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/merch-docker/admin-dashboard
-    newTag: "58-f45516f"
+    newTag: "59-916e7a5"
   - name: merchant-portal
     newName: 192.168.56.10:30082/merch-docker/merchant-portal
     newTag: "56-9b522be"
