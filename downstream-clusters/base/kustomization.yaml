@@ -35,7 +35,7 @@ resources:
 images:
   - name: node-backend
     newName: 192.168.56.10:30082/merch-docker/node-backend
-    newTag: "56-9b522be"
+    newTag: "57-ea7573a"
   - name: python-service
     newName: 192.168.56.10:30082/merch-docker/python-service
     newTag: 56-9b522be
