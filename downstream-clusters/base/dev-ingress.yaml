@@ -13,6 +13,14 @@ spec:
   - host: frontend.192.168.56.200.nip.io
     http:
       paths:
+      # /api -> node-backend so relative image URLs (/api/v1/upload/images/...) resolve same-origin
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
       - path: /
         pathType: Prefix
         backend:
@@ -23,6 +31,14 @@ spec:
   - host: admin.192.168.56.200.nip.io
     http:
       paths:
+      # /api -> node-backend so relative image URLs (/api/v1/upload/images/...) resolve same-origin
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
       - path: /
         pathType: Prefix
         backend:
@@ -33,6 +49,14 @@ spec:
   - host: merchant.192.168.56.200.nip.io
     http:
       paths:
+      # /api -> node-backend so relative image URLs (/api/v1/upload/images/...) resolve same-origin
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
       - path: /
         pathType: Prefix
         backend:
