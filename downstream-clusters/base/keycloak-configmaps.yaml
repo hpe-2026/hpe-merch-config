@@ -1,0 +1,40 @@
+# ConfigMaps required by the Keycloak deployment:
+#   1. keycloak-realm-config   — nitte-realm.json (auto-imported on startup)
+#   2. keycloak-spi-config     — event listener JAR (optional, empty placeholder)
+#   3. promtail-keycloak-config — promtail sidecar config for Keycloak logs
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-spi-config
+  namespace: nitte
+data: {}
+# NOTE: The keycloak-event-listener JAR cannot be stored in a ConfigMap
+# (binary file). This empty ConfigMap satisfies the volume mount.
+# To enable the SPI, build the JAR and use an init container or bake it
+# into a custom Keycloak image.
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-keycloak-config
+  namespace: nitte
+data:
+  promtail-keycloak-config.yml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+    positions:
+      filename: /tmp/positions.yaml
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
+    scrape_configs:
+      - job_name: keycloak
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: keycloak
+              __path__: /var/log/keycloak/*.log

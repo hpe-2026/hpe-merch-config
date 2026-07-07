@@ -5,8 +5,11 @@ kind: Kustomization
 resources:
   - pvcs.yaml
   - mongodb.yaml
+  - mongo-sharding-init-configmap.yaml
   - kafka.yaml
   - keycloak.yaml
+  - keycloak-configmaps.yaml
+  - keycloak-realm-configmap.yaml
   - minio.yaml
   - minio-init.yaml
   - node-backend.yaml
