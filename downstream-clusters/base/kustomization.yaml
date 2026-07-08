@@ -35,7 +35,7 @@ images:
     newTag: 63-84a3d64
   - name: frontend
     newName: 192.168.56.10:30082/merch-docker/frontend
-    newTag: "63-84a3d64"
+    newTag: "64-45d434f"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/merch-docker/admin-dashboard
     newTag: "63-84a3d64"
