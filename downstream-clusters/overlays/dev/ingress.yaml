@@ -1,0 +1,263 @@
+# NGINX Ingress — Dev Cluster
+#
+# Exposes application services via two sets of hostnames:
+#
+#   PRIVATE  (*.192.168.56.200.nip.io)  — for SOCKS-proxy-based team access
+#   PUBLIC   (*.117.250.206.138.nip.io) — for real internet access
+#                                         (requires jump-box port 80 → 192.168.56.200:80)
+#
+# Both sets point to the same backend services. nip.io resolves any subdomain
+# to the embedded IP automatically — no DNS server required.
+#
+# Managed by ArgoCD (downstream-dev app). Do NOT edit the cluster resource directly.
+# Change here → git push → ArgoCD syncs.
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nitte-dev-ingress
+  namespace: nitte-dev
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 50m
+spec:
+  ingressClassName: nginx
+  rules:
+
+  # ─────────────────────────────────────────────────────────────
+  # STOREFRONT — private (SOCKS access)
+  # ─────────────────────────────────────────────────────────────
+  - host: frontend.192.168.56.200.nip.io
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 5173
+
+  # STOREFRONT — public
+  - host: frontend.117.250.206.138.nip.io
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 5173
+
+  # ─────────────────────────────────────────────────────────────
+  # ADMIN DASHBOARD — private
+  # ─────────────────────────────────────────────────────────────
+  - host: admin.192.168.56.200.nip.io
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-dashboard
+            port:
+              number: 5174
+
+  # ADMIN DASHBOARD — public
+  - host: admin.117.250.206.138.nip.io
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-dashboard
+            port:
+              number: 5174
+
+  # ─────────────────────────────────────────────────────────────
+  # MERCHANT PORTAL — private
+  # ─────────────────────────────────────────────────────────────
+  - host: merchant.192.168.56.200.nip.io
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: merchant-portal
+            port:
+              number: 5175
+
+  # MERCHANT PORTAL — public
+  - host: merchant.117.250.206.138.nip.io
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: merchant-portal
+            port:
+              number: 5175
+
+  # ─────────────────────────────────────────────────────────────
+  # API — private
+  # ─────────────────────────────────────────────────────────────
+  - host: api.192.168.56.200.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
+
+  # API — public
+  - host: api.117.250.206.138.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
+
+  # ─────────────────────────────────────────────────────────────
+  # KEYCLOAK — private
+  # ─────────────────────────────────────────────────────────────
+  - host: keycloak.192.168.56.200.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: keycloak
+            port:
+              number: 8080
+
+  # KEYCLOAK — public
+  # NOTE: KC_HOSTNAME_URL must also be updated to this URL (see kustomization.yaml patch)
+  - host: keycloak.117.250.206.138.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: keycloak
+            port:
+              number: 8080
+
+  # ─────────────────────────────────────────────────────────────
+  # JAEGER — private
+  # ─────────────────────────────────────────────────────────────
+  - host: jaeger.192.168.56.200.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: jaeger
+            port:
+              number: 16686
+
+  # JAEGER — public
+  - host: jaeger.117.250.206.138.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: jaeger
+            port:
+              number: 16686
+
+  # ─────────────────────────────────────────────────────────────
+  # REDOC — private
+  # ─────────────────────────────────────────────────────────────
+  - host: redoc.192.168.56.200.nip.io
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: redoc
+            port:
+              number: 80
+
+  # REDOC — public
+  - host: redoc.117.250.206.138.nip.io
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: node-backend
+            port:
+              number: 3000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: redoc
+            port:
+              number: 80
