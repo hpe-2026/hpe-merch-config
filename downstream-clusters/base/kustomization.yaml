@@ -44,7 +44,7 @@ images:
     newTag: "65-244b5b3"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/merch-docker/admin-dashboard
-    newTag: "65-244b5b3"
+    newTag: "66-284fe10"
   - name: merchant-portal
     newName: 192.168.56.10:30082/merch-docker/merchant-portal
     newTag: "65-244b5b3"
