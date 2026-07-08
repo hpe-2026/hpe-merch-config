@@ -6,7 +6,6 @@ namespace: nitte-dev
 resources:
   - ../../base
   - mesh.yaml
-  - ingress.yaml
 
 # Pin every workload in this environment to the dev worker node,
 # and point the Keycloak admin console at the gateway host.
@@ -26,7 +25,7 @@ patches:
               - name: keycloak
                 env:
                   - name: KC_HOSTNAME_URL
-                    value: "http://keycloak.117.250.206.138.nip.io"
+                    value: "http://keycloak.dev.nitte.local:8080"
                   - name: KC_PROXY
                     value: "edge"
   - target:
