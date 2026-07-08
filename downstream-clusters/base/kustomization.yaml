@@ -41,10 +41,10 @@ images:
     newTag: 65-244b5b3
   - name: frontend
     newName: 192.168.56.10:30082/merch-docker/frontend
-    newTag: "65-244b5b3"
+    newTag: "67-2391d8b"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/merch-docker/admin-dashboard
-    newTag: "66-284fe10"
+    newTag: "67-2391d8b"
   - name: merchant-portal
     newName: 192.168.56.10:30082/merch-docker/merchant-portal
     newTag: "65-244b5b3"
