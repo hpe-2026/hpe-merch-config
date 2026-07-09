@@ -76,6 +76,20 @@ spec:
           EOF
           mc admin policy attach local thanos-policy --user thanos-user || true
 
+          echo "Creating app service account for product/user/backup buckets..."
+          mc admin user add local app-user AppStorage99! || true
+          mc admin policy create local app-policy /dev/stdin <<'APPPOL'
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Action": ["s3:*"],
+              "Resource": ["arn:aws:s3:::nitte-*","arn:aws:s3:::nitte-*/*"]
+            }]
+          }
+          APPPOL
+          mc admin policy attach local app-policy --user app-user || true
+
           echo "MinIO initialization complete."
         resources:
           requests:
