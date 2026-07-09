@@ -32,7 +32,7 @@ spec:
               echo "Starting MongoDB backup at ${TIMESTAMP}..."
               mongodump --host mongodb:27017 --gzip --archive="${ARCHIVE}"
               echo "Dump complete: $(du -sh ${ARCHIVE})"
-              curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+              wget -q https://dl.min.io/client/mc/release/linux-amd64/mc -O /usr/local/bin/mc
               chmod +x /usr/local/bin/mc
               mc alias set admin http://192.168.56.10:30900 app-user AppStorage99!
               mc cp "${ARCHIVE}" "admin/nitte-backups/mongodb/${TIMESTAMP}.gz"
