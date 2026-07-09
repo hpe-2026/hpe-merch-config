@@ -29,6 +29,7 @@ resources:
   - loki-rbac-proxy.yaml
   - jaeger.yaml
   - redocly.yaml
+  - mongo-backup.yaml
   - dev-ingress.yaml
   - unleash.yaml
 # Rewrite local image names to the Nexus registry

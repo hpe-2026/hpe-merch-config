@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongo-backup
+  namespace: nitte
+spec:
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: mongo-backup
+            image: mongo:6.0
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+              ARCHIVE="/tmp/nitte-backup-${TIMESTAMP}.gz"
+              echo "Starting MongoDB backup at ${TIMESTAMP}..."
+              mongodump --host mongodb:27017 --gzip --archive="${ARCHIVE}"
+              echo "Dump complete: $(du -sh ${ARCHIVE})"
+              curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+              chmod +x /usr/local/bin/mc
+              mc alias set admin http://192.168.56.10:30900 app-user AppStorage99!
+              mc cp "${ARCHIVE}" "admin/nitte-backups/mongodb/${TIMESTAMP}.gz"
+              echo "Backup uploaded to admin MinIO: nitte-backups/mongodb/${TIMESTAMP}.gz"
+              BACKUPS=$(mc ls admin/nitte-backups/mongodb/ | sort | head -n -7 | awk '{print $NF}')
+              for old in $BACKUPS; do
+                mc rm "admin/nitte-backups/mongodb/$old" && echo "Pruned old backup: $old"
+              done
+              echo "Backup job complete."
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"

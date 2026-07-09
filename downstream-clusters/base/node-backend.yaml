@@ -92,19 +92,15 @@ spec:
               name: nitte-secrets
               key: KEYCLOAK_ADMIN_PASSWORD
         - name: S3_ENDPOINT
-          value: "http://minio:9000"
+          value: "http://192.168.56.10:30900"
         - name: S3_PUBLIC_ENDPOINT
-          value: "http://localhost:9000"
+          value: "http://192.168.56.10:30900"
         - name: S3_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: nitte-secrets
-              key: MINIO_ROOT_USER
+          value: "app-user"
         - name: S3_SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: nitte-secrets
-              key: MINIO_ROOT_PASSWORD
+          value: "AppStorage99!"
+        # Uses the centralised admin MinIO (192.168.56.10:30900) for all
+        # object storage: product images, user uploads, and backups.
         - name: S3_PRODUCTS_BUCKET
           value: "nitte-products"
         - name: AWS_REGION
