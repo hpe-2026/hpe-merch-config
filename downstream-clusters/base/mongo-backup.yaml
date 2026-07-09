@@ -26,6 +26,7 @@ spec:
             - -c
             - |
               set -e
+              apt-get update -qq && apt-get install -yqq curl >/dev/null 2>&1
               TIMESTAMP=$(date +%Y%m%d-%H%M%S)
               ARCHIVE="/tmp/nitte-backup-${TIMESTAMP}.gz"
               echo "Starting MongoDB backup at ${TIMESTAMP}..."
