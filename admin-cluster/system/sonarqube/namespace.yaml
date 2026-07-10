@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sonarqube
+  labels:
+    name: sonarqube
+    # Identifies this namespace as part of the admin/platform components
+    component: admin-system
