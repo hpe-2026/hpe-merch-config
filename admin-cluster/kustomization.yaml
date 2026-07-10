@@ -47,6 +47,7 @@ resources:
   - observability/observability-ingress.yaml
 
   # --- GitOps Engine ---
+  - gitops-system/argocd-cm.yaml
   - gitops-system/argocd.yaml
   - gitops-system/argocd-rbac-patch.yaml
 
