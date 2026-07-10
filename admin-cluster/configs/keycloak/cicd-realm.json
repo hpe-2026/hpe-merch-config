@@ -75,9 +75,10 @@
       "directAccessGrantsEnabled": true,
       "standardFlowEnabled": true,
       "redirectUris": [
-        "http://grafana.192.168.56.10.nip.io/login/generic_oauth",
-        "http://localhost:3001/login/generic_oauth"
-      ],
+          "http://grafana.192.168.56.10.nip.io/login/generic_oauth",
+          "http://grafana.192.168.56.10.nip.io",
+          "http://localhost:3001/login/generic_oauth"
+        ],
       "webOrigins": [
         "http://grafana.192.168.56.10.nip.io"
       ]
