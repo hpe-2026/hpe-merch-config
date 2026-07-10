@@ -14,8 +14,8 @@ data:
         endpoint: minio.storage-system.svc.cluster.local:9000
         region: us-east-1
         bucketnames: loki-chunks
-        access_key_id: admin_storage
-        secret_access_key: StorageSecret99!
+        access_key_id: loki-user
+        secret_access_key: LokiPassword99!
         insecure: true
         s3forcepathstyle: true
 
@@ -43,8 +43,8 @@ data:
         s3:
           endpoint: minio.storage-system.svc.cluster.local:9000
           bucketnames: loki-ruler
-          access_key_id: admin_storage
-          secret_access_key: StorageSecret99!
+          access_key_id: loki-user
+          secret_access_key: LokiPassword99!
           insecure: true
           s3forcepathstyle: true
       alertmanager_url: http://alertmanager.observability.svc.cluster.local:9093

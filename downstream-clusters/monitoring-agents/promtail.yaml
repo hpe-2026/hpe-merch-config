@@ -27,11 +27,11 @@ data:
               - localhost
             labels:
               job: pod-logs
-              __path__: /var/log/pods/nitte_*/*/*.log
+              __path__: /var/log/pods/nitte-dev_*/*/*.log
         pipeline_stages:
           - cri: {}
           - regex:
-              expression: '/var/log/pods/nitte_(?P<service>[a-z][-a-z0-9]*?)(?:-[a-z0-9]{5,10}){1,2}_[^/]+/(?P<container>[^/]+)/'
+              expression: '/var/log/pods/nitte-dev_(?P<service>[a-z][-a-z0-9]*?)(?:-[a-z0-9]{5,10}){1,2}_[^/]+/(?P<container>[^/]+)/'
           - labels:
               service:
               container:

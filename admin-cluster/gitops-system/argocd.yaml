@@ -116,8 +116,14 @@ metadata:
   name: argocd-server
   namespace: gitops-system
   annotations:
-    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    # argocd-server runs in INSECURE mode (plain HTTP on container port 8080,
+    # exposed as service port 80). nginx must therefore speak plain HTTP to it.
+    # backend-protocol HTTPS was wrong here: the pod resets the TLS handshake on
+    # its plaintext port -> "peer closed connection in SSL handshake" -> 502.
+    # ssl-redirect disabled so browser http:// via nip.io is served directly.
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
     nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
     nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "256k"
@@ -133,7 +139,7 @@ spec:
           service:
             name: argocd-server
             port:
-              number: 443
+              number: 80
 
 ---
 # ──────────────────────────────────────────────────────────────────────────────
@@ -164,6 +170,15 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  # Secret data is managed out-of-band (SMTP/Slack creds, nitte-secrets).
+  # Ignore /data so selfHeal never reverts manually-set credentials to the
+  # empty placeholders committed in Git.
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
 
 ---
 # App workloads → Prod cluster

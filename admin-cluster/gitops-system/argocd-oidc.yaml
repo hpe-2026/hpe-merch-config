@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: gitops-system
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  url: http://argocd.192.168.56.10.nip.io
+  oidc.config: |
+    name: Keycloak
+    issuer: http://keycloak.192.168.56.10.nip.io/realms/cicd-realm
+    clientID: argocd-client
+    clientSecret: argocd-client-secret
+    requestedScopes: ["openid", "profile", "email", "roles"]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: gitops-system
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  policy.default: role:readonly
+  policy.csv: |
+    g, cicd-admin, role:admin
+    g, internal-admin@nitte.ac.in, role:admin
+    g, internal-user@nitte.ac.in, role:readonly

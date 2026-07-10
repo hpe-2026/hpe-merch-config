@@ -6,7 +6,7 @@ metadata:
   labels:
     app: oauth2-proxy-prometheus
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: oauth2-proxy-prometheus
@@ -32,17 +32,17 @@ spec:
         - --provider=oidc
         - --client-id=observability-proxy
         - --client-secret=observability-proxy-secret
-        - --oidc-issuer-url=https://keycloak.192.168.56.10.nip.io/realms/nitte-realm
-        - --login-url=https://keycloak.192.168.56.10.nip.io/realms/nitte-realm/protocol/openid-connect/auth
-        - --redeem-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/token
-        - --validate-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/userinfo
-        - --redirect-url=https://prometheus.192.168.56.10.nip.io/oauth2/callback
+        - --oidc-issuer-url=http://keycloak.192.168.56.10.nip.io/realms/cicd-realm
+        - --login-url=http://keycloak.192.168.56.10.nip.io/realms/cicd-realm/protocol/openid-connect/auth
+        - --redeem-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/cicd-realm/protocol/openid-connect/token
+        - --validate-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/cicd-realm/protocol/openid-connect/userinfo
+        - --redirect-url=http://prometheus.192.168.56.10.nip.io/oauth2/callback
         - --upstream=http://prometheus.observability.svc.cluster.local:9090
         - --http-address=0.0.0.0:4180
         - --cookie-secret=T2JzZXJ2YWJpbGl0eVByb3h5U2VjcmV0
-        - --cookie-secure=true
+        - --cookie-secure=false
         - --cookie-name=_oauth2_prometheus
-        - --email-domain=nitte.ac.in
+        - --email-domain=*
         - --insecure-oidc-skip-issuer-verification=true
         - --ssl-insecure-skip-verify=true
         - --skip-provider-button=true
@@ -83,7 +83,7 @@ metadata:
   labels:
     app: oauth2-proxy-jaeger
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: oauth2-proxy-jaeger
@@ -109,17 +109,17 @@ spec:
         - --provider=oidc
         - --client-id=observability-proxy
         - --client-secret=observability-proxy-secret
-        - --oidc-issuer-url=https://keycloak.192.168.56.10.nip.io/realms/nitte-realm
-        - --login-url=https://keycloak.192.168.56.10.nip.io/realms/nitte-realm/protocol/openid-connect/auth
-        - --redeem-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/token
-        - --validate-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/userinfo
-        - --redirect-url=https://jaeger.192.168.56.10.nip.io/oauth2/callback
+        - --oidc-issuer-url=http://keycloak.192.168.56.10.nip.io/realms/cicd-realm
+        - --login-url=http://keycloak.192.168.56.10.nip.io/realms/cicd-realm/protocol/openid-connect/auth
+        - --redeem-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/cicd-realm/protocol/openid-connect/token
+        - --validate-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/cicd-realm/protocol/openid-connect/userinfo
+        - --redirect-url=http://jaeger.192.168.56.10.nip.io/oauth2/callback
         - --upstream=http://jaeger.observability.svc.cluster.local:16686
         - --http-address=0.0.0.0:4181
         - --cookie-secret=T2JzZXJ2YWJpbGl0eVByb3h5U2VjcmV0
-        - --cookie-secure=true
+        - --cookie-secure=false
         - --cookie-name=_oauth2_jaeger
-        - --email-domain=nitte.ac.in
+        - --email-domain=*
         - --insecure-oidc-skip-issuer-verification=true
         - --ssl-insecure-skip-verify=true
         - --skip-provider-button=true
@@ -150,4 +150,73 @@ spec:
   ports:
   - port: 4181
     targetPort: 4181
+  type: ClusterIP
+
+---
+# Nexus — protected by oauth2-proxy (Keycloak cicd-realm SSO)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy-nexus
+  namespace: system
+  labels:
+    app: oauth2-proxy-nexus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oauth2-proxy-nexus
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy-nexus
+    spec:
+      initContainers:
+      - name: wait-for-keycloak
+        image: busybox:1.35
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nc -z keycloak.identity-core.svc.cluster.local 8080; do echo "waiting for keycloak"; sleep 5; done']
+      containers:
+      - name: oauth2-proxy
+        image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+        imagePullPolicy: IfNotPresent
+        args:
+        - --provider=oidc
+        - --client-id=nexus-proxy
+        - --client-secret=nexus-proxy-secret
+        - --oidc-issuer-url=http://keycloak.192.168.56.10.nip.io/realms/cicd-realm
+        - --login-url=http://keycloak.192.168.56.10.nip.io/realms/cicd-realm/protocol/openid-connect/auth
+        - --redeem-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/cicd-realm/protocol/openid-connect/token
+        - --validate-url=http://keycloak.identity-core.svc.cluster.local:8080/realms/cicd-realm/protocol/openid-connect/userinfo
+        - --redirect-url=http://nexus.192.168.56.10.nip.io/oauth2/callback
+        - --upstream=http://nexus.system.svc.cluster.local:8081
+        - --http-address=0.0.0.0:4183
+        - --cookie-secret=TmV4dXNQcm94eVNlY3JldEtleTEyMw==
+        - --cookie-secure=false
+        - --cookie-name=_oauth2_nexus
+        - --email-domain=*
+        - --insecure-oidc-skip-issuer-verification=true
+        - --ssl-insecure-skip-verify=true
+        - --skip-provider-button=true
+        ports:
+        - containerPort: 4183
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy-nexus
+  namespace: system
+spec:
+  selector:
+    app: oauth2-proxy-nexus
+  ports:
+  - port: 4183
+    targetPort: 4183
   type: ClusterIP

@@ -265,7 +265,7 @@ data:
           "type": "timeseries",
           "title": "Request Rate (req/s)",
           "gridPos": { "x": 0, "y": 1, "w": 8, "h": 8 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" } }
           },
@@ -282,7 +282,7 @@ data:
           "type": "timeseries",
           "title": "Error Rate (5xx)",
           "gridPos": { "x": 8, "y": 1, "w": 8, "h": 8 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": {
               "unit": "percentunit",
@@ -309,7 +309,7 @@ data:
           "type": "timeseries",
           "title": "Response Latency (p50 / p95 / p99)",
           "gridPos": { "x": 16, "y": 1, "w": 8, "h": 8 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": { "unit": "s", "color": { "mode": "palette-classic" } }
           },
@@ -343,7 +343,7 @@ data:
           "type": "stat",
           "title": "Total Orders",
           "gridPos": { "x": 0, "y": 10, "w": 6, "h": 4 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": {
               "unit": "short",
@@ -365,7 +365,7 @@ data:
           "type": "stat",
           "title": "User Registrations",
           "gridPos": { "x": 6, "y": 10, "w": 6, "h": 4 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": {
               "unit": "short",
@@ -386,7 +386,7 @@ data:
           "type": "stat",
           "title": "Products Viewed",
           "gridPos": { "x": 12, "y": 10, "w": 6, "h": 4 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": {
               "unit": "short",
@@ -407,7 +407,7 @@ data:
           "type": "stat",
           "title": "Active Connections",
           "gridPos": { "x": 18, "y": 10, "w": 6, "h": 4 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": {
               "unit": "short",
@@ -428,7 +428,7 @@ data:
           "type": "timeseries",
           "title": "Order Rate (orders/min)",
           "gridPos": { "x": 0, "y": 14, "w": 12, "h": 8 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": { "unit": "short", "color": { "fixedColor": "blue", "mode": "fixed" } }
           },
@@ -445,7 +445,7 @@ data:
           "type": "timeseries",
           "title": "Auth Attempts",
           "gridPos": { "x": 12, "y": 14, "w": 12, "h": 8 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": { "unit": "short", "color": { "mode": "palette-classic" } }
           },
@@ -469,7 +469,7 @@ data:
           "type": "timeseries",
           "title": "Database Operations",
           "gridPos": { "x": 0, "y": 23, "w": 8, "h": 8 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": { "unit": "ops", "color": { "mode": "palette-classic" } }
           },
@@ -486,7 +486,7 @@ data:
           "type": "timeseries",
           "title": "API Errors by Endpoint",
           "gridPos": { "x": 8, "y": 23, "w": 8, "h": 8 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": { "unit": "short", "color": { "mode": "palette-classic" } }
           },
@@ -503,7 +503,7 @@ data:
           "type": "timeseries",
           "title": "Node.js Memory Usage",
           "gridPos": { "x": 16, "y": 23, "w": 8, "h": 8 },
-          "datasource": "Prometheus",
+          "datasource": "Thanos",
           "fieldConfig": {
             "defaults": { "unit": "bytes", "color": { "mode": "palette-classic" } }
           },

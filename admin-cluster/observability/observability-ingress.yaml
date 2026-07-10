@@ -1,6 +1,6 @@
 # Ingress resources for observability stack (observability namespace)
-# Prometheus and Jaeger are protected by oauth2-proxy (in system namespace).
-# Grafana, Loki, AlertManager, Thanos Query exposed directly.
+# All observability tools exposed directly (oauth2-proxy disabled, replicas=0).
+# Grafana, Loki, AlertManager, Thanos Query, Prometheus, Jaeger exposed directly.
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -105,50 +105,3 @@ spec:
     nodePort: 30200
   type: NodePort
 ---
-# Prometheus (behind oauth2-proxy in system namespace) — Ingress on system namespace
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: prometheus
-  namespace: system
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
-    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
-    nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "256k"
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: prometheus.192.168.56.10.nip.io
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: oauth2-proxy-prometheus
-            port:
-              number: 4180
----
-# Jaeger (behind oauth2-proxy in system namespace) — Ingress on system namespace
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: jaeger
-  namespace: system
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
-    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
-    nginx.ingress.kubernetes.io/proxy-busy-buffers-size: "256k"
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: jaeger.192.168.56.10.nip.io
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: oauth2-proxy-jaeger
-            port:
-              number: 4181
