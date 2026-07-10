@@ -145,7 +145,6 @@ spec:
             path: nitte-realm.json
           - key: cicd-realm.json
             path: cicd-realm.json
-            path: nitte-realm.json
       - name: keycloak-logs
         emptyDir: {}
       - name: keycloak-spi
