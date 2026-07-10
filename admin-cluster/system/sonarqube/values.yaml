@@ -7,6 +7,8 @@
 # provision a robust, persistent Postgres instance within this namespace.
 postgresql:
   enabled: true
+  image:
+    tag: "15"
   auth:
     # GitOps Note: In a true prod environment, this should be injected via ExternalSecrets.
     # We define it here declaratively so Kustomize can template it cleanly.
