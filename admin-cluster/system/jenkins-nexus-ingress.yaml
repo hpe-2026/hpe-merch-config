@@ -54,6 +54,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: nexus-oauth2-proxy   # Routes through oauth2-proxy → Nexus
+            name: oauth2-proxy-nexus   # SSO via Keycloak cicd-realm
             port:
-              number: 4182
+              number: 4183

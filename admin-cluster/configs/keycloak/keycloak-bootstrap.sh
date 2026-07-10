@@ -25,16 +25,13 @@ $KCADM config credentials \
 echo "[bootstrap] Setting master realm login theme to nitte..."
 $KCADM update realms/master -s loginTheme=nitte
 
-echo "[bootstrap] Setting CONFIGURE_TOTP required action on admin user..."
-ADMIN_ID=$($KCADM get users -r master -q username=admin --fields id \
-  | grep '"id"' | head -1 | awk -F'"' '{print $4}')
-
-if [ -n "$ADMIN_ID" ]; then
-  $KCADM update users/"$ADMIN_ID" -r master \
-    -s 'requiredActions=["CONFIGURE_TOTP"]'
-  echo "[bootstrap] TOTP required action set on admin (id: $ADMIN_ID)."
-else
-  echo "[bootstrap] WARNING: admin user not found in master realm."
-fi
+# TOTP requirement on admin disabled for dev environment (blocks API access).
+# To re-enable for production, uncomment the block below.
+# echo "[bootstrap] Setting CONFIGURE_TOTP required action on admin user..."
+# ADMIN_ID=$($KCADM get users -r master -q username=admin --fields id \
+#   | grep '"id"' | head -1 | awk -F'"' '{print $4}')
+# if [ -n "$ADMIN_ID" ]; then
+#   $KCADM update users/"$ADMIN_ID" -r master -s 'requiredActions=["CONFIGURE_TOTP"]'
+# fi
 
 echo "[bootstrap] Done."

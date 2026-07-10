@@ -34,27 +34,78 @@
   "accessTokenLifespan": 1800,
   "roles": {
     "realm": [
-      { "name": "admin",              "description": "System administrator with full access (deprecated - use platform-admin)" },
-      { "name": "admin-internal",     "description": "Internal DevOps admin with Jenkins/Nexus/Keycloak Admin access (2FA required)" },
-      { "name": "alumni",             "description": "Verified alumni user" },
-      { "name": "non_alumni",         "description": "Non-alumni user with limited access" },
-      { "name": "merchant",           "description": "Product merchant and seller (deprecated - use merchant-admin or merchant-staff)" },
-      { "name": "merchant-amazon",    "description": "Third-party merchant: Amazon" },
-      { "name": "merchant-flipkart",  "description": "Third-party merchant: Flipkart" },
-      { "name": "internal-user",      "description": "Internal NITTE staff with limited DevOps access (Jenkins viewer, observability read-only)" },
-      { "name": "mongo_writer",       "description": "Internal service role allowed to write to MongoDB" },
-      { "name": "nexus-admin",        "description": "Nexus repository administrator" },
-      { "name": "nexus-developer",    "description": "Nexus repository developer (read/write)" },
-      { "name": "keycloak-admin",     "description": "Keycloak administrator with access to audit and security logs" },
-      { "name": "platform-admin",     "description": "[RBAC] Platform administrator with full system access" },
-      { "name": "merchant-admin",     "description": "[RBAC] Merchant administrator - can manage all resources for their merchant" },
-      { "name": "merchant-staff",     "description": "[RBAC] Merchant staff - limited access to merchant resources" },
-      { "name": "alumni-verified",    "description": "[RBAC] Verified alumni with purchasing access" }
+      {
+        "name": "admin",
+        "description": "System administrator with full access (deprecated - use platform-admin)"
+      },
+      {
+        "name": "admin-internal",
+        "description": "Internal DevOps admin with Jenkins/Nexus/Keycloak Admin access (2FA required)"
+      },
+      {
+        "name": "alumni",
+        "description": "Verified alumni user"
+      },
+      {
+        "name": "non_alumni",
+        "description": "Non-alumni user with limited access"
+      },
+      {
+        "name": "merchant",
+        "description": "Product merchant and seller (deprecated - use merchant-admin or merchant-staff)"
+      },
+      {
+        "name": "merchant-amazon",
+        "description": "Third-party merchant: Amazon"
+      },
+      {
+        "name": "merchant-flipkart",
+        "description": "Third-party merchant: Flipkart"
+      },
+      {
+        "name": "internal-user",
+        "description": "Internal NITTE staff with limited DevOps access (Jenkins viewer, observability read-only)"
+      },
+      {
+        "name": "mongo_writer",
+        "description": "Internal service role allowed to write to MongoDB"
+      },
+      {
+        "name": "nexus-admin",
+        "description": "Nexus repository administrator"
+      },
+      {
+        "name": "nexus-developer",
+        "description": "Nexus repository developer (read/write)"
+      },
+      {
+        "name": "keycloak-admin",
+        "description": "Keycloak administrator with access to audit and security logs"
+      },
+      {
+        "name": "platform-admin",
+        "description": "[RBAC] Platform administrator with full system access"
+      },
+      {
+        "name": "merchant-admin",
+        "description": "[RBAC] Merchant administrator - can manage all resources for their merchant"
+      },
+      {
+        "name": "merchant-staff",
+        "description": "[RBAC] Merchant staff - limited access to merchant resources"
+      },
+      {
+        "name": "alumni-verified",
+        "description": "[RBAC] Verified alumni with purchasing access"
+      }
     ]
   },
   "eventsEnabled": true,
   "eventsExpiration": 86400,
-  "eventsListeners": [ "jboss-logging", "nitte-notification-event-listener" ],
+  "eventsListeners": [
+    "jboss-logging",
+    "nitte-notification-event-listener"
+  ],
   "adminEventsEnabled": true,
   "adminEventsDetailsEnabled": true,
   "clients": [
@@ -65,7 +116,9 @@
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "nitte-client-secret",
-      "redirectUris": ["*"],
+      "redirectUris": [
+        "*"
+      ],
       "webOrigins": [
         "http://localhost:5173",
         "http://localhost:5174",
@@ -79,7 +132,9 @@
       "serviceAccountsEnabled": true,
       "authorizationServicesEnabled": false,
       "fullScopeAllowed": true,
-      "defaultRoles": ["non_alumni"],
+      "defaultRoles": [
+        "non_alumni"
+      ],
       "protocolMappers": [
         {
           "name": "realm roles",
@@ -159,8 +214,12 @@
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "jenkins-client-secret",
-      "redirectUris": ["http://localhost:8081/*"],
-      "webOrigins": ["http://localhost:8081"],
+      "redirectUris": [
+        "http://localhost:8081/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8081"
+      ],
       "publicClient": false,
       "protocol": "openid-connect",
       "standardFlowEnabled": true,
@@ -177,9 +236,16 @@
       "secret": "observability-proxy-secret",
       "redirectUris": [
         "http://localhost:9090/oauth2/callback",
-        "http://localhost:16686/oauth2/callback"
+        "http://localhost:16686/oauth2/callback",
+        "http://prometheus.192.168.56.10.nip.io/oauth2/callback",
+        "http://jaeger.192.168.56.10.nip.io/oauth2/callback"
       ],
-      "webOrigins": ["http://localhost:9090", "http://localhost:16686"],
+      "webOrigins": [
+        "http://localhost:9090",
+        "http://localhost:16686",
+        "http://prometheus.192.168.56.10.nip.io",
+        "http://jaeger.192.168.56.10.nip.io"
+      ],
       "publicClient": false,
       "protocol": "openid-connect",
       "standardFlowEnabled": true,
@@ -193,8 +259,12 @@
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "grafana-client-secret",
-      "redirectUris": ["http://localhost:3001/*"],
-      "webOrigins": ["http://localhost:3001"],
+      "redirectUris": [
+        "http://localhost:3001/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3001"
+      ],
       "publicClient": false,
       "protocol": "openid-connect",
       "standardFlowEnabled": true,
@@ -208,8 +278,12 @@
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "nexus-client-secret",
-      "redirectUris": ["http://localhost:8082/*"],
-      "webOrigins": ["http://localhost:8082"],
+      "redirectUris": [
+        "http://localhost:8082/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8082"
+      ],
       "publicClient": false,
       "protocol": "openid-connect",
       "standardFlowEnabled": true,
@@ -224,8 +298,12 @@
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "minio-client-secret",
-      "redirectUris": ["http://localhost:9001/oauth_callback"],
-      "webOrigins": ["http://localhost:9001"],
+      "redirectUris": [
+        "http://localhost:9001/oauth_callback"
+      ],
+      "webOrigins": [
+        "http://localhost:9001"
+      ],
       "publicClient": false,
       "protocol": "openid-connect",
       "standardFlowEnabled": true,
@@ -257,8 +335,16 @@
       "emailVerified": true,
       "firstName": "Admin",
       "lastName": "User",
-      "credentials": [{ "type": "password", "value": "admin@123",    "temporary": false }],
-      "realmRoles": ["platform-admin"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "platform-admin"
+      ],
       "clientRoles": {
         "nitte-client": [
           "product:create",
@@ -279,8 +365,16 @@
       "emailVerified": true,
       "firstName": "Alumni",
       "lastName": "User",
-      "credentials": [{ "type": "password", "value": "alumni@123",   "temporary": false }],
-      "realmRoles": ["alumni-verified"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alumni@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "alumni-verified"
+      ],
       "clientRoles": {
         "nitte-client": [
           "order:create",
@@ -296,14 +390,24 @@
       "emailVerified": true,
       "firstName": "Guest",
       "lastName": "Demo",
-      "credentials": [{ "type": "password", "value": "Guest@123",    "temporary": false }],
-      "realmRoles": ["non_alumni"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Guest@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "non_alumni"
+      ]
     },
     {
       "username": "service-account-nitte-client",
       "enabled": true,
       "serviceAccountClientId": "nitte-client",
-      "realmRoles": ["mongo_writer"],
+      "realmRoles": [
+        "mongo_writer"
+      ],
       "clientRoles": {
         "realm-management": [
           "manage-users",
@@ -333,9 +437,21 @@
       "emailVerified": true,
       "firstName": "Internal",
       "lastName": "Admin",
-      "credentials": [{ "type": "password", "value": "InternalAdmin@123", "temporary": false }],
-      "realmRoles": ["admin-internal", "nexus-admin", "keycloak-admin"],
-      "requiredActions": ["CONFIGURE_TOTP"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "InternalAdmin@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin-internal",
+        "nexus-admin",
+        "keycloak-admin"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ]
     },
     {
       "username": "internal-user@nitte.ac.in",
@@ -344,8 +460,17 @@
       "emailVerified": true,
       "firstName": "Internal",
       "lastName": "User",
-      "credentials": [{ "type": "password", "value": "InternalUser@123", "temporary": false }],
-      "realmRoles": ["internal-user", "nexus-developer"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "InternalUser@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "internal-user",
+        "nexus-developer"
+      ]
     },
     {
       "username": "amazon-merchant@amazon.com",
@@ -354,10 +479,20 @@
       "emailVerified": true,
       "firstName": "Amazon",
       "lastName": "Merchant",
-      "credentials": [{ "type": "password", "value": "Amazon@123", "temporary": false }],
-      "realmRoles": ["merchant-admin"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Amazon@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "merchant-admin"
+      ],
       "attributes": {
-        "merchantId": ["amazon-store"]
+        "merchantId": [
+          "amazon-store"
+        ]
       },
       "clientRoles": {
         "nitte-client": [
@@ -375,10 +510,20 @@
       "emailVerified": true,
       "firstName": "Flipkart",
       "lastName": "Merchant",
-      "credentials": [{ "type": "password", "value": "Flipkart@123", "temporary": false }],
-      "realmRoles": ["merchant-admin"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Flipkart@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "merchant-admin"
+      ],
       "attributes": {
-        "merchantId": ["flipkart-store"]
+        "merchantId": [
+          "flipkart-store"
+        ]
       },
       "clientRoles": {
         "nitte-client": [
@@ -396,10 +541,20 @@
       "emailVerified": true,
       "firstName": "Merchant",
       "lastName": "Admin",
-      "credentials": [{ "type": "password", "value": "MerchantAdmin@123", "temporary": false }],
-      "realmRoles": ["merchant-admin"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "MerchantAdmin@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "merchant-admin"
+      ],
       "attributes": {
-        "merchantId": ["nitte-official-store"]
+        "merchantId": [
+          "nitte-official-store"
+        ]
       },
       "clientRoles": {
         "nitte-client": [

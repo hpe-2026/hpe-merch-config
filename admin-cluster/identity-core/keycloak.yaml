@@ -55,7 +55,7 @@ spec:
         - name: KEYCLOAK_JWKS_URL
           value: http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/certs
         - name: KC_HOSTNAME_URL
-          value: https://keycloak.192.168.56.10.nip.io
+          value: http://keycloak.192.168.56.10.nip.io
         - name: KC_HOSTNAME_STRICT
           value: "false"
         - name: KC_HOSTNAME_STRICT_HTTPS
@@ -76,6 +76,9 @@ spec:
         - name: keycloak-realm
           mountPath: /opt/keycloak/data/import/nitte-realm.json
           subPath: nitte-realm.json
+        - name: keycloak-realm
+          mountPath: /opt/keycloak/data/import/cicd-realm.json
+          subPath: cicd-realm.json
           readOnly: true
         - name: keycloak-logs
           mountPath: /opt/keycloak/log
@@ -140,6 +143,8 @@ spec:
           items:
           - key: nitte-realm.json
             path: nitte-realm.json
+          - key: cicd-realm.json
+            path: cicd-realm.json
       - name: keycloak-logs
         emptyDir: {}
       - name: keycloak-spi
