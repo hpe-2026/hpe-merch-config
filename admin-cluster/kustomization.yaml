@@ -48,6 +48,7 @@ resources:
 
   # --- GitOps Engine ---
   - gitops-system/argocd.yaml
+  - gitops-system/argocd-oidc.yaml
   - gitops-system/argocd-rbac-patch.yaml
 
   # --- System Tools ---
