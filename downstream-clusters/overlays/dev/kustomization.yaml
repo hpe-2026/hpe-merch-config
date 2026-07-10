@@ -127,23 +127,4 @@ patches:
         name: prometheus
       spec:
         replicas: 0
-  - target:
-      kind: Deployment
-      name: unleash
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: unleash
-      spec:
-        replicas: 0
-  - target:
-      kind: Deployment
-      name: unleash-db
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: unleash-db
-      spec:
-        replicas: 0
+  
