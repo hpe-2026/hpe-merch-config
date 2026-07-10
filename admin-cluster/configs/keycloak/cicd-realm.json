@@ -65,6 +65,37 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "grafana-client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "grafana-client-secret",
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "redirectUris": [
+        "http://grafana.192.168.56.10.nip.io/login/generic_oauth",
+        "http://localhost:3001/login/generic_oauth"
+      ],
+      "webOrigins": [
+        "http://grafana.192.168.56.10.nip.io"
+      ]
+    },
+    {
+      "clientId": "nexus-proxy",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "nexus-proxy-secret",
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "redirectUris": [
+        "http://nexus.192.168.56.10.nip.io/oauth2/callback"
+      ],
+      "webOrigins": [
+        "http://nexus.192.168.56.10.nip.io"
+      ]
     }
   ],
   "users": [
