@@ -673,6 +673,21 @@ data:
           "webOrigins": [
             "http://nexus.192.168.56.10.nip.io"
           ]
+        },
+        {
+          "clientId": "argocd-client",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "secret": "argocd-client-secret",
+          "directAccessGrantsEnabled": false,
+          "standardFlowEnabled": true,
+          "redirectUris": [
+            "http://argocd.192.168.56.10.nip.io/auth/callback"
+          ],
+          "webOrigins": [
+            "http://argocd.192.168.56.10.nip.io"
+          ]
         }
       ],
       "users": [
