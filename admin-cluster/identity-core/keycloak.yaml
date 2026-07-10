@@ -76,6 +76,9 @@ spec:
         - name: keycloak-realm
           mountPath: /opt/keycloak/data/import/nitte-realm.json
           subPath: nitte-realm.json
+        - name: keycloak-realm
+          mountPath: /opt/keycloak/data/import/cicd-realm.json
+          subPath: cicd-realm.json
           readOnly: true
         - name: keycloak-logs
           mountPath: /opt/keycloak/log
@@ -139,6 +142,9 @@ spec:
           name: keycloak-realm-config
           items:
           - key: nitte-realm.json
+            path: nitte-realm.json
+          - key: cicd-realm.json
+            path: cicd-realm.json
             path: nitte-realm.json
       - name: keycloak-logs
         emptyDir: {}

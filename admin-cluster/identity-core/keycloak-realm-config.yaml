@@ -416,6 +416,112 @@ data:
       ]
     }
 kind: ConfigMap
+  cicd-realm.json: |
+    {
+      "id": "cicd-realm",
+      "realm": "cicd-realm",
+      "enabled": true,
+      "sslRequired": "none",
+      "registrationAllowed": false,
+      "loginTheme": "keycloak",
+      "roles": {
+        "realm": [
+          {
+            "name": "cicd-admin",
+            "description": "Full CI/CD tool access (Prometheus, Jaeger, Grafana)"
+          },
+          {
+            "name": "cicd-viewer",
+            "description": "Read-only observability access"
+          }
+        ]
+      },
+      "clients": [
+        {
+          "clientId": "observability-proxy",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "secret": "observability-proxy-secret",
+          "directAccessGrantsEnabled": true,
+          "standardFlowEnabled": true,
+          "redirectUris": [
+            "http://prometheus.192.168.56.10.nip.io/oauth2/callback",
+            "http://jaeger.192.168.56.10.nip.io/oauth2/callback",
+            "http://grafana.192.168.56.10.nip.io/oauth2/callback",
+            "http://localhost:9090/oauth2/callback",
+            "http://localhost:16686/oauth2/callback"
+          ],
+          "webOrigins": [
+            "http://prometheus.192.168.56.10.nip.io",
+            "http://jaeger.192.168.56.10.nip.io",
+            "http://grafana.192.168.56.10.nip.io"
+          ],
+          "protocolMappers": [
+            {
+              "name": "realm-roles",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-realm-role-mapper",
+              "config": {
+                "claim.name": "realm_roles",
+                "jsonType.label": "String",
+                "multivalued": "true",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true"
+              }
+            },
+            {
+              "name": "email",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-attribute-mapper",
+              "config": {
+                "user.attribute": "email",
+                "claim.name": "email",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true"
+              }
+            }
+          ]
+        }
+      ],
+      "users": [
+        {
+          "username": "internal-admin@nitte.ac.in",
+          "email": "internal-admin@nitte.ac.in",
+          "enabled": true,
+          "emailVerified": true,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "InternalAdmin@123",
+              "temporary": false
+            }
+          ],
+          "realmRoles": [
+            "cicd-admin"
+          ]
+        },
+        {
+          "username": "internal-user@nitte.ac.in",
+          "email": "internal-user@nitte.ac.in",
+          "enabled": true,
+          "emailVerified": true,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "InternalUser@123",
+              "temporary": false
+            }
+          ],
+          "realmRoles": [
+            "cicd-viewer"
+          ]
+        }
+      ]
+    }
+
 metadata:
   name: keycloak-realm-config
   namespace: identity-core
