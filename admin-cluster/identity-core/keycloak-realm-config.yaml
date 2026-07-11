@@ -674,6 +674,21 @@ data:
             "http://nexus.192.168.56.10.nip.io"
           ]
         },
+          {
+            "clientId": "jenkins-proxy",
+            "enabled": true,
+            "protocol": "openid-connect",
+            "publicClient": false,
+            "secret": "jenkins-proxy-secret",
+            "directAccessGrantsEnabled": true,
+            "standardFlowEnabled": true,
+            "redirectUris": [
+              "http://jenkins.192.168.56.10.nip.io/oauth2/callback"
+            ],
+            "webOrigins": [
+              "http://jenkins.192.168.56.10.nip.io"
+            ]
+          },
         {
           "clientId": "argocd-client",
           "enabled": true,
