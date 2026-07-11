@@ -105,6 +105,8 @@ spec:
           value: "nitte-products"
         - name: AWS_REGION
           value: "us-east-1"
+        - name: UNLEASH_API_TOKEN
+          value: "*:development.263d4183e2aa96cc17e0dc33840f6e57cf954d3680a79780a851901c"
         resources:
           requests:
             memory: "128Mi"
