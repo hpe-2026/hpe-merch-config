@@ -49,6 +49,7 @@ resources:
   # --- GitOps Engine ---
   - gitops-system/argocd.yaml
   - gitops-system/argocd-rbac-patch.yaml
+  - gitops-system/argocd-oidc.yaml
 
   # --- System Tools ---
   - system/jenkins-casc-config.yaml
@@ -56,4 +57,5 @@ resources:
   - system/nexus.yaml
   - system/oauth2-proxies.yaml
   - system/jenkins-nexus-ingress.yaml
+  - system/oauth2-proxy-ingress.yaml
   - system/sonarqube
