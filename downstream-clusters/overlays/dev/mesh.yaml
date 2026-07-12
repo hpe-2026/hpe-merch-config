@@ -82,9 +82,10 @@ spec:
         - "jaeger.dev.nitte.local"
         - "minio.dev.nitte.local"
         - "kiali.nitte.local"
-        - "jenkins.nitte.local"
         - "redoc.dev.nitte.local"
-        - "goalert.nitte.local"
+        # jenkins.nitte.local and goalert.nitte.local are removed — both services
+        # live on the admin cluster; their .svc.cluster.local names don't resolve
+        # here and would 503. Expose them via the admin cluster's ingressgateway instead.
 ---
 # Storefront (+ shared API / auth / grafana)
 apiVersion: networking.istio.io/v1beta1
@@ -254,22 +255,6 @@ spec:
             host: kiali.istio-system.svc.cluster.local
             port: { number: 20001 }
 ---
-# Jenkins CI (lives in the `jenkins` namespace, Helm-installed). Cross-namespace route.
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: jenkins-routes
-spec:
-  hosts:
-    - "jenkins.nitte.local"
-  gateways:
-    - nitte-gateway
-  http:
-    - route:
-        - destination:
-            host: jenkins.jenkins.svc.cluster.local
-            port: { number: 8080 }
----
 # Redoc API docs — /api proxied to backend so the spec loads same-origin.
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
@@ -289,22 +274,6 @@ spec:
         - uri: { prefix: / }
       route:
         - destination: { host: redoc, port: { number: 80 } }
----
-# GoAlert — central alerting/on-call (lives in the `goalert` namespace, out-of-band).
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: goalert-routes
-spec:
-  hosts:
-    - "goalert.nitte.local"
-  gateways:
-    - nitte-gateway
-  http:
-    - route:
-        - destination:
-            host: goalert.goalert.svc.cluster.local
-            port: { number: 8081 }
 
 ---
 # ───────────────────────── Destination Rules ─────────────────────────
@@ -430,10 +399,20 @@ spec:
     matchLabels:
       app: python-service
   rules:
+    # node-backend calls python-service (both run as default SA in nitte-dev)
     - from:
         - source:
             principals:
               - "cluster.local/ns/nitte-dev/sa/default"
+      to:
+        - operation:
+            ports:
+              - "8000"
+    # Allow ingressgateway (istio-system) in case a direct route is ever added
+    - from:
+        - source:
+            namespaces:
+              - istio-system
       to:
         - operation:
             ports:
