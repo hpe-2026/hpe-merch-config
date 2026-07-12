@@ -39,6 +39,8 @@ metadata:
     app: unleash-db
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: unleash-db
