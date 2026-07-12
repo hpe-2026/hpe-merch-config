@@ -24,9 +24,9 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: oauth2-proxy-jenkins   # SSO via Keycloak cicd-realm
+            name: jenkins   # Direct access (local Jenkins auth)
             port:
-              number: 4184
+              number: 8080
 
 ---
 # ── Nexus Web UI Ingress ──────────────────────────────────────────────────────
