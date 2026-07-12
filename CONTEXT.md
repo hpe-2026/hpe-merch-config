@@ -228,6 +228,7 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 | Wire Keycloak SSO into Jenkins, Grafana, Nexus | 🟡 Medium | Not Started |
 | Wire observability stack (Thanos receiver, Promtail→Loki, Grafana datasources) | 🟡 Medium | Not Started |
 | Configure Istio service mesh on downstream clusters | 🟢 Low | ✅ DONE |
+| Expose Dev cluster publicly via NGINX Jump Box | 🟡 Medium | ✅ DONE |
 | End-to-end CI/CD pipeline testing | 🟢 Low | Not Started |
 
 ---
@@ -236,6 +237,8 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 
 | Date | Action | Result |
 |------|--------|--------|
+| 2026-07-12 | Dev Cluster Public Access | Configured NGINX on Jump Box (`117.250.206.138`) to proxy HTTP traffic to Istio IngressGateway, enabling public access without SOCKS proxy. Updated `node-backend` CORS and `mesh.yaml` to support `.138` hostnames. |
+| 2026-07-12 | Jenkins Pod Agents & GitOps Fix | Centralized the `devops-agent` pod template in `jenkins-casc-config.yaml` with Trivy/Kaniko. Fixed the `Jenkinsfile` to push image updates to the new `main` branch instead of deprecated `dev` branch. |
 | 2026-06-29 | Session started — cluster at clean kube-system state | RKE2 running, NGINX ingress up, no app namespaces |
 | 2026-06-29 | GitOps setup added | `admin-cluster/kustomization.yaml` + `argocd-repo-secret.yaml` + `argocd.yaml` rewritten with self-managing `admin-cluster-apps` Application |
 | 2026-06-29 | Standardized Secrets & RBAC Fixes | Standardized manifests to use `admin-secrets`, configured public GitHub URL, and added `argocd-rbac-patch.yaml` to fix podtemplates caching error. |
