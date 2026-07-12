@@ -99,12 +99,6 @@ data:
                   password: "nexus-admin-123"
                   description: "Nexus admin credentials"
                   scope: GLOBAL
-              - usernamePassword:
-                  id: "github-pat"
-                  username: "hpe-2026-bot"
-                  password: "ghp_REPLACE_WITH_REAL_PAT"
-                  description: "GitHub PAT for hpe-merch-config push"
-                  scope: GLOBAL
 
     # ── Unclassified ──────────────────────────────────────────────────────────
     unclassified:
