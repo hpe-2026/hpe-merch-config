@@ -389,6 +389,7 @@ spec:
       baseEjectionTime: 120s
       maxEjectionPercent: 30
 
+---
 # ───────────────────────── Authorization Policies ─────────────────────────
 # Basic access control for services inside the mesh.
 
