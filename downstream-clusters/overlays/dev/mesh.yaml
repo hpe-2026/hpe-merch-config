@@ -1,18 +1,15 @@
 # ───────────────────────── mTLS ─────────────────────────
-# Default: PERMISSIVE — accepts both mTLS (in-mesh) and plaintext (nginx Ingress).
-# The nginx Ingress controller is NOT in the mesh; it sends plain HTTP to pods.
-# With STRICT, the Envoy sidecar rejects that plaintext → 503 on all nip.io URLs.
-# PERMISSIVE is the correct transitional stance:
-#   - In-mesh calls (service-to-service) still use mTLS automatically
-#   - nginx → pod calls continue to work in plaintext
-# Once nginx is fully replaced by the Istio ingressgateway, switch back to STRICT.
+# STRICT — all in-mesh traffic must use mTLS.
+# nginx Ingress is removed from the data path; all inbound traffic now enters
+# through the Istio ingressgateway (Envoy L7), which speaks mTLS to sidecars.
+# The data layer (mongo/kafka/zookeeper) is NOT in the mesh — unaffected.
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
 metadata:
   name: default
 spec:
   mtls:
-    mode: PERMISSIVE
+    mode: STRICT
 ---
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
@@ -60,9 +57,9 @@ spec:
     mode: PERMISSIVE
 ---
 # ───────────────────────── Ingress Gateway ─────────────────────────
-# Host-based routing so each SPA is served at the root of its own hostname
-# (avoids SPA base-path issues). Reach via the gateway NodePort, e.g.
-#   Host: dev.nitte.local | admin.dev.nitte.local | merchant.dev.nitte.local
+# Host-based routing using the existing nip.io hostnames the team already uses.
+# Istio ingressgateway IP: 192.168.56.201 (MetalLB LoadBalancer on dev cluster).
+# All *.192.168.56.201.nip.io requests route through Envoy L7 — no nginx needed.
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
@@ -76,19 +73,17 @@ spec:
         name: http
         protocol: HTTP
       hosts:
-        - "dev.nitte.local"
-        - "admin.dev.nitte.local"
-        - "merchant.dev.nitte.local"
-        - "keycloak.dev.nitte.local"
-        - "grafana.dev.nitte.local"
-        - "prometheus.dev.nitte.local"
-        - "jaeger.dev.nitte.local"
-        - "minio.dev.nitte.local"
-        - "kiali.nitte.local"
-        - "redoc.dev.nitte.local"
-        # jenkins.nitte.local and goalert.nitte.local are removed — both services
-        # live on the admin cluster; their .svc.cluster.local names don't resolve
-        # here and would 503. Expose them via the admin cluster's ingressgateway instead.
+        - "frontend.192.168.56.201.nip.io"
+        - "admin.192.168.56.201.nip.io"
+        - "merchant.192.168.56.201.nip.io"
+        - "api.192.168.56.201.nip.io"
+        - "keycloak.192.168.56.201.nip.io"
+        - "grafana.192.168.56.201.nip.io"
+        - "prometheus.192.168.56.201.nip.io"
+        - "jaeger.192.168.56.201.nip.io"
+        - "minio.192.168.56.201.nip.io"
+        - "kiali.192.168.56.201.nip.io"
+        - "redoc.192.168.56.201.nip.io"
 ---
 # Storefront (+ shared API / auth / grafana)
 apiVersion: networking.istio.io/v1beta1
@@ -97,7 +92,7 @@ metadata:
   name: storefront-routes
 spec:
   hosts:
-    - "dev.nitte.local"
+    - "frontend.192.168.56.201.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -124,14 +119,14 @@ spec:
       route:
         - destination: { host: frontend, port: { number: 5173 } }
 ---
-# Admin dashboard (served at root of admin.dev.nitte.local)
+# Admin dashboard
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: admin-routes
 spec:
   hosts:
-    - "admin.dev.nitte.local"
+    - "admin.192.168.56.201.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -149,14 +144,14 @@ spec:
       route:
         - destination: { host: admin-dashboard, port: { number: 5174 } }
 ---
-# Merchant portal (served at root of merchant.dev.nitte.local)
+# Merchant portal
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: merchant-routes
 spec:
   hosts:
-    - "merchant.dev.nitte.local"
+    - "merchant.192.168.56.201.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -175,6 +170,20 @@ spec:
         - destination: { host: merchant-portal, port: { number: 5175 } }
 ---
 # ───────────────────────── Observability / IAM / Storage UIs ─────────────────────────
+# API direct access (mirrors the /api route on storefront but under its own hostname)
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: api-routes
+spec:
+  hosts:
+    - "api.192.168.56.201.nip.io"
+  gateways:
+    - nitte-gateway
+  http:
+    - route:
+        - destination: { host: node-backend, port: { number: 3000 } }
+---
 # Each exposed on its own host so the admin-dashboard's serviceUrl() links resolve.
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
@@ -182,7 +191,7 @@ metadata:
   name: keycloak-routes
 spec:
   hosts:
-    - "keycloak.dev.nitte.local"
+    - "keycloak.192.168.56.201.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -195,7 +204,7 @@ metadata:
   name: grafana-routes
 spec:
   hosts:
-    - "grafana.dev.nitte.local"
+    - "grafana.192.168.56.201.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -208,7 +217,7 @@ metadata:
   name: prometheus-routes
 spec:
   hosts:
-    - "prometheus.dev.nitte.local"
+    - "prometheus.192.168.56.201.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -221,7 +230,7 @@ metadata:
   name: jaeger-routes
 spec:
   hosts:
-    - "jaeger.dev.nitte.local"
+    - "jaeger.192.168.56.201.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -234,22 +243,21 @@ metadata:
   name: minio-routes
 spec:
   hosts:
-    - "minio.dev.nitte.local"
+    - "minio.192.168.56.201.nip.io"
   gateways:
     - nitte-gateway
   http:
     - route:
         - destination: { host: minio, port: { number: 9001 } }
 ---
-# Kiali — Istio service-mesh console (cluster-wide, lives in istio-system).
-# Exposed on a single, env-less host since it observes all namespaces.
+# Kiali — Istio service-mesh console (lives in istio-system on dev cluster).
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: kiali-routes
 spec:
   hosts:
-    - "kiali.nitte.local"
+    - "kiali.192.168.56.201.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -258,14 +266,14 @@ spec:
             host: kiali.istio-system.svc.cluster.local
             port: { number: 20001 }
 ---
-# Redoc API docs — /api proxied to backend so the spec loads same-origin.
+# Redoc API docs
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: redoc-routes
 spec:
   hosts:
-    - "redoc.dev.nitte.local"
+    - "redoc.192.168.56.201.nip.io"
   gateways:
     - nitte-gateway
   http:

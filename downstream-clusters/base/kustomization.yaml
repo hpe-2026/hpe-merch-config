@@ -30,7 +30,8 @@ resources:
   - jaeger.yaml
   - redocly.yaml
   - mongo-backup.yaml
-  - dev-ingress.yaml
+  # dev-ingress.yaml removed — nginx Ingress decommissioned; Istio ingressgateway
+  # (192.168.56.201) is now the sole ingress path for the dev cluster.
   - unleash.yaml
 # Rewrite local image names to the Nexus registry
 images:
