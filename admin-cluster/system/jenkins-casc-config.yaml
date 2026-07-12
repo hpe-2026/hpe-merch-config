@@ -74,6 +74,12 @@ data:
                     resourceRequestMemory: "1Gi"
                     resourceLimitCpu: "2"
                     resourceLimitMemory: "2Gi"
+                  # security container: runs Trivy vulnerability scans and SBOM generation
+                  - name: "security"
+                    image: "aquasec/trivy:latest"
+                    command: "sleep"
+                    args: "99d"
+                    ttyEnabled: true
                 volumes:
                   # Docker auth secret mounted at /kaniko/.docker/config.json
                   # Create out-of-band: kubectl create secret generic nexus-docker-config
