@@ -44,3 +44,15 @@ credentials:
 unclassified:
   location:
     url: "http://localhost:8081/"
+  globalLibraries:
+    libraries:
+      - name: "merch-shared-lib"
+        defaultVersion: "main"
+        implicit: false
+        allowVersionOverride: true
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: "https://github.com/hpe-2026/jenkins-shared-library.git"
+                credentialsId: "github-pat"
