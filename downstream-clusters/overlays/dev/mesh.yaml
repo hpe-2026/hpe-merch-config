@@ -1,15 +1,18 @@
 # ───────────────────────── mTLS ─────────────────────────
-# Default: require mTLS for all meshed services in this namespace.
-# (The data layer — mongo/kafka/zookeeper — is NOT in the mesh, so it is
-#  unaffected. promtail has no sidecar, so loki + loki-rbac-proxy must accept
-#  plaintext from it.)
+# Default: PERMISSIVE — accepts both mTLS (in-mesh) and plaintext (nginx Ingress).
+# The nginx Ingress controller is NOT in the mesh; it sends plain HTTP to pods.
+# With STRICT, the Envoy sidecar rejects that plaintext → 503 on all nip.io URLs.
+# PERMISSIVE is the correct transitional stance:
+#   - In-mesh calls (service-to-service) still use mTLS automatically
+#   - nginx → pod calls continue to work in plaintext
+# Once nginx is fully replaced by the Istio ingressgateway, switch back to STRICT.
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
 metadata:
   name: default
 spec:
   mtls:
-    mode: STRICT
+    mode: PERMISSIVE
 ---
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
