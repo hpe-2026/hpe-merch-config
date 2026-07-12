@@ -179,6 +179,21 @@ spec:
       kind: Secret
       jsonPointers:
         - /data
+    # StatefulSet VolumeClaimTemplates: Kubernetes defaults volumeMode/storageClassName/status
+    # onto VCTs after creation. These fields are not in Git but appear on the live object,
+    # causing permanent OutOfSync on every refresh. This is a known ArgoCD limitation.
+    - group: apps
+      kind: StatefulSet
+      jqPathExpressions:
+        - .spec.volumeClaimTemplates[]?.spec.volumeMode
+        - .spec.volumeClaimTemplates[]?.spec.storageClassName
+        - .spec.volumeClaimTemplates[]?.status
+    # Istio webhook stamps sidecar.istio.io/status on pod templates even for
+    # opted-out pods in injection-enabled namespaces.
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/template/metadata/annotations/sidecar.istio.io~1status
 
 ---
 # App workloads → Prod cluster
