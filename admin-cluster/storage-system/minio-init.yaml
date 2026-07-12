@@ -37,13 +37,10 @@ spec:
 
           echo "Creating application buckets..."
           mc mb local/nitte-products || true
-          mc mb local/nitte-users    || true
           mc mb local/nitte-backups  || true
 
           echo "Creating Loki observability buckets..."
           mc mb local/loki-chunks || true
-          mc mb local/loki-ruler  || true
-          mc mb local/loki-admin  || true
 
           echo "Creating Thanos metrics bucket..."
           mc mb local/thanos-metrics || true

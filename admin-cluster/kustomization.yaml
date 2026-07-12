@@ -58,4 +58,3 @@ resources:
   - system/oauth2-proxies.yaml
   - system/jenkins-nexus-ingress.yaml
   - system/oauth2-proxy-ingress.yaml
-  - system/sonarqube
