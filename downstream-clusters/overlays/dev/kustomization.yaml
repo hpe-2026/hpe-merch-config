@@ -25,7 +25,7 @@ patches:
               - name: keycloak
                 env:
                   - name: KC_HOSTNAME_URL
-                    value: "http://keycloak.dev.nitte.local:8080"
+                    value: "http://keycloak.192.168.56.200.nip.io"
                   - name: KC_PROXY
                     value: "edge"
   - target:
@@ -76,3 +76,55 @@ patches:
           spec:
             nodeSelector:
               kubernetes.io/hostname: workervm1
+  # ── Scale down observability services that already run on admin cluster ──
+  - target:
+      kind: Deployment
+      name: grafana
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: grafana
+      spec:
+        replicas: 0
+  - target:
+      kind: Deployment
+      name: loki
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: loki
+      spec:
+        replicas: 0
+  - target:
+      kind: Deployment
+      name: loki-rbac-proxy
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: loki-rbac-proxy
+      spec:
+        replicas: 0
+  - target:
+      kind: Deployment
+      name: alertmanager
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: alertmanager
+      spec:
+        replicas: 0
+  - target:
+      kind: Deployment
+      name: prometheus
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: prometheus
+      spec:
+        replicas: 0
+  

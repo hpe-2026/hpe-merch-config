@@ -369,9 +369,13 @@ metadata:
   name: mongo-init
   namespace: nitte
   annotations:
-    # Job pod templates are immutable; tell ArgoCD to delete+recreate this Job
-    # on changes instead of patching it (which fails with "field is immutable").
-    argocd.argoproj.io/sync-options: Replace=true
+    # Run as an ArgoCD PostSync hook (after mongos + shard StatefulSets are healthy).
+    # A Job's spec.selector and pod labels are auto-generated and immutable, so
+    # `kubectl replace` (Replace=true) is rejected with "field is immutable".
+    # hook-delete-policy=BeforeHookCreation deletes the previous Job and recreates
+    # it fresh on each sync, sidestepping the immutable-field conflict entirely.
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 5
   ttlSecondsAfterFinished: 600

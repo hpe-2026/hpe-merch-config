@@ -126,14 +126,14 @@ spec:
           items:
           - key: nitte-realm.json
             path: nitte-realm.json
-      - name: keycloak-logs
-        emptyDir: {}
       - name: keycloak-spi
         configMap:
           name: keycloak-spi-config
           items:
           - key: keycloak-event-listener-1.0.0.jar
             path: keycloak-event-listener-1.0.0.jar
+      - name: keycloak-logs
+        emptyDir: {}
       - name: promtail-keycloak-config
         configMap:
           name: promtail-keycloak-config

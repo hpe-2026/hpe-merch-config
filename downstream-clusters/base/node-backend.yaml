@@ -66,7 +66,7 @@ spec:
         - name: API_BASE
           value: "http://node-backend:3000"
         - name: CORS_ORIGINS
-          value: "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175"
+          value: "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175,http://frontend.192.168.56.200.nip.io,http://admin.192.168.56.200.nip.io,http://merchant.192.168.56.200.nip.io"
         - name: LOG_LEVEL
           value: info
         - name: REQUEST_TIMEOUT
@@ -92,23 +92,21 @@ spec:
               name: nitte-secrets
               key: KEYCLOAK_ADMIN_PASSWORD
         - name: S3_ENDPOINT
-          value: "http://minio:9000"
+          value: "http://192.168.56.10:30900"
         - name: S3_PUBLIC_ENDPOINT
-          value: "http://localhost:9000"
+          value: "http://192.168.56.10:30900"
         - name: S3_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: nitte-secrets
-              key: MINIO_ROOT_USER
+          value: "app-user"
         - name: S3_SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: nitte-secrets
-              key: MINIO_ROOT_PASSWORD
+          value: "AppStorage99!"
+        # Uses the centralised admin MinIO (192.168.56.10:30900) for all
+        # object storage: product images, user uploads, and backups.
         - name: S3_PRODUCTS_BUCKET
           value: "nitte-products"
         - name: AWS_REGION
           value: "us-east-1"
+        - name: UNLEASH_API_TOKEN
+          value: "*:development.263d4183e2aa96cc17e0dc33840f6e57cf954d3680a79780a851901c"
         resources:
           requests:
             memory: "128Mi"

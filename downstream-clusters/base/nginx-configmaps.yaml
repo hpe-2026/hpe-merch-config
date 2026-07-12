@@ -1,0 +1,91 @@
+# Nginx configs for frontend SPAs (mounted via kustomize patches)
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-nginx-conf
+  namespace: nitte
+data:
+  default.conf: |
+    server {
+        listen 5173;
+        server_name localhost;
+        root /usr/share/nginx/html;
+        index index.html;
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            try_files $uri =404;
+        }
+        location / {
+            try_files $uri $uri/ /index.html;
+            add_header Cache-Control "no-cache";
+        }
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: admin-nginx-conf
+  namespace: nitte
+data:
+  default.conf: |
+    server {
+        listen 5174;
+        server_name localhost;
+        root /usr/share/nginx/html;
+        index index.html;
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            try_files $uri =404;
+        }
+        location / {
+            try_files $uri $uri/ /index.html;
+            add_header Cache-Control "no-cache";
+        }
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: merchant-nginx-conf
+  namespace: nitte
+data:
+  default.conf: |
+    server {
+        listen 5175;
+        server_name localhost;
+        root /usr/share/nginx/html;
+        index index.html;
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            try_files $uri =404;
+        }
+        location / {
+            try_files $uri $uri/ /index.html;
+            add_header Cache-Control "no-cache";
+        }
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+    }

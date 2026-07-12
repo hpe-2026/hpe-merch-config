@@ -5,13 +5,17 @@ kind: Kustomization
 resources:
   - pvcs.yaml
   - mongodb.yaml
+  - mongo-sharding-init-configmap.yaml
   - kafka.yaml
   - keycloak.yaml
+  - keycloak-configmaps.yaml
+  - keycloak-realm-configmap.yaml
   - minio.yaml
   - minio-init.yaml
   - node-backend.yaml
   - python-service.yaml
   - frontend.yaml
+  - nginx-configmaps.yaml
   - admin-dashboard.yaml
   - merchant-portal.yaml
   - notification-service.yaml
@@ -19,32 +23,35 @@ resources:
   - grafana.yaml
   - alertmanager.yaml
   - loki.yaml
-  - promtail-rbac.yaml
-  - promtail.yaml
+  # promtail (DaemonSet + RBAC + config) is owned exclusively by the
+  # monitoring-agents-dev/prod ArgoCD app. Declaring it here too caused a
+  # SharedResourceWarning tug-of-war that kept downstream-dev OutOfSync/Progressing.
   - loki-rbac-proxy.yaml
   - jaeger.yaml
   - redocly.yaml
+  - mongo-backup.yaml
+  - dev-ingress.yaml
   - unleash.yaml
 # Rewrite local image names to the Nexus registry
 images:
   - name: node-backend
     newName: 192.168.56.10:30082/merch-docker/node-backend
-    newTag: "63-84a3d64"
+    newTag: "1.0.83-6d9c276"
   - name: python-service
     newName: 192.168.56.10:30082/merch-docker/python-service
-    newTag: 63-84a3d64
+    newTag: 1.0.82-6e44be9
   - name: frontend
     newName: 192.168.56.10:30082/merch-docker/frontend
-    newTag: "64-45d434f"
+    newTag: "1.0.82-6e44be9"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/merch-docker/admin-dashboard
-    newTag: "63-84a3d64"
+    newTag: "1.0.82-6e44be9"
   - name: merchant-portal
     newName: 192.168.56.10:30082/merch-docker/merchant-portal
-    newTag: "63-84a3d64"
+    newTag: "1.0.82-6e44be9"
   - name: notification-service
     newName: 192.168.56.10:30082/merch-docker/notification-service
-    newTag: 63-84a3d64
+    newTag: 1.0.82-6e44be9
   - name: loki-rbac-proxy
     newName: 192.168.56.10:30082/loki-rbac-proxy
 # Mount the correct nginx.conf (per app port) over the baked-in default

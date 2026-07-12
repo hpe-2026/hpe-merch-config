@@ -1,36 +1,8 @@
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mongo-config-pvc
-  namespace: nitte
-spec:
-  accessModes: [ReadWriteOnce]
-  resources:
-    requests:
-      storage: 1Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mongo-shard1-pvc
-  namespace: nitte
-spec:
-  accessModes: [ReadWriteOnce]
-  resources:
-    requests:
-      storage: 2Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mongo-shard2-pvc
-  namespace: nitte
-spec:
-  accessModes: [ReadWriteOnce]
-  resources:
-    requests:
-      storage: 2Gi
----
+# NOTE: MongoDB PVCs are NOT declared here. The mongo-config / mongo-shard1 /
+# mongo-shard2 StatefulSets create their own PVCs via volumeClaimTemplates.
+# The old standalone mongo-*-pvc claims were unused (nothing mounted them) and,
+# under local-path (WaitForFirstConsumer), stayed Pending forever -> ArgoCD
+# reported them Progressing and the app never went fully Healthy. Removed.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
