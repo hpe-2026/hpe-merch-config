@@ -60,6 +60,7 @@ spec:
 # Host-based routing using the existing nip.io hostnames the team already uses.
 # Istio ingressgateway IP: 192.168.56.201 (MetalLB LoadBalancer on dev cluster).
 # All *.192.168.56.201.nip.io requests route through Envoy L7 — no nginx needed.
+# All *.117.250.206.138.nip.io requests route through Envoy L7 — no nginx needed.
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
@@ -74,16 +75,27 @@ spec:
         protocol: HTTP
       hosts:
         - "frontend.192.168.56.201.nip.io"
+        - "frontend.117.250.206.138.nip.io"
         - "admin.192.168.56.201.nip.io"
+        - "admin.117.250.206.138.nip.io"
         - "merchant.192.168.56.201.nip.io"
+        - "merchant.117.250.206.138.nip.io"
         - "api.192.168.56.201.nip.io"
+        - "api.117.250.206.138.nip.io"
         - "keycloak.192.168.56.201.nip.io"
+        - "keycloak.117.250.206.138.nip.io"
         - "grafana.192.168.56.201.nip.io"
+        - "grafana.117.250.206.138.nip.io"
         - "prometheus.192.168.56.201.nip.io"
+        - "prometheus.117.250.206.138.nip.io"
         - "jaeger.192.168.56.201.nip.io"
+        - "jaeger.117.250.206.138.nip.io"
         - "minio.192.168.56.201.nip.io"
+        - "minio.117.250.206.138.nip.io"
         - "kiali.192.168.56.201.nip.io"
+        - "kiali.117.250.206.138.nip.io"
         - "redoc.192.168.56.201.nip.io"
+        - "redoc.117.250.206.138.nip.io"
 ---
 # Storefront (+ shared API / auth / grafana)
 apiVersion: networking.istio.io/v1beta1
@@ -93,6 +105,7 @@ metadata:
 spec:
   hosts:
     - "frontend.192.168.56.201.nip.io"
+    - "frontend.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -127,6 +140,7 @@ metadata:
 spec:
   hosts:
     - "admin.192.168.56.201.nip.io"
+    - "admin.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -152,6 +166,7 @@ metadata:
 spec:
   hosts:
     - "merchant.192.168.56.201.nip.io"
+    - "merchant.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -178,6 +193,7 @@ metadata:
 spec:
   hosts:
     - "api.192.168.56.201.nip.io"
+    - "api.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -192,6 +208,7 @@ metadata:
 spec:
   hosts:
     - "keycloak.192.168.56.201.nip.io"
+    - "keycloak.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -205,6 +222,7 @@ metadata:
 spec:
   hosts:
     - "grafana.192.168.56.201.nip.io"
+    - "grafana.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -218,6 +236,7 @@ metadata:
 spec:
   hosts:
     - "prometheus.192.168.56.201.nip.io"
+    - "prometheus.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -231,6 +250,7 @@ metadata:
 spec:
   hosts:
     - "jaeger.192.168.56.201.nip.io"
+    - "jaeger.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -244,6 +264,7 @@ metadata:
 spec:
   hosts:
     - "minio.192.168.56.201.nip.io"
+    - "minio.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -258,6 +279,7 @@ metadata:
 spec:
   hosts:
     - "kiali.192.168.56.201.nip.io"
+    - "kiali.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
@@ -274,6 +296,7 @@ metadata:
 spec:
   hosts:
     - "redoc.192.168.56.201.nip.io"
+    - "redoc.117.250.206.138.nip.io"
   gateways:
     - nitte-gateway
   http:
