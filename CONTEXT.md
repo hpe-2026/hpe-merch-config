@@ -220,7 +220,7 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Stabilize admin cluster pods (MinIO, Nexus, Keycloak) | 🔴 High | In Progress |
+| Stabilize admin cluster pods (MinIO, Nexus, Keycloak) | 🔴 High | ✅ DONE |
 | Configure Jenkins CasC with Kubernetes pod agent templates | 🔴 High | Not Started |
 | Provision Dev cluster on `192.168.56.11` | 🟡 Medium | ✅ DONE |
 | Provision Prod cluster on `192.168.56.12` | 🟡 Medium | ✅ DONE |
