@@ -45,7 +45,7 @@ images:
     newTag: "1.0.82-6e44be9"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/merch-docker/admin-dashboard
-    newTag: "1.0.84-1e437a1"
+    newTag: "1.0.85-1e437a1"
   - name: merchant-portal
     newName: 192.168.56.10:30082/merch-docker/merchant-portal
     newTag: "1.0.82-6e44be9"
