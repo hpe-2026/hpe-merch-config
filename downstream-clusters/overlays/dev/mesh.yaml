@@ -388,3 +388,80 @@ spec:
       interval: 60s
       baseEjectionTime: 120s
       maxEjectionPercent: 30
+
+# ───────────────────────── Authorization Policies ─────────────────────────
+# Basic access control for services inside the mesh.
+
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: backend-api-access
+spec:
+  selector:
+    matchLabels:
+      app: node-backend
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/nitte-dev/sa/default"
+      to:
+        - operation:
+            ports:
+              - "3000"
+
+    - from:
+        - source:
+            namespaces:
+              - istio-system
+      to:
+        - operation:
+            ports:
+              - "3000"
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: python-service-access
+spec:
+  selector:
+    matchLabels:
+      app: python-service
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/nitte-dev/sa/default"
+      to:
+        - operation:
+            ports:
+              - "8000"
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: keycloak-access
+spec:
+  selector:
+    matchLabels:
+      app: keycloak
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/nitte-dev/sa/default"
+      to:
+        - operation:
+            ports:
+              - "8080"
+
+    - from:
+        - source:
+            namespaces:
+              - istio-system
+      to:
+        - operation:
+            ports:
+              - "8080"                                  
