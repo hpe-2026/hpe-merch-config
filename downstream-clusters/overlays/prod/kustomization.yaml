@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: nitte-prod
 
 resources:
+  - namespace.yaml
   - ../../base
   - mesh.yaml
 

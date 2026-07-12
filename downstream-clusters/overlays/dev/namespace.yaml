@@ -1,0 +1,13 @@
+# nitte-dev namespace — must be declared here (not in base) because kustomize's
+# `namespace:` field rewrites all resource namespaces, including Namespace objects.
+# The `istio-injection: enabled` label tells the Istio mutating webhook to inject
+# the Envoy sidecar proxy into every pod that doesn't opt out with
+# `sidecar.istio.io/inject: "false"`. Without this label, mesh.yaml policies exist
+# but are never enforced — pods have no sidecar to route traffic through.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nitte-dev
+  labels:
+    istio-injection: enabled
+    app.kubernetes.io/managed-by: argocd
