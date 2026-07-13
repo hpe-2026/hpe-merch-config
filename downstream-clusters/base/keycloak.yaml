@@ -63,6 +63,14 @@ spec:
           mountPath: /opt/keycloak/data/import/nitte-realm.json
           subPath: nitte-realm.json
           readOnly: true
+        - name: keycloak-realm
+          mountPath: /opt/keycloak/data/import/nitte-users-realm.json
+          subPath: nitte-users-realm.json
+          readOnly: true
+        - name: keycloak-realm
+          mountPath: /opt/keycloak/data/import/nitte-merchants-realm.json
+          subPath: nitte-merchants-realm.json
+          readOnly: true
         - name: keycloak-logs
           mountPath: /opt/keycloak/log
         - name: keycloak-spi
@@ -125,6 +133,11 @@ spec:
           name: keycloak-realm-config
           items:
           - key: nitte-realm.json
+            path: nitte-realm.json
+          - key: nitte-users-realm.json
+            path: nitte-users-realm.json
+          - key: nitte-merchants-realm.json
+            path: nitte-merchants-realm.json
             path: nitte-realm.json
       - name: keycloak-spi
         configMap:
