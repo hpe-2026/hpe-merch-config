@@ -7,6 +7,8 @@ metadata:
     app: zookeeper
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: zookeeper
@@ -64,6 +66,8 @@ metadata:
     app: kafka
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: kafka
@@ -96,6 +100,10 @@ spec:
         - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
           value: "1"
         - name: KAFKA_DEFAULT_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
           value: "1"
         - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
           value: "true"
