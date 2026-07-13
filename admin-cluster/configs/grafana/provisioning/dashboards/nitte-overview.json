@@ -109,7 +109,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
       "targets": [
         {
-          "expr": "orders_created_total",
+          "expr": "total_orders_count",
           "legendFormat": "Orders",
           "refId": "A"
         }
@@ -130,7 +130,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
       "targets": [
         {
-          "expr": "user_registrations_total",
+          "expr": "total_users_count",
           "legendFormat": "Registrations",
           "refId": "A"
         }
@@ -151,7 +151,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
       "targets": [
         {
-          "expr": "products_viewed_total",
+          "expr": "total_products_count",
           "legendFormat": "Views",
           "refId": "A"
         }
