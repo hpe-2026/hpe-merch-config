@@ -39,8 +39,6 @@ metadata:
     app: unleash-db
 spec:
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: unleash-db
@@ -108,7 +106,13 @@ spec:
       labels:
         app: unleash
     spec:
-
+      initContainers:
+        - name: wait-for-db
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - until pg_isready -h unleash-db -p 5432 -U unleash; do echo waiting for db; sleep 2; done
       containers:
         - name: unleash
           image: unleashorg/unleash-server:latest

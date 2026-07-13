@@ -104,15 +104,3 @@ data:
     unclassified:
       location:
         url: "http://jenkins.192.168.56.10.nip.io/"
-      globalLibraries:
-        libraries:
-          - name: "merch-shared-lib"
-            defaultVersion: "main"
-            implicit: false
-            allowVersionOverride: true
-            retriever:
-              modernSCM:
-                scm:
-                  git:
-                    remote: "https://github.com/hpe-2026/jenkins-shared-library.git"
-                    credentialsId: "github-pat"
