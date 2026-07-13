@@ -138,7 +138,6 @@ spec:
             path: nitte-users-realm.json
           - key: nitte-merchants-realm.json
             path: nitte-merchants-realm.json
-            path: nitte-realm.json
       - name: keycloak-spi
         configMap:
           name: keycloak-spi-config
