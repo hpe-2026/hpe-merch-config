@@ -46,6 +46,8 @@ spec:
     metadata:
       labels:
         app: unleash-db
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       containers:
         - name: unleash-db
@@ -105,6 +107,8 @@ spec:
     metadata:
       labels:
         app: unleash
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       initContainers:
         - name: wait-for-db
