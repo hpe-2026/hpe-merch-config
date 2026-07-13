@@ -255,3 +255,49 @@ spec:
     automated:
       prune: true
       selfHeal: true
+
+---
+# Istio Addons → Dev cluster
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-addons-dev
+  namespace: gitops-system
+spec:
+  project: downstream
+  source:
+    repoURL: https://github.com/hpe-2026/hpe-merch-config.git
+    targetRevision: main
+    path: downstream-clusters/istio-addons
+  destination:
+    server: https://192.168.56.11:6443
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+---
+# Istio Addons → Prod cluster
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-addons-prod
+  namespace: gitops-system
+spec:
+  project: downstream
+  source:
+    repoURL: https://github.com/hpe-2026/hpe-merch-config.git
+    targetRevision: main
+    path: downstream-clusters/istio-addons
+  destination:
+    server: https://192.168.56.12:6443
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
