@@ -101,8 +101,11 @@ spec:
         - containerPort: 50000
 
         env:
+        - name: TZ
+          value: "Asia/Kolkata"
+
         - name: JAVA_OPTS
-          value: "-Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true"
+          value: "-Duser.timezone=Asia/Kolkata -Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true"
 
         - name: CASC_JENKINS_CONFIG
           value: "/var/jenkins_home/casc/jenkins.yaml"
