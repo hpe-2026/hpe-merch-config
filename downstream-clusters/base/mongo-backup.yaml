@@ -1,3 +1,4 @@
+# MongoDB backup CronJob - runs nightly, dumps the DB, uploads to admin MinIO nitte-backups bucket
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -26,20 +27,21 @@ spec:
             - -c
             - |
               set -e
-              apt-get update -qq && apt-get install -yqq curl >/dev/null 2>&1
               TIMESTAMP=$(date +%Y%m%d-%H%M%S)
               ARCHIVE="/tmp/nitte-backup-${TIMESTAMP}.gz"
               echo "Starting MongoDB backup at ${TIMESTAMP}..."
               mongodump --host mongodb:27017 --gzip --archive="${ARCHIVE}"
               echo "Dump complete: $(du -sh ${ARCHIVE})"
+              # wget is available in mongo:6.0 (Debian-based)
               wget -q https://dl.min.io/client/mc/release/linux-amd64/mc -O /usr/local/bin/mc
               chmod +x /usr/local/bin/mc
               mc alias set admin http://192.168.56.10:30900 app-user AppStorage99!
               mc cp "${ARCHIVE}" "admin/nitte-backups/mongodb/${TIMESTAMP}.gz"
               echo "Backup uploaded to admin MinIO: nitte-backups/mongodb/${TIMESTAMP}.gz"
+              # Keep last 7 backups
               BACKUPS=$(mc ls admin/nitte-backups/mongodb/ | sort | head -n -7 | awk '{print $NF}')
               for old in $BACKUPS; do
-                mc rm "admin/nitte-backups/mongodb/$old" && echo "Pruned old backup: $old"
+                mc rm "admin/nitte-backups/mongodb/$old" && echo "Pruned: $old"
               done
               echo "Backup job complete."
             resources:
