@@ -17,9 +17,18 @@ stringData:
   DATABASE_URL: "postgres://unleash:unleash@unleash-db:5432/unleash?sslmode=disable"
 
 
-# PVC removed: unleash-db-pvc had a corrupted WAL — both unleash and unleash-db
-# are scaled to 0 until the DB is fully restored. Re-add this PVC (and set
-# replicas back to 1) when ready to bring Unleash back up with a fresh database.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: unleash-db-pvc
+  namespace: nitte
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
 
 ---
 apiVersion: apps/v1
@@ -30,7 +39,7 @@ metadata:
   labels:
     app: unleash-db
 spec:
-  replicas: 0  # Scaled to 0: PVC has corrupted WAL — scale up after recovery
+  replicas: 1
   selector:
     matchLabels:
       app: unleash-db
@@ -66,7 +75,8 @@ spec:
               memory: "512Mi"
       volumes:
         - name: unleash-db-storage
-          emptyDir: {}  # Temporary: replicas=0, PVC removed (corrupted WAL). Restore PVC when scaling back up.
+          persistentVolumeClaim:
+            claimName: unleash-db-pvc
 
 ---
 apiVersion: v1
@@ -90,7 +100,7 @@ metadata:
   labels:
     app: unleash
 spec:
-  replicas: 0  # Scaled to 0: DB unavailable — scale up after unleash-db recovery
+  replicas: 1
   selector:
     matchLabels:
       app: unleash
