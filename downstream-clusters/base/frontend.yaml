@@ -14,6 +14,8 @@ spec:
     metadata:
       labels:
         app: frontend
+      annotations:
+        sidecar.istio.io/inject: "true"
     spec:
       initContainers:
       - name: wait-for-backend

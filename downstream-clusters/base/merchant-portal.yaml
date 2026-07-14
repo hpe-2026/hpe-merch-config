@@ -14,6 +14,8 @@ spec:
     metadata:
       labels:
         app: merchant-portal
+      annotations:
+        sidecar.istio.io/inject: "true"
     spec:
       containers:
       - name: merchant-portal

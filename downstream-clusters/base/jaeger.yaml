@@ -14,6 +14,8 @@ spec:
     metadata:
       labels:
         app: jaeger
+      annotations:
+        sidecar.istio.io/inject: "true"
     spec:
       containers:
       - name: jaeger

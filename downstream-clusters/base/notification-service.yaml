@@ -51,6 +51,8 @@ spec:
     metadata:
       labels:
         app: notification-service
+      annotations:
+        sidecar.istio.io/inject: "true"
     spec:
       initContainers:
       - name: wait-for-kafka

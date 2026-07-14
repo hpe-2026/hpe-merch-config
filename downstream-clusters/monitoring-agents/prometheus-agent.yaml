@@ -86,8 +86,6 @@ spec:
     metadata:
       labels:
         app: prometheus-agent
-      annotations:
-        sidecar.istio.io/inject: "false"
     spec:
       serviceAccountName: prometheus-agent
       containers:

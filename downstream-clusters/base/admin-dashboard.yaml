@@ -14,6 +14,8 @@ spec:
     metadata:
       labels:
         app: admin-dashboard
+      annotations:
+        sidecar.istio.io/inject: "true"
     spec:
       initContainers:
       - name: wait-for-backend
