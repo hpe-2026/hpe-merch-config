@@ -38,7 +38,7 @@ metadata:
   labels:
     app: unleash-db
 spec:
-  replicas: 1
+  replicas: 0  # Scaled to 0: PVC has corrupted WAL — scale up after recovery
   selector:
     matchLabels:
       app: unleash-db
@@ -99,7 +99,7 @@ metadata:
   labels:
     app: unleash
 spec:
-  replicas: 1
+  replicas: 0  # Scaled to 0: DB unavailable — scale up after unleash-db recovery
   selector:
     matchLabels:
       app: unleash

@@ -189,6 +189,13 @@ spec:
       jsonPointers:
         - /spec/volumeClaimTemplates
         - /spec/template/metadata/annotations/sidecar.istio.io~1status
+    # Deployments: Istio's mutating webhook stamps sidecar.istio.io/status onto every
+    # injected pod template after creation. This field is not in Git, causing a permanent
+    # OutOfSync diff after every pod restart. Ignoring it here keeps ArgoCD green.
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/metadata/annotations/sidecar.istio.io~1status
 
 ---
 # App workloads → Prod cluster
