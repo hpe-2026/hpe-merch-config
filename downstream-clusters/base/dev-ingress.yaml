@@ -67,6 +67,13 @@ spec:
   - host: api.192.168.56.200.nip.io
     http:
       paths:
+      - path: /api/v1/backup
+        pathType: Prefix
+        backend:
+          service:
+            name: backup-service
+            port:
+              number: 9200
       - path: /
         pathType: Prefix
         backend:

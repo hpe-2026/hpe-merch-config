@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backup-service
+  namespace: nitte
+  labels:
+    app: backup-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backup-service
+  template:
+    metadata:
+      labels:
+        app: backup-service
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      containers:
+      - name: backup-service
+        image: backup-service:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9200
+        env:
+        - name: MONGODB_HOST
+          value: "mongodb:27017"
+        - name: MINIO_ENDPOINT
+          value: "192.168.56.10"
+        - name: MINIO_PORT
+          value: "30900"
+        - name: MINIO_ACCESS_KEY
+          value: "app-user"
+        - name: MINIO_SECRET_KEY
+          value: "AppStorage99!"
+        - name: MINIO_BUCKET
+          value: "nitte-backups"
+        - name: BACKUP_SCHEDULE
+          value: "0 2 * * *"
+        - name: PORT
+          value: "9200"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9200
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9200
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backup-service
+  namespace: nitte
+spec:
+  selector:
+    app: backup-service
+  ports:
+  - port: 9200
+    targetPort: 9200
+  type: ClusterIP
