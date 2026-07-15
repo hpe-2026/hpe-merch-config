@@ -77,3 +77,21 @@ spec:
   resources:
     requests:
       storage: 1Gi
+
+---
+# Jenkins Build Cache — persists npm dependency cache across ephemeral
+# Kubernetes agent pods so that npm ci can reuse downloaded packages.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-build-cache
+  namespace: system
+  labels:
+    app: merch-build
+    purpose: build-cache
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
