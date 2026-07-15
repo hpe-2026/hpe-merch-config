@@ -37,9 +37,13 @@ spec:
               name: nitte-secrets
               key: KEYCLOAK_ADMIN_PASSWORD
         - name: KC_DB
-          value: dev-file
-        - name: KC_DB_URL_PROPERTIES
-          value: ";DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1"
+          value: postgres
+        - name: KC_DB_URL
+          value: jdbc:postgresql://keycloak-postgres:5432/keycloak
+        - name: KC_DB_USERNAME
+          value: keycloak
+        - name: KC_DB_PASSWORD
+          value: keycloak-db-pass
         - name: KC_FEATURES
           value: import-realm
         - name: KEYCLOAK_IMPORT
