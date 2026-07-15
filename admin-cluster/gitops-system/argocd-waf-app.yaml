@@ -6,7 +6,7 @@ metadata:
 spec:
   project: downstream
   source:
-    repoURL: https://github.com/nitte-alumni/hpe-merch-config.git
+    repoURL: https://github.com/hpe-2026/hpe-merch-config.git
     targetRevision: HEAD
     path: downstream-clusters/waf
   destination:
