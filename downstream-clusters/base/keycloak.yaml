@@ -43,7 +43,7 @@ spec:
         - name: KC_FEATURES
           value: import-realm
         - name: KEYCLOAK_IMPORT
-          value: /opt/keycloak/data/import/nitte-realm.json
+          value: /opt/keycloak/data/import
         - name: KC_HOSTNAME_URL
           value: http://localhost:8080
         - name: KC_HOSTNAME_STRICT
@@ -61,10 +61,6 @@ spec:
         - name: QUARKUS_LOG_FILE_FORMAT
           value: '%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c] (%t) %s%e%n'
         volumeMounts:
-        - name: keycloak-realm
-          mountPath: /opt/keycloak/data/import/nitte-realm.json
-          subPath: nitte-realm.json
-          readOnly: true
         - name: keycloak-realm
           mountPath: /opt/keycloak/data/import/nitte-users-realm.json
           subPath: nitte-users-realm.json
@@ -134,8 +130,6 @@ spec:
         configMap:
           name: keycloak-realm-config
           items:
-          - key: nitte-realm.json
-            path: nitte-realm.json
           - key: nitte-users-realm.json
             path: nitte-users-realm.json
           - key: nitte-merchants-realm.json

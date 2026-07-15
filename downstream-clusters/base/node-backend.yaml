@@ -55,7 +55,9 @@ spec:
         - name: KEYCLOAK_SERVER_URL
           value: "http://keycloak:8080"
         - name: KEYCLOAK_REALM
-          value: nitte-realm
+          value: nitte-users
+        - name: KEYCLOAK_VALIDATION_REALMS
+          value: "nitte-users,nitte-merchants"
         - name: KEYCLOAK_CLIENT_ID
           value: nitte-client
         - name: KEYCLOAK_CLIENT_SECRET
