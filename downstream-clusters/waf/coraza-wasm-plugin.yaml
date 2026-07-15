@@ -25,27 +25,11 @@ spec:
   phase: AUTHN
   priority: 10
   pluginConfig:
+    default_directives: recommended
     rules: |
-      # ── Engine Mode ──────────────────────────────────────────────────────────
-      # PHASE A: Detection only. Change to "On" after tuning exclusions.
       SecRuleEngine On
-
-      # ── Request Body Inspection ───────────────────────────────────────────────
-      SecRequestBodyAccess On
-      SecRequestBodyLimitAction ProcessPartial
-
-      # ── Response Body Inspection ──────────────────────────────────────────────
-      SecResponseBodyAccess Off
-
-      # ── OWASP CRS v4 — Core Rule Set ─────────────────────────────────────────
-      # The OCI image bundles these at the paths below.
-      Include @coraza.conf-recommended
       Include @crs-setup.conf.example
       Include @owasp_crs/*.conf
-
-      # ── CRS Tuning: Paranoia Level ────────────────────────────────────────────
-      # PL1 = permissive baseline (low false-positives, good starting point)
-      # PL2 = adds stricter checks (tune to PL2 after Phase B is stable)
       SecAction "id:900000,phase:1,nolog,pass,t:none,setvar:tx.paranoia_level=1"
 
       # ── Application-Specific Exclusions ──────────────────────────────────────
