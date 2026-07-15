@@ -2,9 +2,9 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: waf-dev
-  namespace: argocd
+  namespace: gitops-system
 spec:
-  project: default
+  project: downstream
   source:
     repoURL: https://github.com/nitte-alumni/hpe-merch-config.git
     targetRevision: HEAD
