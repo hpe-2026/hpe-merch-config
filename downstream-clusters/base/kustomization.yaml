@@ -34,7 +34,7 @@ resources:
   - unleash.yaml
 # Rewrite local image names to the Nexus registry
 images:
-    newTag: "v1.0.0"
+
   - name: node-backend
     newName: 192.168.56.10:30082/merch-docker/node-backend
     newTag: "v1.3.0"
