@@ -32,14 +32,10 @@ spec:
 
       # ── Request Body Inspection ───────────────────────────────────────────────
       SecRequestBodyAccess On
-      SecRequestBodyLimit 13107200
       SecRequestBodyLimitAction ProcessPartial
 
       # ── Response Body Inspection ──────────────────────────────────────────────
-      SecResponseBodyAccess On
-      SecResponseBodyMimeType text/plain text/html text/xml application/json
-      SecResponseBodyLimit 524288
-      SecResponseBodyLimitAction ProcessPartial
+      SecResponseBodyAccess Off
 
       # ── OWASP CRS v4 — Core Rule Set ─────────────────────────────────────────
       # The OCI image bundles these at the paths below.
