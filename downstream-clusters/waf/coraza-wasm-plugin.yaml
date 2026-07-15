@@ -46,32 +46,22 @@ spec:
       # ── CRS Tuning: Paranoia Level ────────────────────────────────────────────
       # PL1 = permissive baseline (low false-positives, good starting point)
       # PL2 = adds stricter checks (tune to PL2 after Phase B is stable)
-      SecAction \
-        "id:900000, \
-        phase:1, \
-        nolog, \
-        pass, \
-        t:none, \
-        setvar:tx.paranoia_level=1"
+      SecAction "id:900000,phase:1,nolog,pass,t:none,setvar:tx.paranoia_level=1"
 
       # ── Application-Specific Exclusions ──────────────────────────────────────
       # These prevent false positives from known-good application traffic.
 
       # Keycloak: OIDC token endpoints send large base64 payloads — exclude body checks
-      SecRule REQUEST_URI "@beginsWith /realms" \
-        "id:1000,phase:1,pass,nolog,ctl:ruleRemoveTargetById=200001;REQUEST_BODY"
+      SecRule REQUEST_URI "@beginsWith /realms" "id:1000,phase:1,pass,nolog,ctl:ruleRemoveTargetById=200001;REQUEST_BODY"
 
       # Keycloak admin console (internal only, but gateway still sees it)
-      SecRule REQUEST_URI "@beginsWith /auth" \
-        "id:1001,phase:1,pass,nolog,ctl:ruleRemoveTargetById=200001;REQUEST_BODY"
+      SecRule REQUEST_URI "@beginsWith /auth" "id:1001,phase:1,pass,nolog,ctl:ruleRemoveTargetById=200001;REQUEST_BODY"
 
       # MinIO presigned URLs contain long query strings that trip scanner rules
-      SecRule REQUEST_URI "@beginsWith /api/v1/images" \
-        "id:1002,phase:1,pass,nolog,ctl:ruleRemoveById=920230"
+      SecRule REQUEST_URI "@beginsWith /api/v1/images" "id:1002,phase:1,pass,nolog,ctl:ruleRemoveById=920230"
 
       # Unleash feature flags API — sends JSON arrays that look like injections
-      SecRule REQUEST_URI "@beginsWith /api/client" \
-        "id:1003,phase:1,pass,nolog,ctl:ruleRemoveTargetById=942100;REQUEST_BODY"
+      SecRule REQUEST_URI "@beginsWith /api/client" "id:1003,phase:1,pass,nolog,ctl:ruleRemoveTargetById=942100;REQUEST_BODY"
 
       # ── Logging ───────────────────────────────────────────────────────────────
       # Log all detected violations (even in DetectionOnly mode)
