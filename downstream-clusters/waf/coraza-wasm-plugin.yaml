@@ -28,7 +28,7 @@ spec:
     rules: |
       # ── Engine Mode ──────────────────────────────────────────────────────────
       # PHASE A: Detection only. Change to "On" after tuning exclusions.
-      SecRuleEngine DetectionOnly
+      SecRuleEngine on
 
       # ── Request Body Inspection ───────────────────────────────────────────────
       SecRequestBodyAccess On
