@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/part-of: argocd
 data:
   url: http://argocd.192.168.56.10.nip.io
+  admin.enabled: "false"
   timeout.reconciliation: 20s
   oidc.config: |
     name: Keycloak
