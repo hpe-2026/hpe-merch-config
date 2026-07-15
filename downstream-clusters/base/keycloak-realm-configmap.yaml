@@ -84,7 +84,9 @@ data:
               }
             }
           ],
-          "secret": "nitte-client-secret"
+          "secret": "nitte-client-secret",
+          "serviceAccountsEnabled": true,
+          "fullScopeAllowed": true
         },
         {
           "clientId": "nitte-backend",
