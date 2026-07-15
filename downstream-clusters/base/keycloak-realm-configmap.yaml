@@ -83,13 +83,15 @@ data:
                 "usermodel.clientRoleMapping.clientId": "nitte-client"
               }
             }
-          ]
+          ],
+          "secret": "nitte-client-secret"
         },
         {
           "clientId": "nitte-backend",
           "enabled": true,
           "publicClient": false,
-          "serviceAccountsEnabled": true
+          "serviceAccountsEnabled": true,
+          "secret": "nitte-backend-secret"
         }
       ],
       "users": [
@@ -245,7 +247,8 @@ data:
                 "usermodel.clientRoleMapping.clientId": "nitte-client"
               }
             }
-          ]
+          ],
+          "secret": "nitte-client-secret"
         }
       ],
       "users": [
