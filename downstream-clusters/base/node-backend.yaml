@@ -108,7 +108,7 @@ spec:
         - name: AWS_REGION
           value: "us-east-1"
         - name: UNLEASH_API_TOKEN
-          value: "*:development.263d4183e2aa96cc17e0dc33840f6e57cf954d3680a79780a851901c"
+          value: "*:development.04292e4cd549a5634e22dfa9ec38ae21da6ebb8e0449c3de255c40a7"
         resources:
           requests:
             memory: "128Mi"
