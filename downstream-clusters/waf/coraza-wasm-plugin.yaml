@@ -1,0 +1,84 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Coraza WAF — Istio WasmPlugin
+# Deployed at the IngressGateway (istio-system) to inspect ALL inbound traffic
+# before it reaches any VirtualService routing or AuthorizationPolicy.
+#
+# ROLLOUT PHASES:
+#   Phase A (current): SecRuleEngine DetectionOnly — observe only, no blocking
+#   Phase B: Add exclusions → switch SecRuleEngine to On
+#   Phase C: Tune paranoia level (default PL1, increase to PL2 after tuning)
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: extensions.istio.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  name: coraza-waf
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: coraza-waf
+    app.kubernetes.io/component: security
+    app.kubernetes.io/managed-by: argocd
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  url: oci://ghcr.io/corazawaf/coraza-proxy-wasm:v0.7.0
+  phase: AUTHN
+  priority: 10
+  pluginConfig:
+    rules: |
+      # ── Engine Mode ──────────────────────────────────────────────────────────
+      # PHASE A: Detection only. Change to "On" after tuning exclusions.
+      SecRuleEngine DetectionOnly
+
+      # ── Request Body Inspection ───────────────────────────────────────────────
+      SecRequestBodyAccess On
+      SecRequestBodyLimit 13107200
+      SecRequestBodyLimitAction ProcessPartial
+
+      # ── Response Body Inspection ──────────────────────────────────────────────
+      SecResponseBodyAccess On
+      SecResponseBodyMimeType text/plain text/html text/xml application/json
+      SecResponseBodyLimit 524288
+      SecResponseBodyLimitAction ProcessPartial
+
+      # ── OWASP CRS v4 — Core Rule Set ─────────────────────────────────────────
+      # The OCI image bundles these at the paths below.
+      Include @coraza.conf-recommended
+      Include @crs-setup.conf.example
+      Include @owasp_crs/*.conf
+
+      # ── CRS Tuning: Paranoia Level ────────────────────────────────────────────
+      # PL1 = permissive baseline (low false-positives, good starting point)
+      # PL2 = adds stricter checks (tune to PL2 after Phase B is stable)
+      SecAction \
+        "id:900000, \
+        phase:1, \
+        nolog, \
+        pass, \
+        t:none, \
+        setvar:tx.paranoia_level=1"
+
+      # ── Application-Specific Exclusions ──────────────────────────────────────
+      # These prevent false positives from known-good application traffic.
+
+      # Keycloak: OIDC token endpoints send large base64 payloads — exclude body checks
+      SecRule REQUEST_URI "@beginsWith /realms" \
+        "id:1000,phase:1,pass,nolog,ctl:ruleRemoveTargetById=200001;REQUEST_BODY"
+
+      # Keycloak admin console (internal only, but gateway still sees it)
+      SecRule REQUEST_URI "@beginsWith /auth" \
+        "id:1001,phase:1,pass,nolog,ctl:ruleRemoveTargetById=200001;REQUEST_BODY"
+
+      # MinIO presigned URLs contain long query strings that trip scanner rules
+      SecRule REQUEST_URI "@beginsWith /api/v1/images" \
+        "id:1002,phase:1,pass,nolog,ctl:ruleRemoveById=920230"
+
+      # Unleash feature flags API — sends JSON arrays that look like injections
+      SecRule REQUEST_URI "@beginsWith /api/client" \
+        "id:1003,phase:1,pass,nolog,ctl:ruleRemoveTargetById=942100;REQUEST_BODY"
+
+      # ── Logging ───────────────────────────────────────────────────────────────
+      # Log all detected violations (even in DetectionOnly mode)
+      SecAuditEngine RelevantOnly
+      SecAuditLogParts ABIJDEFHZ
+      SecAuditLog /dev/stdout

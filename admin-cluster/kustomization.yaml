@@ -50,6 +50,7 @@ resources:
   - gitops-system/argocd.yaml
   - gitops-system/argocd-rbac-patch.yaml
   - gitops-system/argocd-oidc.yaml
+  - gitops-system/argocd-waf-app.yaml
 
   # --- System Tools ---
   - system/jenkins-casc-config.yaml
