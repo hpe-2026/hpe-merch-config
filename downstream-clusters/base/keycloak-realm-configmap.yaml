@@ -1,4 +1,3 @@
-# Keycloak realm JSON — auto-imported by Keycloak on startup via --import-realm
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -420,7 +419,7 @@ data:
         }
       ]
     }
-
+    
   nitte-users-realm.json: |
     {
       "id": "nitte-users",
@@ -434,13 +433,20 @@ data:
       "roles": {
         "realm": [
           {
-            "name": "platform-admin"
+            "name": "platform-admin",
+            "description": "[RBAC] Platform administrator with full system access"
           },
           {
-            "name": "alumni-verified"
+            "name": "alumni-verified",
+            "description": "[RBAC] Verified alumni with purchasing access"
           },
           {
-            "name": "non_alumni"
+            "name": "non_alumni",
+            "description": "Non-alumni user with limited access"
+          },
+          {
+            "name": "mongo_writer",
+            "description": "Internal service role for MongoDB write access"
           }
         ]
       },
@@ -449,7 +455,6 @@ data:
           "clientId": "nitte-client",
           "enabled": true,
           "publicClient": false,
-          "secret": "nitte-client-secret",
           "directAccessGrantsEnabled": true,
           "standardFlowEnabled": true,
           "redirectUris": [
@@ -459,13 +464,47 @@ data:
           "webOrigins": [
             "http://frontend.192.168.56.200.nip.io",
             "http://admin.192.168.56.200.nip.io"
+          ],
+          "defaultClientScopes": [
+            "openid",
+            "profile",
+            "email",
+            "roles"
+          ],
+          "protocolMappers": [
+            {
+              "name": "realm-roles",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-realm-role-mapper",
+              "config": {
+                "claim.name": "realm_access.roles",
+                "jsonType.label": "String",
+                "multivalued": "true",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true"
+              }
+            },
+            {
+              "name": "client-roles",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-client-role-mapper",
+              "config": {
+                "claim.name": "resource_access.${client_id}.roles",
+                "jsonType.label": "String",
+                "multivalued": "true",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true",
+                "usermodel.clientRoleMapping.clientId": "nitte-client"
+              }
+            }
           ]
         },
         {
           "clientId": "nitte-backend",
           "enabled": true,
           "publicClient": false,
-          "secret": "nitte-backend-secret",
           "serviceAccountsEnabled": true
         }
       ],
@@ -475,47 +514,62 @@ data:
           "email": "admin@nitte.edu",
           "enabled": true,
           "emailVerified": true,
-          "credentials": [
-            {
-              "type": "password",
-              "value": "admin@123",
-              "temporary": false
-            }
-          ],
           "realmRoles": [
             "platform-admin"
-          ]
+          ],
+          "clientRoles": {
+            "nitte-client": [
+              "product:create",
+              "product:update",
+              "product:delete",
+              "product:read-all",
+              "order:create",
+              "order:update",
+              "order:read-all",
+              "user:manage"
+            ]
+          }
         },
         {
           "username": "alumni@nitte.edu",
           "email": "alumni@nitte.edu",
           "enabled": true,
           "emailVerified": true,
-          "credentials": [
-            {
-              "type": "password",
-              "value": "alumni@123",
-              "temporary": false
-            }
-          ],
           "realmRoles": [
             "alumni-verified"
-          ]
+          ],
+          "clientRoles": {
+            "nitte-client": [
+              "order:create",
+              "order:update",
+              "order:read-own"
+            ]
+          }
         },
         {
           "username": "guest_user",
           "email": "guest_user@alumni-shop.local",
           "enabled": true,
-          "credentials": [
-            {
-              "type": "password",
-              "value": "Guest@123",
-              "temporary": false
-            }
-          ],
           "realmRoles": [
             "non_alumni"
           ]
+        },
+        {
+          "username": "service-account-nitte-client",
+          "enabled": true,
+          "serviceAccountClientId": "nitte-client",
+          "realmRoles": [
+            "mongo_writer"
+          ],
+          "clientRoles": {
+            "realm-management": [
+              "manage-users",
+              "view-users",
+              "query-users",
+              "manage-realm",
+              "view-realm"
+            ]
+          }
         }
       ],
       "eventsListeners": [
@@ -535,7 +589,12 @@ data:
       "roles": {
         "realm": [
           {
-            "name": "merchant-admin"
+            "name": "merchant-admin",
+            "description": "[RBAC] Merchant administrator - can manage all resources for their merchant"
+          },
+          {
+            "name": "merchant-staff",
+            "description": "[RBAC] Merchant staff - limited access to merchant resources"
           }
         ]
       },
@@ -544,7 +603,6 @@ data:
           "clientId": "nitte-client",
           "enabled": true,
           "publicClient": false,
-          "secret": "nitte-merchant-client-secret",
           "directAccessGrantsEnabled": true,
           "standardFlowEnabled": true,
           "redirectUris": [
@@ -553,6 +611,35 @@ data:
           ],
           "webOrigins": [
             "http://merchant.192.168.56.200.nip.io"
+          ],
+          "protocolMappers": [
+            {
+              "name": "realm-roles",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-realm-role-mapper",
+              "config": {
+                "claim.name": "realm_access.roles",
+                "jsonType.label": "String",
+                "multivalued": "true",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true"
+              }
+            },
+            {
+              "name": "client-roles",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-client-role-mapper",
+              "config": {
+                "claim.name": "resource_access.${client_id}.roles",
+                "jsonType.label": "String",
+                "multivalued": "true",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true",
+                "usermodel.clientRoleMapping.clientId": "nitte-client"
+              }
+            }
           ]
         }
       ],
@@ -562,19 +649,20 @@ data:
           "email": "merchant-admin@nitte.edu",
           "enabled": true,
           "emailVerified": true,
-          "credentials": [
-            {
-              "type": "password",
-              "value": "MerchantAdmin@123",
-              "temporary": false
-            }
-          ],
           "realmRoles": [
             "merchant-admin"
           ],
           "attributes": {
             "merchant_id": [
               "nitte-official-store"
+            ]
+          },
+          "clientRoles": {
+            "nitte-client": [
+              "product:create",
+              "product:update",
+              "product:delete",
+              "order:read-all"
             ]
           }
         },
@@ -583,19 +671,20 @@ data:
           "email": "amazon-merchant@amazon.com",
           "enabled": true,
           "emailVerified": true,
-          "credentials": [
-            {
-              "type": "password",
-              "value": "Amazon@123",
-              "temporary": false
-            }
-          ],
           "realmRoles": [
             "merchant-admin"
           ],
           "attributes": {
             "merchant_id": [
               "amazon-store"
+            ]
+          },
+          "clientRoles": {
+            "nitte-client": [
+              "product:create",
+              "product:update",
+              "product:delete",
+              "order:read-all"
             ]
           }
         },
@@ -604,19 +693,20 @@ data:
           "email": "flipkart-merchant@flipkart.com",
           "enabled": true,
           "emailVerified": true,
-          "credentials": [
-            {
-              "type": "password",
-              "value": "Flipkart@123",
-              "temporary": false
-            }
-          ],
           "realmRoles": [
             "merchant-admin"
           ],
           "attributes": {
             "merchant_id": [
               "flipkart-store"
+            ]
+          },
+          "clientRoles": {
+            "nitte-client": [
+              "product:create",
+              "product:update",
+              "product:delete",
+              "order:read-all"
             ]
           }
         }
