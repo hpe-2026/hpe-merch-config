@@ -21,7 +21,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway
-  url: oci://ghcr.io/corazawaf/coraza-proxy-wasm:v0.7.0
+  url: oci://ghcr.io/corazawaf/coraza-proxy-wasm:0.6.0
   phase: AUTHN
   priority: 10
   pluginConfig:
