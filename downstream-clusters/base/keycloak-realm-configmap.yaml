@@ -528,7 +528,14 @@ data:
               "order:read-all",
               "user:manage"
             ]
-          }
+          },
+          "credentials": [
+            {
+              "type": "password",
+              "value": "admin@123",
+              "temporary": false
+            }
+          ]
         },
         {
           "username": "alumni@nitte.edu",
@@ -544,7 +551,14 @@ data:
               "order:update",
               "order:read-own"
             ]
-          }
+          },
+          "credentials": [
+            {
+              "type": "password",
+              "value": "alumni@123",
+              "temporary": false
+            }
+          ]
         },
         {
           "username": "guest_user",
@@ -552,6 +566,13 @@ data:
           "enabled": true,
           "realmRoles": [
             "non_alumni"
+          ],
+          "credentials": [
+            {
+              "type": "password",
+              "value": "Guest@123",
+              "temporary": false
+            }
           ]
         },
         {
@@ -664,7 +685,14 @@ data:
               "product:delete",
               "order:read-all"
             ]
-          }
+          },
+          "credentials": [
+            {
+              "type": "password",
+              "value": "MerchantAdmin@123",
+              "temporary": false
+            }
+          ]
         },
         {
           "username": "amazon-merchant@amazon.com",
@@ -686,7 +714,14 @@ data:
               "product:delete",
               "order:read-all"
             ]
-          }
+          },
+          "credentials": [
+            {
+              "type": "password",
+              "value": "Amazon@123",
+              "temporary": false
+            }
+          ]
         },
         {
           "username": "flipkart-merchant@flipkart.com",
@@ -708,7 +743,14 @@ data:
               "product:delete",
               "order:read-all"
             ]
-          }
+          },
+          "credentials": [
+            {
+              "type": "password",
+              "value": "Flipkart@123",
+              "temporary": false
+            }
+          ]
         }
       ],
       "eventsListeners": [
