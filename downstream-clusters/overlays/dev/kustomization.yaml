@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: nitte-dev
 
 resources:
+  - prometheus-scrape-policies.yaml
   - namespace.yaml
   - ../../base
   - mesh.yaml

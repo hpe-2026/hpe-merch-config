@@ -1,0 +1,45 @@
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: prometheus-scrape-allow
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: node-backend
+  rules:
+  - to:
+    - operation:
+        ports: ["3000"]
+        paths: ["/metrics"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: prometheus-scrape-python
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: python-service
+  rules:
+  - to:
+    - operation:
+        ports: ["8000"]
+        paths: ["/metrics"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: prometheus-scrape-notification
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: notification-service
+  rules:
+  - to:
+    - operation:
+        ports: ["9100"]
+        paths: ["/metrics"]
