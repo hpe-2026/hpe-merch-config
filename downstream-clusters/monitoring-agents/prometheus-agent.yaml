@@ -114,10 +114,10 @@ spec:
           value: "dev"   # Override to "prod" in prod overlay
         resources:
           requests:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "256Mi"
+            memory: "512Mi"
             cpu: "300m"
       volumes:
       - name: prometheus-agent-config
