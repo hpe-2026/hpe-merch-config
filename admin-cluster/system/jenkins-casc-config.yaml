@@ -14,19 +14,24 @@ data:
       # Using local security realm so Jenkins starts reliably without requiring
       # Keycloak to be running. Keycloak SSO can be re-enabled once the pipeline
       # is stable (see docs/CICD_PIPELINE.md for the OIC CasC snippet).
+      # ── Security — Keycloak SSO via OpenID Connect ────────────────────────
       securityRealm:
-        local:
-          allowsSignup: false
-          enableCaptcha: false
-          users:
-            - id: "local-admin"
-              name: "Local Admin"
-              password: "LocalAdmin@123"
-              properties:
-                - "apiTokenProperty"
-                - "mailer"
-                - preferredProvider:
-                    providerId: "default"
+        oic:
+          clientId: "jenkins-client"
+          clientSecret: "jenkins-client-secret"
+          serverConfiguration:
+            manual:
+              authorizationServerUrl: "http://keycloak.192.168.56.10.nip.io/realms/nitte-realm/protocol/openid-connect/auth"
+              tokenServerUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/token"
+              jwksServerUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/certs"
+              userInfoServerUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/userinfo"
+              issuer: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm"
+              endSessionUrl: "http://keycloak.192.168.56.10.nip.io/realms/nitte-realm/protocol/openid-connect/logout"
+              scopes: "openid email"
+              tokenAuthMethod: "client_secret_post"
+          userNameField: "sub"
+          disableSslVerification: true
+          logoutFromOpenidProvider: false
 
       authorizationStrategy:
         loggedInUsersCanDoAnything:
@@ -74,7 +79,7 @@ data:
                     resourceRequestMemory: "1Gi"
                     resourceLimitCpu: "2"
                     resourceLimitMemory: "2Gi"
-                  # security container: runs Trivy vulnerability scans and SBOM generation
+                    # security container: runs Trivy vulnerability scans and SBOM generation
                   - name: "security"
                     image: "aquasec/trivy:latest"
                     command: "sleep"
@@ -98,6 +103,12 @@ data:
                   username: "admin"
                   password: "nexus-admin-123"
                   description: "Nexus admin credentials"
+                  scope: GLOBAL
+              - usernamePassword:
+                  id: "github-pat"
+                  username: "hpe-2026-bot"
+                  password: "ghp_REPLACE_WITH_REAL_PAT"
+                  description: "GitHub PAT for hpe-merch-config push"
                   scope: GLOBAL
 
     # ── Unclassified ──────────────────────────────────────────────────────────
