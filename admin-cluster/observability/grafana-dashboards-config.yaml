@@ -354,7 +354,7 @@ data:
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
           "targets": [
             {
-              "expr": "orders_created_total",
+              "expr": "total_orders_count",
               "legendFormat": "Orders",
               "refId": "A"
             }
@@ -375,7 +375,7 @@ data:
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
           "targets": [
             {
-              "expr": "user_registrations_total",
+              "expr": "total_users_count",
               "legendFormat": "Registrations",
               "refId": "A"
             }
@@ -434,7 +434,7 @@ data:
           },
           "targets": [
             {
-              "expr": "rate(orders_created_total[5m]) * 60",
+              "expr": "rate(total_orders_count[5m]) * 60",
               "legendFormat": "orders/min",
               "refId": "A"
             }
