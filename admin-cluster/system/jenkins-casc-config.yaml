@@ -20,19 +20,13 @@ data:
           clientId: "jenkins-client"
           clientSecret: "jenkins-client-secret"
           serverConfiguration:
-            manual:
-              authorizationServerUrl: "http://keycloak.192.168.56.10.nip.io/realms/nitte-realm/protocol/openid-connect/auth"
-              tokenServerUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/token"
-              jwksServerUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/certs"
-              userInfoServerUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/protocol/openid-connect/userinfo"
-              issuer: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm"
-              endSessionUrl: "http://keycloak.192.168.56.10.nip.io/realms/nitte-realm/protocol/openid-connect/logout"
-              scopes: "openid email"
-              tokenAuthMethod: "client_secret_post"
+            wellKnown:
+              wellKnownOpenIDConfigurationUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/.well-known/openid-configuration"
+              scopesOverride: "openid email"
+          tokenAuthMethod: "client_secret_post"
           userNameField: "sub"
           disableSslVerification: true
           logoutFromOpenidProvider: false
-
       authorizationStrategy:
         loggedInUsersCanDoAnything:
           allowAnonymousRead: false
