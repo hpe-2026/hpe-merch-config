@@ -23,7 +23,7 @@ data:
             wellKnown:
               wellKnownOpenIDConfigurationUrl: "http://keycloak.identity-core.svc.cluster.local:8080/realms/nitte-realm/.well-known/openid-configuration"
               scopesOverride: "openid email"
-          tokenAuthMethod: "client_secret_post"
+        
           userNameField: "sub"
           disableSslVerification: true
           logoutFromOpenidProvider: false
