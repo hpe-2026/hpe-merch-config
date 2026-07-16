@@ -43,3 +43,41 @@ spec:
     - operation:
         ports: ["9100"]
         paths: ["/metrics"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: keycloak-to-notification
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: notification-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/nitte-dev/sa/default
+  - to:
+    - operation:
+        ports: ["9100"]
+        paths: ["/api/v1/events", "/health", "/metrics"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: keycloak-to-notification
+  namespace: nitte-dev
+spec:
+  selector:
+    matchLabels:
+      app: notification-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/nitte-dev/sa/default
+  - to:
+    - operation:
+        ports: ["9100"]
+        paths: ["/api/v1/events", "/health", "/metrics"]
