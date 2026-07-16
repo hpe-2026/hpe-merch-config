@@ -5,6 +5,18 @@
 
 ---
 
+## 🚀 Deployment Status (Completed 2026-07-15)
+
+✅ **WAF is successfully deployed and enforcing in STRICT mode (`SecRuleEngine On`).**
+
+**Critical configuration changes made during deployment (deviations from the original plan below):**
+- The image tag `v0.7.0` does not exist; we deployed `0.6.0` instead.
+- The `pluginConfig` schema in `0.6.0` requires `default_directives` and `directives_map`.
+- The embedded rule files are aliased as `@demo-conf` and `@crs-setup-conf` (not `@coraza.conf-recommended`).
+- Removed the 13MB `SecRequestBodyLimit` override and disabled `SecResponseBodyAccess` to prevent WASM `500 Internal Server Error` memory panics.
+- Flattened all multi-line ModSecurity `SecRule` and `SecAction` statements into single lines to avoid fatal parsing errors caused by trailing whitespace after `\` characters.
+
+---
 ## Context & Goals
 
 **What this plan adds:** A Coraza WAF layer deployed as an Istio `WasmPlugin` at the `istio-ingressgateway`. This is the first line of HTTP-level defence — filtering SQLi, XSS, RCE, path traversal, and protocol attacks via the OWASP Core Rule Set (CRS v4) — before requests reach any application service.

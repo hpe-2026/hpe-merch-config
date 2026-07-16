@@ -1,6 +1,6 @@
 # HPE Merchandise Config — Live Context
 
-> **Last updated:** 2026-07-05
+> **Last updated:** 2026-07-15
 > **Working cluster:** `admin` (single-node RKE2 on `mastervm`)
 > **Cluster IP:** `192.168.56.10` (admin hub in the hub-and-spoke plan)
 
@@ -225,6 +225,7 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 | Provision Dev cluster on `192.168.56.11` | 🟡 Medium | ✅ DONE |
 | Provision Prod cluster on `192.168.56.12` | 🟡 Medium | ✅ DONE |
 | Register dev/prod clusters with ArgoCD | 🟡 Medium | ✅ DONE |
+| Deploy Edge WAF (Coraza/Istio) to IngressGateway | 🔴 High | ✅ DONE |
 | Wire Keycloak SSO into Jenkins, Grafana, Nexus | 🟡 Medium | Not Started |
 | Wire observability stack (Thanos receiver, Promtail→Loki, Grafana datasources) | 🟡 Medium | Not Started |
 | Configure Istio service mesh on downstream clusters | 🟢 Low | ✅ DONE |
@@ -251,3 +252,4 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 | 2026-07-05 | Deleted orphaned `downstream-clusters/apps/` | Legacy folder unused in current hub-and-spoke architecture. |
 | 2026-07-05 | Fixed MinIO image tag | Changed to `RELEASE.2025-09-07T16-13-09Z` (confirmed available on Docker Hub). Added `strategy: Recreate` to prevent PVC deadlock. |
 | 2026-07-12 | Full Istio Service Mesh Cutover | Deployed Istio to dev cluster, migrated all ingress traffic from nginx to Istio ingressgateway (MetalLB IP 192.168.56.201), enabled STRICT mTLS, added ArgoCD ignoreDifferences for StatefulSet drift. |
+| 2026-07-15 | Coraza WAF Deployment | Integrated Coraza WAF as an Istio WasmPlugin on the IngressGateway. Fixed image tag (`0.6.0`), flattened ModSecurity syntax, removed memory limits, and corrected `directives_map` schema. WAF is in STRICT blocking mode. |
