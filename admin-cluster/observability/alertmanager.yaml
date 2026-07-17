@@ -30,6 +30,9 @@ spec:
           mountPath: /etc/alertmanager/alertmanager.yml
           subPath: alertmanager.yml
           readOnly: true
+        - name: alertmanager-webhooks
+          mountPath: /etc/alertmanager/secrets
+          readOnly: true
         resources:
           requests:
             memory: "64Mi"
@@ -50,6 +53,9 @@ spec:
           items:
           - key: alertmanager.yml
             path: alertmanager.yml
+      - name: alertmanager-webhooks
+        secret:
+          secretName: alertmanager-webhooks      
 ---
 apiVersion: v1
 kind: Service
