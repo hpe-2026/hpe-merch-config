@@ -102,7 +102,7 @@ spec:
         - { name: GOALERT_DB_URL, value: "postgres://goalert:goalert@goalert-db:5432/goalert?sslmode=disable" }
         - { name: GOALERT_LISTEN, value: "0.0.0.0:8081" }
         - { name: GOALERT_DATA_ENCRYPTION_KEY, value: "nitte-goalert-lab-key-change-me" }
-        - { name: GOALERT_PUBLIC_URL, value: "http://goalert.nitte.local:8080" }
+        - { name: GOALERT_PUBLIC_URL, value: "http://goalert.192.168.56.10.nip.io" }
         ports:
         - containerPort: 8081
         resources:

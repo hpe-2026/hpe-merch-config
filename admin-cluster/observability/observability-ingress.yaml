@@ -105,3 +105,22 @@ spec:
     nodePort: 30200
   type: NodePort
 ---
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: goalert
+  namespace: goalert
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: goalert.192.168.56.10.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: goalert
+            port:
+              number: 8081
