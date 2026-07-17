@@ -49,7 +49,7 @@ images:
     newTag: "1.1.1-86fd7b5"
   - name: merchant-portal
     newName: 192.168.56.10:30082/merch-docker/merchant-portal
-    newTag: "1.0.1-a040528"
+    newTag: "f8953c6"
   - name: notification-service
     newName: 192.168.56.10:30082/merch-docker/notification-service
     newTag: 1.0.1-a040528
