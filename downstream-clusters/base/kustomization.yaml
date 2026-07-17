@@ -37,22 +37,22 @@ resources:
 images:
   - name: node-backend
     newName: 192.168.56.10:30082/merch-docker/node-backend
-    newTag: "1.0.1-a040528"
+    newTag: "e91a10e"
   - name: python-service
     newName: 192.168.56.10:30082/merch-docker/python-service
-    newTag: 1.0.1-a040528
+    newTag: e91a10e
   - name: frontend
     newName: 192.168.56.10:30082/merch-docker/frontend
-    newTag: "6cf2742"
+    newTag: "e91a10e"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/merch-docker/admin-dashboard
-    newTag: "1.1.1-86fd7b5"
+    newTag: "e91a10e"
   - name: merchant-portal
     newName: 192.168.56.10:30082/merch-docker/merchant-portal
-    newTag: "f8953c6"
+    newTag: "e91a10e"
   - name: notification-service
     newName: 192.168.56.10:30082/merch-docker/notification-service
-    newTag: 1.0.1-a040528
+    newTag: e91a10e
   - name: loki-rbac-proxy
     newName: 192.168.56.10:30082/loki-rbac-proxy
 # Mount the correct nginx.conf (per app port) over the baked-in default
