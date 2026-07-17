@@ -97,7 +97,7 @@ spec:
       - name: goalert
         image: goalert/goalert:v0.30.0
         imagePullPolicy: IfNotPresent
-        args: ['goalert', '--log-engine-cycles']
+        args: ['goalert', '--log-engine-cycles','-v']
         env:
         - { name: GOALERT_DB_URL, value: "postgres://goalert:goalert@goalert-db:5432/goalert?sslmode=disable" }
         - { name: GOALERT_LISTEN, value: "0.0.0.0:8081" }
