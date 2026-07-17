@@ -34,8 +34,10 @@ spec:
         # Repositories → Create repository → docker (hosted) → HTTP port: 8082).
         # IMPORTANT: You MUST create this repo in the Nexus UI before running
         # the Jenkins pipeline. See docs/CICD_PIPELINE.md for steps.
-        - name: docker-registry
+        - name: docker-hosted
           containerPort: 8082
+        - name: docker-group
+          containerPort: 8083
         env:
         - name: INSTALL4J_ADD_VM_PARAMS
           value: "-Xms512m -Xmx1g -XX:MaxDirectMemorySize=512m"
@@ -117,8 +119,12 @@ spec:
   selector:
     app: nexus
   ports:
-  - name: docker-registry
+  - name: docker-hosted
     port: 8082
     targetPort: 8082
     nodePort: 30082
+  - name: docker-group
+    port: 8083
+    targetPort: 8083
+    nodePort: 30083
   type: NodePort
