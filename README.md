@@ -9,6 +9,14 @@ For a step-by-step demo guide, see **[DEMO.md](./DEMO.md)**.
 
 ---
 
+## Project Overview
+
+- **On-Premise Microservices Architecture**: Designed and implemented a robust on-premise microservices architecture, ensuring high availability, scalability, and data sovereignty.
+- **Open-Source Software (OSS) Ecosystem**: Leveraged a wide array of OSS tools to build out the infrastructure, reducing licensing costs while maintaining enterprise-grade reliability.
+- **OSS Evaluation & Integration**: Conducted comprehensive analysis and comparison of various OSS alternatives. Successfully integrated selected tools by developing custom mitigations and workarounds to address any missing features, ensuring seamless interoperability.
+
+---
+
 ## Architecture
 
 ```
