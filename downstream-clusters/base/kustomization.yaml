@@ -40,7 +40,7 @@ images:
     newTag: "68f5f99"
   - name: python-service
     newName: 192.168.56.10:30082/merch-docker/python-service
-    newTag: 68f5f99
+    newTag: db278e4
   - name: frontend
     newName: 192.168.56.10:30082/merch-docker/frontend
     newTag: "ee5f8f0"
