@@ -96,8 +96,7 @@ spec:
           mountPath: /etc/grafana/provisioning/dashboards
           readOnly: true
         - name: waf-dashboard
-          mountPath: /etc/grafana/provisioning/dashboards/waf-security.json
-          subPath: waf-security.json
+          mountPath: /etc/grafana/provisioning/dashboards-waf
           readOnly: true
         - name: grafana-data
           mountPath: /var/lib/grafana

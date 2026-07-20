@@ -13,6 +13,15 @@ data:
         allowUiUpdates: true
         options:
           path: /etc/grafana/provisioning/dashboards
+      - name: WAF Dashboards
+        orgId: 1
+        folder: Security
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /etc/grafana/provisioning/dashboards-waf
   logs-dashboard.json: |
     {
       "title": "NITTE — All Logs",
