@@ -551,3 +551,4 @@ done
 ---
 
 *Last updated: 2026-07-20 — Coraza WAF v0.6.0, `SecRuleEngine On`*
+
