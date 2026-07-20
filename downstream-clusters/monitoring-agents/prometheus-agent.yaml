@@ -69,6 +69,12 @@ data:
             replacement: $1:$2
             target_label: __address__
 
+      - job_name: promtail-waf
+        static_configs:
+          - targets: ['promtail.nitte-dev.svc.cluster.local:9080']
+            labels:
+              cluster: dev
+
 ---
 apiVersion: apps/v1
 kind: Deployment

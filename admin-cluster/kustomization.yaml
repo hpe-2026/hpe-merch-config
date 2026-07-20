@@ -36,6 +36,7 @@ resources:
   - observability/loki-config-map.yaml
   - observability/grafana-datasources-config.yaml
   - observability/grafana-dashboards-config.yaml
+  - observability/grafana-waf-dashboard-config.yaml
   - observability/prometheus.yaml
   - observability/thanos.yaml
   - observability/loki.yaml

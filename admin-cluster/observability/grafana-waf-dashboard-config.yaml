@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-waf-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  waf-security.json: |
+    {
+      "title": "Coraza WAF — Security Events",
+      "uid": "coraza-waf-security",
+      "tags": ["security", "waf", "coraza"],
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Attack Rate (per minute)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "datasource": { "uid": "thanos-ds" },
+          "targets": [{
+            "expr": "sum(rate(waf_attacks_total[1m])) * 60",
+            "legendFormat": "Attacks/min"
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "fixed", "fixedColor": "red" },
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 5 },
+                  { "color": "red", "value": 20 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "title": "Attacks by Type (last 1h)",
+          "type": "piechart",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "datasource": { "uid": "thanos-ds" },
+          "targets": [{
+            "expr": "sum by (attack_type) (increase(waf_attacks_total[1h]))",
+            "legendFormat": "{{ attack_type }}"
+          }]
+        },
+        {
+          "id": 3,
+          "title": "Total Attacks (24h)",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+          "datasource": { "uid": "thanos-ds" },
+          "targets": [{
+            "expr": "sum(increase(waf_attacks_total[24h]))",
+            "legendFormat": ""
+          }],
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "thresholds" }, "unit": "short" }
+          }
+        },
+        {
+          "id": 4,
+          "title": "WAF Blocked Requests (403s from IngressGW)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+          "datasource": { "uid": "thanos-ds" },
+          "targets": [{
+            "expr": "sum(rate(istio_requests_total{reporter=\"source\", response_code=\"403\", destination_service=~\".*\"}[5m])) by (destination_service_name)",
+            "legendFormat": "{{ destination_service_name }}"
+          }]
+        },
+        {
+          "id": 5,
+          "title": "WAF Raw Logs (Loki)",
+          "type": "logs",
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+          "datasource": { "uid": "loki-ds" },
+          "targets": [{
+            "expr": "{job=\"coraza-waf\"} |= \"coraza\" | line_format \"{{.message}}\"",
+            "legendFormat": ""
+          }],
+          "options": {
+            "showLabels": true,
+            "showTime": true,
+            "sortOrder": "Descending"
+          }
+        },
+        {
+          "id": 6,
+          "title": "Top Attacked URIs (last 1h)",
+          "type": "table",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 30 },
+          "datasource": { "uid": "thanos-ds" },
+          "targets": [{
+            "expr": "topk(10, sum by (uri) (increase(waf_attacks_total[1h])))",
+            "legendFormat": "{{ uri }}",
+            "instant": true,
+            "format": "table"
+          }]
+        },
+        {
+          "id": 7,
+          "title": "Top Triggered Rule IDs (last 1h)",
+          "type": "table",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 30 },
+          "datasource": { "uid": "thanos-ds" },
+          "targets": [{
+            "expr": "topk(10, sum by (rule_id) (increase(waf_attacks_total[1h])))",
+            "legendFormat": "{{ rule_id }}",
+            "instant": true,
+            "format": "table"
+          }]
+        }
+      ],
+      "schemaVersion": 38,
+      "version": 1
+    }

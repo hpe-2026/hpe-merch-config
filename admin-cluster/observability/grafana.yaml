@@ -95,6 +95,10 @@ spec:
         - name: grafana-dashboards
           mountPath: /etc/grafana/provisioning/dashboards
           readOnly: true
+        - name: waf-dashboard
+          mountPath: /etc/grafana/provisioning/dashboards/waf-security.json
+          subPath: waf-security.json
+          readOnly: true
         - name: grafana-data
           mountPath: /var/lib/grafana
         resources:
@@ -117,6 +121,9 @@ spec:
       - name: grafana-dashboards
         configMap:
           name: grafana-dashboards-config
+      - name: waf-dashboard
+        configMap:
+          name: grafana-waf-dashboard
       - name: grafana-data
         persistentVolumeClaim:
           claimName: grafana-pvc

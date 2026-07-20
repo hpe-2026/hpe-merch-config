@@ -37,6 +37,36 @@ data:
               container:
           - labeldrop:
               - filename
+      - job_name: waf-logs
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: coraza-waf
+              cluster: dev
+              __path__: /var/log/pods/istio-system_istio-ingressgateway-*/*/*.log
+        pipeline_stages:
+          - cri: {}
+          - match:
+              selector: '{job="coraza-waf"}'
+              stages:
+                - regex:
+                    expression: '.*\[coraza\]\s+\[(?P<waf_level>[A-Z]+)\].*rule\s+(?P<rule_id>\d+).*\((?P<attack_type>[^)]+)\).*(?P<method>GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(?P<uri>\S+)'
+                - labels:
+                    waf_level:
+                    rule_id:
+                    attack_type:
+                    method:
+                    uri:
+                - metrics:
+                    waf_attacks_total:
+                      type: Counter
+                      description: "Total WAF attack detections by rule and type"
+                      source: rule_id
+                      config:
+                        action: inc
+          - labeldrop:
+              - filename
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -68,6 +98,7 @@ spec:
         args: ["-config.file=/etc/promtail/config.yml"]
         ports:
         - containerPort: 9080
+          name: http-metrics
         volumeMounts:
         - name: promtail-config
           mountPath: /etc/promtail/config.yml

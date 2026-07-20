@@ -112,6 +112,64 @@ data:
             annotations:
               summary: "No orders placed in 30 minutes"
               description: "Zero orders have been created in the last 30 minutes during business hours."
+
+      - name: coraza-waf-attacks
+        interval: 30s
+        rules:
+          - alert: WAFAttackBurst
+            expr: |
+              sum(rate(waf_attacks_total[5m])) > 5
+            for: 1m
+            labels:
+              severity: warning
+              team: security
+            annotations:
+              summary: "WAF attack burst detected"
+              description: "Coraza WAF is detecting more than 5 attacks/min. Possible active scan or attack in progress."
+
+          - alert: WAFHighVolumeAttack
+            expr: |
+              sum(rate(waf_attacks_total[5m])) > 20
+            for: 2m
+            labels:
+              severity: critical
+              team: security
+            annotations:
+              summary: "WAF high-volume attack — possible automated attack"
+              description: "Coraza WAF detecting >20 attacks/min sustained for 2+ minutes. Potential DDoS or scanner."
+
+          - alert: WAFSQLInjectionDetected
+            expr: |
+              sum(rate(waf_attacks_total{rule_id=~"942.*"}[5m])) > 0
+            for: 30s
+            labels:
+              severity: critical
+              team: security
+            annotations:
+              summary: "SQL Injection attack detected by WAF"
+              description: "Coraza WAF has detected SQL injection attempts (OWASP CRS rule 942xxx). Immediate review required."
+
+          - alert: WAFXSSDetected
+            expr: |
+              sum(rate(waf_attacks_total{rule_id=~"941.*"}[5m])) > 2
+            for: 1m
+            labels:
+              severity: warning
+              team: security
+            annotations:
+              summary: "XSS attacks detected by WAF"
+              description: "Cross-site scripting attempts detected. Rule 941xxx triggered multiple times in 5 minutes."
+
+          - alert: WAFRCEOrPathTraversalDetected
+            expr: |
+              sum(rate(waf_attacks_total{rule_id=~"93[02].*"}[5m])) > 0
+            for: 30s
+            labels:
+              severity: critical
+              team: security
+            annotations:
+              summary: "RCE or Path Traversal detected by WAF"
+              description: "High-severity attack: remote code execution or path traversal attempt detected by Coraza WAF."
 kind: ConfigMap
 metadata:
   name: prometheus-rules-config
