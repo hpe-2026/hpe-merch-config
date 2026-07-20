@@ -12,10 +12,18 @@ data:
     echo "[bootstrap] Waiting for Keycloak token endpoint to accept credentials..."
     i=0
     while [ $i -lt 60 ]; do
-      result=$(curl -sf -X POST "${KC_URL}/realms/master/protocol/openid-connect/token" \
-        -d "client_id=admin-cli&grant_type=password&username=admin&password=admin" \
-        2>/dev/null | grep -o '"access_token"' || true)
-      [ -n "$result" ] && echo "[bootstrap] Token endpoint ready." && break
+      echo "[bootstrap] Attempting to get token for user $KEYCLOAK_USER..."
+      # Capture the full response for debugging
+      HTTP_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${KC_URL}/realms/master/protocol/openid-connect/token" \
+        -d "client_id=admin-cli&grant_type=password&username=${KEYCLOAK_USER}&password=${KEYCLOAK_PASSWORD}" || echo "CURL_FAILED")
+      
+      echo "[bootstrap] Keycloak response: $HTTP_RESPONSE"
+      
+      if echo "$HTTP_RESPONSE" | grep -q '"access_token"'; then
+        echo "[bootstrap] Token endpoint ready."
+        break
+      fi
+      
       i=$((i+1))
       sleep 3
     done
@@ -23,13 +31,13 @@ data:
     echo "[bootstrap] Authenticating via kcadm..."
     $KCADM config credentials \
       --server "$KC_URL" --realm master \
-      --user admin --password admin
+      --user "$KEYCLOAK_USER" --password "$KEYCLOAK_PASSWORD"
 
     echo "[bootstrap] Setting master realm login theme to nitte..."
     $KCADM update realms/master -s loginTheme=nitte
 
     echo "[bootstrap] Setting CONFIGURE_TOTP required action on admin user..."
-    ADMIN_ID=$($KCADM get users -r master -q username=admin --fields id \
+    ADMIN_ID=$($KCADM get users -r master -q username="$KEYCLOAK_USER" --fields id \
       | grep '"id"' | head -1 | awk -F'"' '{print $4}')
 
     if [ -n "$ADMIN_ID" ]; then

@@ -33,6 +33,17 @@ spec:
         image: quay.io/keycloak/keycloak:20.0.0
         imagePullPolicy: IfNotPresent
         command: ["/bin/sh", "/bootstrap.sh"]
+        env:
+        - name: KEYCLOAK_USER
+          valueFrom:
+            secretKeyRef:
+              name: admin-secrets
+              key: KEYCLOAK_ADMIN
+        - name: KEYCLOAK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: admin-secrets
+              key: KEYCLOAK_ADMIN_PASSWORD
         volumeMounts:
         - name: bootstrap-script
           mountPath: /bootstrap.sh
