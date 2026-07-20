@@ -1,6 +1,6 @@
 # HPE Merchandise Config — Live Context
 
-> **Last updated:** 2026-07-15
+> **Last updated:** 2026-07-20
 > **Working cluster:** `admin` (single-node RKE2 on `mastervm`)
 > **Cluster IP:** `192.168.56.10` (admin hub in the hub-and-spoke plan)
 
@@ -228,6 +228,7 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 | Deploy Edge WAF (Coraza/Istio) to IngressGateway | 🔴 High | ✅ DONE |
 | Wire Keycloak SSO into Jenkins, Grafana, Nexus | 🟡 Medium | Not Started |
 | Wire observability stack (Thanos receiver, Promtail→Loki, Grafana datasources) | 🟡 Medium | Not Started |
+| WAF Attack Alerting: Promtail WAF scrape job, Prometheus alert rules, GoAlert integration, Grafana WAF dashboard | 🔴 High | Documented — pending implementation (see WAF_ALERTING_OBSERVABILITY.md) |
 | Configure Istio service mesh on downstream clusters | 🟢 Low | ✅ DONE |
 | Expose Dev cluster publicly via NGINX Jump Box | 🟡 Medium | ✅ DONE |
 | End-to-end CI/CD pipeline testing | 🟢 Low | Not Started |
@@ -260,3 +261,4 @@ All services use `<service>.192.168.56.10.nip.io` pattern with the rke2-ingress-
 | 2026-07-19 | Patch `setuptools` Vulnerabilities | Upgraded `setuptools` in `python-service/requirements.txt` from `69.5.1` to `83.0.0` (merged from e2e) to resolve Trivy scan vulnerabilities `CVE-2024-6345` (Remote code execution) and `CVE-2025-47273` (Path Traversal). |
 | 2026-07-19 | Fix Node.js OpenTelemetry `Resource` Error | Updated `tracing.js` in `node-backend` to use `resourceFromAttributes` instead of `new Resource()`, as `Resource` is only exported as a type in `@opentelemetry/resources` >= 2.x. |
 | 2026-07-19 | Fix Python OpenTelemetry `pkg_resources` Error | Upgraded `opentelemetry-api` and `opentelemetry-sdk` to `1.44.0`, and instrumentation packages to `0.65b0` in `python-service/requirements.txt`. This drops the hard dependency on `pkg_resources` which was entirely removed in `setuptools` 83.0.0. The initial `0.48b0` attempt still relied on `pkg_resources`. |
+| 2026-07-20 | WAF Alerting & Grafana Observability Plan | Documented end-to-end integration: Promtail WAF scrape job (istio-system logs), Loki label extraction, Prometheus counter metric (`waf_attacks_total`), 5 alert rules (SQLi, XSS, RCE, burst, high-volume), GoAlert webhook wiring, and a 7-panel Grafana WAF Security dashboard. See `docs/WAF_ALERTING_OBSERVABILITY.md`. |
