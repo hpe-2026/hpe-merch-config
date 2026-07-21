@@ -46,7 +46,6 @@ resources:
   - observability/jaeger.yaml
   - observability/goalert.yaml
   - observability/observability-ingress.yaml
-  - observability/promtail-waf.yaml
 
   # --- GitOps Engine ---
   - gitops-system/argocd.yaml
