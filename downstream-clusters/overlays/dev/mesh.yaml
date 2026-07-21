@@ -422,6 +422,10 @@ spec:
         - operation:
             ports:
               - "3000"
+    - to:
+        - operation:
+            ports:
+              - "3000"
 
 ---
 apiVersion: security.istio.io/v1beta1
