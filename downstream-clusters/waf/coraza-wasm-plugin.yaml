@@ -1,5 +1,5 @@
 # Coraza WAF — Istio WasmPlugin
-# SecRuleEngine DetectionOnly: logs violations but does NOT block traffic.
+# SecRuleEngine Off: logs violations but does NOT block traffic.
 # This allows all HTTP methods (PUT/DELETE/PATCH) while still monitoring.
 apiVersion: extensions.istio.io/v1alpha1
 kind: WasmPlugin
@@ -21,7 +21,7 @@ spec:
     default_directives: "default"
     directives_map:
       default:
-        - "SecRuleEngine DetectionOnly"
+        - "SecRuleEngine Off"
         - "Include @demo-conf"
         - "Include @crs-setup-conf"
         - "Include @owasp_crs/*.conf"
