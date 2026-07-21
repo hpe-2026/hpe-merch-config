@@ -1,13 +1,6 @@
-# ─────────────────────────────────────────────────────────────────────────────
 # Coraza WAF — Istio WasmPlugin
-# Deployed at the IngressGateway (istio-system) to inspect ALL inbound traffic
-# before it reaches any VirtualService routing or AuthorizationPolicy.
-#
-# ROLLOUT PHASES:
-#   Phase A (current): SecRuleEngine DetectionOnly — observe only, no blocking
-#   Phase B: Add exclusions → switch SecRuleEngine to On
-#   Phase C: Tune paranoia level (default PL1, increase to PL2 after tuning)
-# ─────────────────────────────────────────────────────────────────────────────
+# SecRuleEngine DetectionOnly: logs violations but does NOT block traffic.
+# This allows all HTTP methods (PUT/DELETE/PATCH) while still monitoring.
 apiVersion: extensions.istio.io/v1alpha1
 kind: WasmPlugin
 metadata:
@@ -28,7 +21,7 @@ spec:
     default_directives: "default"
     directives_map:
       default:
-        - "SecRuleEngine On"
+        - "SecRuleEngine DetectionOnly"
         - "Include @demo-conf"
         - "Include @crs-setup-conf"
         - "Include @owasp_crs/*.conf"
