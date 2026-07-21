@@ -42,18 +42,16 @@ data:
             labels:
               service: notification-service
 
-      # Federation scrape from Thanos Query so Admin Prometheus can evaluate
-      # WAF alert rules. waf_attacks_total is written by promtail (dev cluster)
-      # via prometheus-agent remote_write -> Thanos Receiver -> Thanos Query.
-      - job_name: thanos-federation
-        honor_labels: true
-        metrics_path: /federate
-        params:
-          match[]:
-            - '{__name__=~"waf_attacks_total.*"}'
-            - '{__name__=~"istio_requests_total.*"}'
-        static_configs:
-          - targets: ['thanos-query.observability.svc.cluster.local:9090']
+    # remote_read from Thanos Query so Admin Prometheus alert rules can
+    # evaluate cross-cluster metrics (waf_attacks_total, istio_requests_total).
+    # waf_attacks_total flows: promtail (dev) -> prometheus-agent remote_write
+    #   -> Thanos Receiver -> Thanos Query -> here via remote_read.
+    # Thanos Query does NOT implement /federate (gives 404), but DOES implement
+    # the Prometheus remote_read API at /api/v1/read.
+    remote_read:
+      - url: http://thanos-query.observability.svc.cluster.local:9090/api/v1/read
+        read_recent: true
+        name: thanos
 kind: ConfigMap
 metadata:
   name: prometheus-main-config
