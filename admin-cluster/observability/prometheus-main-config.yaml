@@ -42,14 +42,21 @@ data:
             labels:
               service: notification-service
 
-      # Federation scrape from Thanos Query so WAF + cross-cluster alert rules
-      # can evaluate waf_attacks_total (written by prometheus-agent via remote_write)
+      # Scrape waf_attacks_total directly from promtail-waf running on this (admin) cluster
+      # promtail-waf DaemonSet is in observability namespace and watches istio-system logs
+      - job_name: promtail-waf
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['promtail-waf.observability.svc.cluster.local:9082']
+            labels:
+              cluster: admin
+
+      # Federation scrape from Thanos Query for cross-cluster istio metrics
       - job_name: thanos-federation
         honor_labels: true
         metrics_path: /federate
         params:
           match[]:
-            - '{__name__=~"waf_attacks_total.*"}'
             - '{__name__=~"istio_requests_total.*"}'
         static_configs:
           - targets: ['thanos-query.observability.svc.cluster.local:9090']
