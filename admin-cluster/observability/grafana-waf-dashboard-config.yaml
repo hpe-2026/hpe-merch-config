@@ -69,7 +69,7 @@ data:
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
           "datasource": { "uid": "thanos-ds" },
           "targets": [{
-            "expr": "sum(rate(istio_requests_total{reporter=\"source\", response_code=\"403\", destination_service=~\".*\"}[5m])) by (destination_service_name)",
+            "expr": "sum(rate(istio_requests_total{reporter=\"destination\", response_code=\"403\"}[5m])) by (destination_service_name)",
             "legendFormat": "{{ destination_service_name }}"
           }]
         },

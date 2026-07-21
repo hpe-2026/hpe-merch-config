@@ -41,6 +41,18 @@ data:
           - targets: ['notification-service:9100']
             labels:
               service: notification-service
+
+      # Federation scrape from Thanos Query so WAF + cross-cluster alert rules
+      # can evaluate waf_attacks_total (written by prometheus-agent via remote_write)
+      - job_name: thanos-federation
+        honor_labels: true
+        metrics_path: /federate
+        params:
+          match[]:
+            - '{__name__=~"waf_attacks_total.*"}'
+            - '{__name__=~"istio_requests_total.*"}'
+        static_configs:
+          - targets: ['thanos-query.observability.svc.cluster.local:9090']
 kind: ConfigMap
 metadata:
   name: prometheus-main-config

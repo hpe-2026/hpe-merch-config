@@ -6,6 +6,7 @@ metadata:
   labels:
     app: promtail
 spec:
+  clusterIP: None   # Headless — Prometheus resolves individual pod IPs (needed for DaemonSet)
   selector:
     app: promtail
   ports:
