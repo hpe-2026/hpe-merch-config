@@ -51,12 +51,18 @@ data:
               selector: '{job="coraza-waf"}'
               stages:
                 - regex:
-                    expression: '.*\[coraza\]\s+\[(?P<waf_level>[A-Z]+)\].*rule\s+(?P<rule_id>\d+).*\((?P<attack_type>[^)]+)\).*(?P<method>GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(?P<uri>\S+)'
+                    # Actual Coraza WASM log format (Envoy/Istio OWASP CRS 4.x):
+                    # 2026-...Z  critical  envoy wasm ...  wasm log istio-system.coraza-waf:
+                    # [client "IP"] Coraza: Warning. ... [id "942100"] ... [severity "critical"] ... [uri "/path"]
+                    expression: 'wasm log istio-system\.coraza-waf:.*\[id "(?P<rule_id>\d+)"\].*\[severity "(?P<waf_level>[^"]+)"\].*\[uri "(?P<uri>[^"]+)"\]'
+                - regex:
+                    # Extract attack type from tag if present (e.g. [tag "attack-sqli"] -> attack_type=sqli)
+                    # Only present on Warning lines, not on Access-denied/blocking-evaluation lines
+                    expression: '\[tag "attack-(?P<attack_type>[^"]+)"\]'
                 - labels:
                     waf_level:
                     rule_id:
                     attack_type:
-                    method:
                     uri:
                 - metrics:
                     waf_attacks_total:
