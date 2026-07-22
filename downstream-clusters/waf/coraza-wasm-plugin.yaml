@@ -1,6 +1,12 @@
+# ─────────────────────────────────────────────────────────────────────────────
 # Coraza WAF — Istio WasmPlugin
-# SecRuleEngine Off: logs violations but does NOT block traffic.
-# This allows all HTTP methods (PUT/DELETE/PATCH) while still monitoring.
+# Deployed at the IngressGateway (istio-system) to inspect ALL inbound traffic
+# before it reaches any VirtualService routing or AuthorizationPolicy.
+#
+# SecRuleEngine On — full blocking mode.
+# PUT/PATCH/DELETE are explicitly allowed via tx.allowed_methods (SecAction
+# id:900200) — this is the correct OWASP CRS method, not disabling the engine.
+# ─────────────────────────────────────────────────────────────────────────────
 apiVersion: extensions.istio.io/v1alpha1
 kind: WasmPlugin
 metadata:
@@ -21,11 +27,15 @@ spec:
     default_directives: "default"
     directives_map:
       default:
-        - "SecRuleEngine Off"
+        - "SecRuleEngine On"
         - "Include @demo-conf"
         - "Include @crs-setup-conf"
         - "Include @owasp_crs/*.conf"
         - "SecAction \"id:900000,phase:1,nolog,pass,t:none,setvar:tx.paranoia_level=1\""
+        # Allow PUT, PATCH, DELETE — required for REST API (product updates, merchant portal).
+        # CRS rule 911100 checks tx.allowed_methods; extending it here is the correct
+        # OWASP CRS approach (vs disabling SecRuleEngine or turning WAF Off).
+        - "SecAction \"id:900200,phase:1,nolog,pass,t:none,setvar:'tx.allowed_methods=GET HEAD POST OPTIONS PUT PATCH DELETE'\""
         - "SecRule REQUEST_URI \"@beginsWith /realms\" \"id:1000,phase:1,pass,nolog,ctl:ruleRemoveTargetById=200001;REQUEST_BODY\""
         - "SecRule REQUEST_URI \"@beginsWith /auth\" \"id:1001,phase:1,pass,nolog,ctl:ruleRemoveTargetById=200001;REQUEST_BODY\""
         - "SecRule REQUEST_URI \"@beginsWith /api/v1/images\" \"id:1002,phase:1,pass,nolog,ctl:ruleRemoveById=920230\""
