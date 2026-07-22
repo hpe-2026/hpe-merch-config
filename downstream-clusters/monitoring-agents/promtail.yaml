@@ -67,6 +67,7 @@ data:
                 - metrics:
                     waf_attacks_total:
                       type: Counter
+                      prefix: ""
                       description: "Total WAF attack detections by rule and type"
                       source: rule_id
                       config:
