@@ -58,21 +58,22 @@ For a step-by-step demo guide, see **[DEMO.md](./DEMO.md)**.
 
 ### Docker Compose (30 containers)
 
-| Tier | Services |
-| --- | --- |
-| **Application** | `frontend` (5173) · `admin-dashboard` (5174) · `merchant-portal` (5175) · `node-backend` (3000) · `python-service` (8000) · `notification-service` |
-| **Database** | MongoDB Sharded: `mongo-config` · `mongo-shard1` · `mongo-shard2` · `mongodb` (router, 27017) · `mongo-init` · `mongo-backup` |
-| **Storage** | `minio` (9000/9001) · `minio-init` |
-| **Identity** | `keycloak` (8080) · `keycloak-setup` |
-| **Streaming** | `zookeeper` (2181) · `kafka` (9092) |
-| **Observability** | `prometheus` · `grafana` (3001) · `loki` (3100) · `promtail` · `promtail-keycloak` · `loki-rbac-proxy` (3200) · `jaeger` · `alertmanager` (9093) |
-| **DevOps** | `jenkins` (8081) · `nexus` (8082) |
-| **Auth Proxies** | `oauth2-proxy-prometheus` (9090) · `oauth2-proxy-jaeger` (16686) |
-| **Seeding** | `seed-products` |
+| Tier              | Services                                                                                                                                           |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Application**   | `frontend` (5173) · `admin-dashboard` (5174) · `merchant-portal` (5175) · `node-backend` (3000) · `python-service` (8000) · `notification-service` |
+| **Database**      | MongoDB Sharded: `mongo-config` · `mongo-shard1` · `mongo-shard2` · `mongodb` (router, 27017) · `mongo-init` · `mongo-backup`                      |
+| **Storage**       | `minio` (9000/9001) · `minio-init`                                                                                                                 |
+| **Identity**      | `keycloak` (8080) · `keycloak-setup`                                                                                                               |
+| **Streaming**     | `zookeeper` (2181) · `kafka` (9092)                                                                                                                |
+| **Observability** | `prometheus` · `grafana` (3001) · `loki` (3100) · `promtail` · `promtail-keycloak` · `loki-rbac-proxy` (3200) · `jaeger` · `alertmanager` (9093)   |
+| **DevOps**        | `jenkins` (8081) · `nexus` (8082)                                                                                                                  |
+| **Auth Proxies**  | `oauth2-proxy-prometheus` (9090) · `oauth2-proxy-jaeger` (16686)                                                                                   |
+| **Seeding**       | `seed-products`                                                                                                                                    |
 
 ### Kubernetes + Istio (25 deployments + DaemonSets + Istio control plane)
 
 All Docker Compose services plus:
+
 - **Istio**: `istiod` · `istio-ingressgateway` · `kiali` (20001)
 - **Sidecar proxies** injected into every pod (mTLS encryption)
 - Istio configs: Gateway, VirtualServices, DestinationRules, PeerAuthentication, AuthorizationPolicies, EnvoyFilter (rate limiting), ServiceEntries
@@ -81,15 +82,15 @@ All Docker Compose services plus:
 
 ## Istio Service Mesh (K8s only)
 
-| Feature | Configuration | Effect |
-|---------|--------------|--------|
-| **mTLS** | `PeerAuthentication: STRICT` | All HTTP service traffic encrypted; MongoDB/Kafka use PERMISSIVE (raw TCP) |
-| **Circuit Breakers** | `DestinationRule` outlier detection | 5 consecutive 5xx errors → pod ejected for 60s |
-| **Rate Limiting** | `EnvoyFilter` on node-backend | 100 requests/minute per pod |
-| **Authorization** | `AuthorizationPolicy` | Only backend can reach MongoDB/Kafka; frontend cannot hit DB directly |
-| **Traffic Routing** | `VirtualService` + `Gateway` | Single ingress routes `/api`, `/shop`, `/admin`, `/merchant`, `/auth`, `/grafana` |
-| **Service Entries** | External allowlist | Outbound only to: smtp.gmail.com, hooks.slack.com, api.razorpay.com |
-| **Kiali** | Service mesh dashboard | Visual topology of all traffic at http://localhost:20001 |
+| Feature              | Configuration                       | Effect                                                                            |
+| -------------------- | ----------------------------------- | --------------------------------------------------------------------------------- |
+| **mTLS**             | `PeerAuthentication: STRICT`        | All HTTP service traffic encrypted; MongoDB/Kafka use PERMISSIVE (raw TCP)        |
+| **Circuit Breakers** | `DestinationRule` outlier detection | 5 consecutive 5xx errors → pod ejected for 60s                                    |
+| **Rate Limiting**    | `EnvoyFilter` on node-backend       | 100 requests/minute per pod                                                       |
+| **Authorization**    | `AuthorizationPolicy`               | Only backend can reach MongoDB/Kafka; frontend cannot hit DB directly             |
+| **Traffic Routing**  | `VirtualService` + `Gateway`        | Single ingress routes `/api`, `/shop`, `/admin`, `/merchant`, `/auth`, `/grafana` |
+| **Service Entries**  | External allowlist                  | Outbound only to: smtp.gmail.com, hooks.slack.com, api.razorpay.com               |
+| **Kiali**            | Service mesh dashboard              | Visual topology of all traffic at http://localhost:20001                          |
 
 ---
 
@@ -113,6 +114,7 @@ All Docker Compose services plus:
 ### Windows Users
 
 Run from WSL2:
+
 ```bash
 wsl
 cd /mnt/c/path/to/project
@@ -153,52 +155,52 @@ First run: ~30-40 minutes. Subsequent runs: ~5-10 minutes.
 
 ### docker-setup.sh
 
-| Command | What it does |
-|---|---|
-| `start` | Pull → build → start → verify |
-| `stop` | Stop all containers |
-| `restart` | Stop then start |
-| `clean` | Delete all containers + volumes (⚠ DATA LOSS) |
-| `status` | Show container health |
-| `logs` | Tail all service logs |
-| `demo` | Smoke test + generate traffic |
+| Command   | What it does                                  |
+| --------- | --------------------------------------------- |
+| `start`   | Pull → build → start → verify                 |
+| `stop`    | Stop all containers                           |
+| `restart` | Stop then start                               |
+| `clean`   | Delete all containers + volumes (⚠ DATA LOSS) |
+| `status`  | Show container health                         |
+| `logs`    | Tail all service logs                         |
+| `demo`    | Smoke test + generate traffic                 |
 
 ### k8s-setup.sh
 
-| Command | What it does |
-|---|---|
-| `start` | Install Istio → build → deploy → port-forward |
-| `start --no-istio` | Same but without Istio (lighter) |
-| `stop` | Stop port-forwards (pods stay running) |
-| `forward` | Re-establish port-forwards |
-| `restart` | Rolling restart all deployments |
-| `clean` | Delete namespace + all data (⚠ DATA LOSS) |
-| `status` | Deployment health + Istio status |
-| `logs <service>` | Tail logs for a service |
-| `demo` | Quick API self-test |
+| Command            | What it does                                  |
+| ------------------ | --------------------------------------------- |
+| `start`            | Install Istio → build → deploy → port-forward |
+| `start --no-istio` | Same but without Istio (lighter)              |
+| `stop`             | Stop port-forwards (pods stay running)        |
+| `forward`          | Re-establish port-forwards                    |
+| `restart`          | Rolling restart all deployments               |
+| `clean`            | Delete namespace + all data (⚠ DATA LOSS)     |
+| `status`           | Deployment health + Istio status              |
+| `logs <service>`   | Tail logs for a service                       |
+| `demo`             | Quick API self-test                           |
 
 ---
 
 ## Service URLs
 
-| Service | URL | Notes |
-|---|---|---|
-| Storefront | http://localhost:5173 | Alumni merch shop |
-| Admin Dashboard | http://localhost:5174 | User verification, DB management, metrics |
-| Merchant Portal | http://localhost:5175 | Product/order management |
-| Backend API | http://localhost:3000 | REST API |
-| API Docs | http://localhost:3000/api/docs | Swagger/OpenAPI |
-| Keycloak | http://localhost:8080 | Identity & access management |
-| Jenkins | http://localhost:8081 | CI/CD pipelines (Keycloak SSO) |
-| Nexus | http://localhost:8082 | Artifact repository |
-| MinIO Console | http://localhost:9001 | Object storage UI |
-| Prometheus | http://localhost:9090 | Metrics (Keycloak SSO, @nitte.ac.in) |
-| Grafana | http://localhost:3001 | Dashboards (Keycloak SSO or admin/admin123) |
-| Alertmanager | http://localhost:9093 | Alert routing |
-| Jaeger | http://localhost:16686 | Distributed tracing (Keycloak SSO) |
-| Loki | http://localhost:3100 | Log aggregation API |
-| MongoDB | http://localhost:8083 | MongoDB web UI (Docker only) |
-| **Kiali** | http://localhost:20001 | Istio mesh dashboard (K8s only) |
+| Service         | URL                            | Notes                                       |
+| --------------- | ------------------------------ | ------------------------------------------- |
+| Storefront      | http://localhost:5173          | Alumni merch shop                           |
+| Admin Dashboard | http://localhost:5174          | User verification, DB management, metrics   |
+| Merchant Portal | http://localhost:5175          | Product/order management                    |
+| Backend API     | http://localhost:3000          | REST API                                    |
+| API Docs        | http://localhost:3000/api/docs | Swagger/OpenAPI                             |
+| Keycloak        | http://localhost:8080          | Identity & access management                |
+| Jenkins         | http://localhost:8081          | CI/CD pipelines (Keycloak SSO)              |
+| Nexus           | http://localhost:8082          | Artifact repository                         |
+| MinIO Console   | http://localhost:9001          | Object storage UI                           |
+| Prometheus      | http://localhost:9090          | Metrics (Keycloak SSO, @nitte.ac.in)        |
+| Grafana         | http://localhost:3001          | Dashboards (Keycloak SSO or admin/admin123) |
+| Alertmanager    | http://localhost:9093          | Alert routing                               |
+| Jaeger          | http://localhost:16686         | Distributed tracing (Keycloak SSO)          |
+| Loki            | http://localhost:3100          | Log aggregation API                         |
+| MongoDB         | http://localhost:8083          | MongoDB web UI (Docker only)                |
+| **Kiali**       | http://localhost:20001         | Istio mesh dashboard (K8s only)             |
 
 ## Keycloak Integration
 
@@ -212,6 +214,7 @@ First run: ~30-40 minutes. Subsequent runs: ~5-10 minutes.
 ### Event Listener SPI
 
 Custom Java plugin (`keycloak-event-listener/`) captures:
+
 - Security events: `LOGIN_ERROR`, `UPDATE_PASSWORD`, `REGISTER`, `REMOVE_TOTP`
 - Admin events: `CREATE`, `UPDATE`, `DELETE` on users/roles/clients
 
@@ -229,15 +232,15 @@ Events are forwarded to the Notification Service which routes to Slack/Email/Tic
 
 ## Observability Stack
 
-| Tool | Purpose | Access |
-|------|---------|--------|
-| Prometheus | Metrics collection | Keycloak SSO (9090) |
-| Grafana | Dashboards + alerting | Keycloak SSO or local admin (3001) |
-| Loki | Log aggregation | Via Grafana datasource |
-| Promtail | Log shipping (pods → Loki) | DaemonSet |
-| Jaeger | Distributed tracing | Keycloak SSO (16686) |
-| Alertmanager | Alert routing (Slack/email) | Direct (9093) |
-| Kiali | Istio service mesh topology | Direct (20001, K8s only) |
+| Tool         | Purpose                     | Access                             |
+| ------------ | --------------------------- | ---------------------------------- |
+| Prometheus   | Metrics collection          | Keycloak SSO (9090)                |
+| Grafana      | Dashboards + alerting       | Keycloak SSO or local admin (3001) |
+| Loki         | Log aggregation             | Via Grafana datasource             |
+| Promtail     | Log shipping (pods → Loki)  | DaemonSet                          |
+| Jaeger       | Distributed tracing         | Keycloak SSO (16686)               |
+| Alertmanager | Alert routing (Slack/email) | Direct (9093)                      |
+| Kiali        | Istio service mesh topology | Direct (20001, K8s only)           |
 
 ---
 
@@ -264,25 +267,25 @@ Located in `docs/bdd/features/`:
 
 ## Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/seed-products.mjs` | Seed product catalog + upload images to MinIO |
-| `scripts/seed-orders.mjs` | Generate sample orders |
-| `scripts/demo-keycloak-events.sh` | Verify Keycloak event flow end-to-end |
-| `scripts/simulate-alerts.sh` | Trigger Prometheus alerts for demo |
-| `scripts/backup-mongodb.sh` | Manual MongoDB backup to MinIO |
+| Script                            | Purpose                                       |
+| --------------------------------- | --------------------------------------------- |
+| `scripts/seed-products.mjs`       | Seed product catalog + upload images to MinIO |
+| `scripts/seed-orders.mjs`         | Generate sample orders                        |
+| `scripts/demo-keycloak-events.sh` | Verify Keycloak event flow end-to-end         |
+| `scripts/simulate-alerts.sh`      | Trigger Prometheus alerts for demo            |
+| `scripts/backup-mongodb.sh`       | Manual MongoDB backup to MinIO                |
 
 ---
 
 ## Documentation
 
-| File | Purpose |
-|------|---------|
-| [DEMO.md](./DEMO.md) | Step-by-step demo runbook |
-| [docs/MICROSERVICES.md](./docs/MICROSERVICES.md) | All services — architecture reference |
-| [docs/USER_ROLES.md](./docs/USER_ROLES.md) | Roles, credentials, RBAC matrix |
-| [docs/KUBERNETES_DEPLOYMENT.md](./docs/KUBERNETES_DEPLOYMENT.md) | K8s deployment guide |
-| [keycloak/KEYCLOAK_DEMO.md](./keycloak/KEYCLOAK_DEMO.md) | Keycloak realm structure + token tests |
+| File                                                             | Purpose                                |
+| ---------------------------------------------------------------- | -------------------------------------- |
+| [DEMO.md](./DEMO.md)                                             | Step-by-step demo runbook              |
+| [docs/MICROSERVICES.md](./docs/MICROSERVICES.md)                 | All services — architecture reference  |
+| [docs/USER_ROLES.md](./docs/USER_ROLES.md)                       | Roles, credentials, RBAC matrix        |
+| [docs/KUBERNETES_DEPLOYMENT.md](./docs/KUBERNETES_DEPLOYMENT.md) | K8s deployment guide                   |
+| [keycloak/KEYCLOAK_DEMO.md](./keycloak/KEYCLOAK_DEMO.md)         | Keycloak realm structure + token tests |
 
 ---
 
@@ -345,18 +348,36 @@ minikube dashboard                        # K8s web UI
 
 ### Common Issues
 
-| Problem | Fix |
-|---------|-----|
-| Docker daemon not running | `sudo systemctl start docker` or open Docker Desktop |
-| Port already in use | `./docker-setup.sh stop` or `lsof -i :<port>` |
-| Minikube won't start | `minikube delete --all --purge && ./k8s-setup.sh start` |
-| Pods stuck Pending | Insufficient RAM — try `--no-istio` or close other apps |
-| Keycloak slow to start | Normal — augmentation takes 2-3 min on first boot |
-| Grafana shows "No data" | Wait 60s for promtail to push logs; check `./k8s-setup.sh status` |
-| Services show 0/1 Ready | Check init containers: `kubectl describe pod -n nitte <pod>` |
+| Problem                   | Fix                                                               |
+| ------------------------- | ----------------------------------------------------------------- |
+| Docker daemon not running | `sudo systemctl start docker` or open Docker Desktop              |
+| Port already in use       | `./docker-setup.sh stop` or `lsof -i :<port>`                     |
+| Minikube won't start      | `minikube delete --all --purge && ./k8s-setup.sh start`           |
+| Pods stuck Pending        | Insufficient RAM — try `--no-istio` or close other apps           |
+| Keycloak slow to start    | Normal — augmentation takes 2-3 min on first boot                 |
+| Grafana shows "No data"   | Wait 60s for promtail to push logs; check `./k8s-setup.sh status` |
+| Services show 0/1 Ready   | Check init containers: `kubectl describe pod -n nitte <pod>`      |
 
 ---
 
 ## License
 
 MIT
+
+## FAQ
+
+### How does Certbot work?
+
+Certbot is an ACME client that requests a TLS certificate from a certificate authority such as Let's Encrypt. During setup, it proves domain ownership with an HTTP-01, DNS-01, or TLS-ALPN-01 challenge. After the CA validates the challenge, it issues a certificate for the domain.
+
+### Does Certbot do anything after initial setup?
+
+Yes. Its main ongoing job is certificate renewal before expiration. It may also reload or restart the web server after a successful renewal. It does not continuously broadcast anything to the internet.
+
+### How does the internet know HTTPS is enabled?
+
+HTTPS is not announced by Certbot. It is enabled when your web server is configured to serve TLS on port 443 with a valid certificate. The `http://` to `https://` redirect is typically set in the NGINX Reverse Proxy server config, not in Certbot.
+
+### Why use MetalLB to assign a private static IP to the dev cluster instead of the VBox private IP?
+
+Because the VBox-assigned IP belongs to the VM, not to Kubernetes services. It can change if the VM is recreated, reconfigured, or the network adapter changes. MetalLB gives Kubernetes a stable internal service IP from a reserved private range, which is better for ingress, testing, and service discovery in a dev cluster.
