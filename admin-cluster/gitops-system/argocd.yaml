@@ -241,6 +241,8 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - Replace=true   # Needed: clusterIP is immutable; delete+recreate on conflict
 
 ---
 # Monitoring agents → Prod cluster
@@ -262,6 +264,8 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - Replace=true   # Needed: clusterIP is immutable; delete+recreate on conflict
 
 ---
 # Istio Addons → Dev cluster
