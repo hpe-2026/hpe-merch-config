@@ -43,7 +43,7 @@ images:
     newTag: "1.0.1-a040528"
   - name: frontend
     newName: 192.168.56.10:30082/merch-docker/frontend
-    newTag: "09935b9"
+    newTag: "7fb3b3c"
   - name: admin-dashboard
     newName: 192.168.56.10:30082/merch-docker/admin-dashboard
     newTag: "5529a48"
